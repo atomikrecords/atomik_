@@ -786,13 +786,32 @@ function openScanner() {
     statusEl.textContent = 'Camera library failed to load. Check your connection.';
     return;
   }
-  html5QrCode = new Html5Qrcode('qr-reader', { formatsToSupport: [
-    Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
-    Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
-    Html5QrcodeSupportedFormats.CODE_128
-  ], verbose: false });
+  html5QrCode = new Html5Qrcode('qr-reader', {
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128
+    ],
+    // Use the browser's native barcode detector when available — it reads a much
+    // wider area of the frame per pass than the JS fallback decoder, so users
+    // don't have to hunt for a tiny sweet spot to get a scan.
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+    verbose: false
+  });
 
-  const config = { fps: 10, qrbox: { width: 260, height: 160 }, aspectRatio: 1.6 };
+  const config = {
+    fps: 15,
+    // A wide, short box covering most of the viewfinder — forgiving on
+    // off-center or slightly rotated barcodes without scanning the whole
+    // background. Decoding still needs the barcode to fill enough of the
+    // frame to be legible, so this doesn't pick up distant items.
+    qrbox: (viewfinderWidth, viewfinderHeight) => {
+      const width = Math.round(Math.min(viewfinderWidth * 0.9, 340));
+      const height = Math.round(Math.min(viewfinderHeight * 0.55, width * 0.6));
+      return { width, height };
+    },
+    aspectRatio: 1.6
+  };
   html5QrCode.start(
     { facingMode: 'environment' },
     config,
@@ -911,7 +930,7 @@ function renderResult(product, code) {
 
   const bannerClass = verdict.level === 'safe' ? 'rb-safe' : verdict.level === 'caution' ? 'rb-caution' : 'rb-danger';
   const bannerIcon = verdict.level === 'safe' ? 'checkCircle' : verdict.level === 'caution' ? 'alertTriangle' : 'xCircle';
-  const bannerTitle = verdict.level === 'safe' ? 'Safe for your profile' : verdict.level === 'caution' ? 'Check carefully' : 'Not suitable for you';
+  const bannerTitle = verdict.level === 'safe' ? 'Safe! No issues found.' : verdict.level === 'caution' ? 'Check carefully' : 'Not suitable for you';
 
   const img = product.image_front_url || product.image_front_small_url;
   const productImgHtml = img ? `<img src="${img}" alt="">` : `<div class="ph">${iconSvg('package')}</div>`;
