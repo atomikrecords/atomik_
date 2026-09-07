@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SafeBite — Personal Food Safety Scanner</title>
 <meta name="description" content="Scan or search any food product and instantly know if it's safe for your allergies, diet, and preferences.">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#0b0d12">
 <link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234fd1a5'%3E%3Cpath d='M12 2.5 19.5 5.5V11c0 5.2-3.4 9.5-7.5 11-4.1-1.5-7.5-5.8-7.5-11V5.5Z'/%3E%3C/svg%3E">
 </head>
 <body>
 
@@ -15,8 +15,8 @@
 
   <!-- ===== Header ===== -->
   <header class="topbar">
-    <div class="brand"><span class="brand-mark">🛡️</span><span>SafeBite</span></div>
-    <button id="profileBtn" class="icon-btn" title="Your profile" aria-label="Your profile">👤</button>
+    <div class="brand"><span class="brand-mark" data-icon="shield"></span><span>SafeBite</span></div>
+    <button id="profileBtn" class="icon-btn" title="Your profile" aria-label="Your profile"><span data-icon="user"></span></button>
   </header>
 
   <!-- ===== Views ===== -->
@@ -30,18 +30,19 @@
       </div>
 
       <button id="openScannerBtn" class="btn btn-primary btn-big">
-        <span class="btn-icon">📷</span> Scan Barcode
+        <span class="btn-icon" data-icon="camera"></span> Scan Barcode
       </button>
 
       <div class="or-divider"><span>or</span></div>
 
       <form id="searchForm" class="search-form" autocomplete="off">
+        <span class="search-icon" data-icon="search"></span>
         <input id="searchInput" type="search" placeholder="Search a food or product name…" inputmode="search" />
         <button type="submit" class="btn btn-secondary">Search</button>
       </form>
 
       <div id="manualBarcodeWrap" class="manual-barcode">
-        <button id="showManualEntry" class="link-btn">Enter barcode number manually</button>
+        <button id="showManualEntry" class="link-btn"><span data-icon="barcode"></span>Enter barcode number manually</button>
         <form id="manualBarcodeForm" class="manual-barcode-form hidden">
           <input id="manualBarcodeInput" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="e.g. 3017620422003" />
           <button type="submit" class="btn btn-secondary">Check</button>
@@ -58,7 +59,7 @@
     <!-- SCANNER VIEW -->
     <section id="view-scanner" class="view">
       <div class="scanner-header">
-        <button id="closeScannerBtn" class="icon-btn" aria-label="Close scanner">✕</button>
+        <button id="closeScannerBtn" class="icon-btn" aria-label="Close scanner"><span data-icon="x"></span></button>
         <span>Point camera at barcode</span>
         <span style="width:40px"></span>
       </div>
@@ -69,7 +70,7 @@
     <!-- RESULT VIEW -->
     <section id="view-result" class="view">
       <div class="result-header">
-        <button id="backFromResultBtn" class="icon-btn" aria-label="Back">←</button>
+        <button id="backFromResultBtn" class="icon-btn" aria-label="Back"><span data-icon="chevronLeft"></span></button>
         <span>Result</span>
         <span style="width:40px"></span>
       </div>
@@ -79,9 +80,9 @@
     <!-- PROFILE VIEW -->
     <section id="view-profile" class="view">
       <div class="result-header">
-        <button id="closeProfileBtn" class="icon-btn" aria-label="Close">✕</button>
+        <button id="closeProfileBtn" class="icon-btn" aria-label="Close"><span data-icon="x"></span></button>
         <span>Your Profile</span>
-        <button id="saveProfileTopBtn" class="icon-btn" title="Save">✓</button>
+        <button id="saveProfileTopBtn" class="icon-btn" title="Save"><span data-icon="check"></span></button>
       </div>
 
       <form id="profileForm" class="profile-form">
@@ -126,7 +127,7 @@
         </fieldset>
 
         <button type="submit" class="btn btn-primary btn-big">Save Profile</button>
-        <p id="savedToast" class="saved-toast hidden">Profile saved ✓</p>
+        <p id="savedToast" class="saved-toast hidden"><span data-icon="checkCircle"></span>Profile saved</p>
       </form>
     </section>
 
@@ -134,9 +135,10 @@
 
   <!-- ===== Bottom nav ===== -->
   <nav class="bottom-nav">
-    <button class="nav-btn active" data-nav="view-home"><span>🏠</span>Home</button>
-    <button class="nav-btn" data-nav="view-scanner-open"><span>📷</span>Scan</button>
-    <button class="nav-btn" data-nav="view-profile"><span>👤</span>Profile</button>
+    <div class="nav-indicator" id="navIndicator"></div>
+    <button class="nav-btn active" data-nav="view-home"><span data-icon="home"></span>Home</button>
+    <button class="nav-btn" data-nav="view-scanner-open"><span data-icon="camera"></span>Scan</button>
+    <button class="nav-btn" data-nav="view-profile"><span data-icon="user"></span>Profile</button>
   </nav>
 
 </div>

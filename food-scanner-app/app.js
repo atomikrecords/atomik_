@@ -3,13 +3,76 @@
    - Profile persisted in localStorage
    - Product data from the Open Food Facts public API (real, free, no key)
    - Barcode scanning via device camera (html5-qrcode)
+   - Hand-built vector icon set (no emoji, no external icon requests)
    ========================================================================= */
 
 const OFF_PRODUCT_URL = code => `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=code,product_name,brands,image_front_small_url,image_front_url,ingredients_text,ingredients_text_en,lang,allergens_tags,traces_tags,labels_tags,categories_tags,categories,nutriments,quantity`;
 const OFF_SEARCH_URL = q => `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&fields=code,product_name,brands,image_front_small_url,quantity`;
+const OFF_CATEGORY_URL = tag => `https://world.openfoodfacts.org/api/v2/search?categories_tags=${encodeURIComponent(tag)}&page_size=40&fields=code,product_name,brands,image_front_small_url,ingredients_text,ingredients_text_en,lang,allergens_tags,traces_tags,labels_tags,categories_tags,categories,nutriments`;
 
 const STORAGE_KEY = 'safebite_profile_v1';
 const RECENTS_KEY = 'safebite_recents_v1';
+
+/* ---------------------------------------------------------------------
+   Vector icon set — hand-built, stroke-based line icons (24x24, MIT-style
+   free use, no external requests, no emoji). Each entry is inner-SVG markup.
+   --------------------------------------------------------------------- */
+const ICONS = {
+  shield: '<path d="M12 2.5 19.5 5.5V11c0 5.2-3.4 9.5-7.5 11-4.1-1.5-7.5-5.8-7.5-11V5.5Z"/>',
+  user: '<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.5c0-3.9 3.4-6 7.5-6s7.5 2.1 7.5 6"/>',
+  camera: '<path d="M4 8.5h3.2l1.6-2h6.4l1.6 2H20v10.5H4Z"/><circle cx="12" cy="13.2" r="3.4"/>',
+  search: '<circle cx="10.8" cy="10.8" r="6.3"/><path d="M19.5 19.5 15.3 15.3"/>',
+  home: '<path d="M4 11 12 4l8 7"/><path d="M6 9.8V20h12V9.8"/><path d="M10 20v-5h4v5"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  check: '<path d="M5 13l4.5 4.5L19 8"/>',
+  chevronLeft: '<path d="M15 4.5 8 12l7 7.5"/>',
+  chevronRight: '<path d="M9 4.5 16 12l-7 7.5"/>',
+  alertTriangle: '<path d="M12 3 22 20.5H2Z"/><path d="M12 9.5v5"/><circle cx="12" cy="17" r=".9" fill="currentColor" stroke="none"/>',
+  checkCircle: '<circle cx="12" cy="12" r="9"/><path d="M7.8 12.3l2.8 2.8L16.4 9"/>',
+  xCircle: '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11.2v5.3"/><circle cx="12" cy="7.6" r=".9" fill="currentColor" stroke="none"/>',
+  sparkles: '<path d="M11.5 3c.9 3.4 2.1 4.6 5.5 5.5-3.4.9-4.6 2.1-5.5 5.5-.9-3.4-2.1-4.6-5.5-5.5C9.4 7.6 10.6 6.4 11.5 3Z"/><path d="M18.3 14c.5 1.8 1.1 2.4 2.9 2.9-1.8.5-2.4 1.1-2.9 2.9-.5-1.8-1.1-2.4-2.9-2.9 1.8-.5 2.4-1.1 2.9-2.9Z"/>',
+  milk: '<path d="M9.3 2h5.4v3l1.9 2.8V21a1 1 0 0 1-1 1H8.4a1 1 0 0 1-1-1V7.8L9.3 5Z"/><path d="M7.4 12h9.2"/>',
+  egg: '<path d="M12 22c4.4 0 7.2-4 7.2-8.4C19.2 8.6 16 2 12 2S4.8 8.6 4.8 13.6C4.8 18 7.6 22 12 22Z"/>',
+  fish: '<path d="M2.5 12.5c3.3-4.2 8.6-6.2 13.7-4.2 2.1.8 4 2.2 5.3 4.2-1.3 2-3.2 3.4-5.3 4.2-5.1 2-10.4 0-13.7-4.2Z"/><circle cx="16" cy="11" r=".7" fill="currentColor" stroke="none"/><path d="M2.5 12.5.8 9.6m1.7 2.9-1.7 3"/>',
+  shrimp: '<path d="M5 15c-1-5.5 2.2-11 8-11 2.6 0 4.5 1.7 4.5 4 0 3.4-3 4.3-3.6 7.4-.4 2.2.6 3.6 1.6 4.1" /><circle cx="13.2" cy="6" r="1"/><path d="M4.5 16.5 3 18"/>',
+  nut: '<path d="M12 2.3c4.3 2 6.6 6 6.6 10 0 5.3-3.2 9.7-6.6 9.7S5.4 17.6 5.4 12.3c0-4 2.3-8 6.6-10Z"/><path d="M12 6.5v11"/>',
+  wheat: '<path d="M12 2v20"/><path d="M12 5.5 9.3 7.3l2.7 1.8 2.7-1.8L12 5.5Z"/><path d="M12 10.5 9.3 12.3l2.7 1.8 2.7-1.8-2.7-1.8Z"/><path d="M12 15.5 9.3 17.3l2.7 1.8 2.7-1.8-2.7-1.8Z"/>',
+  bean: '<path d="M6.2 16.4C2.9 12.3 4 5.9 9 3.8c4.3-1.7 8.6 1 8.6 5.4 0 5.4-4.3 6.4-6.4 9.6-1.6 2.4-3.7 1.1-5-2.4Z"/>',
+  circleDot: '<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/>',
+  bottle: '<path d="M10.2 2h3.6v2.7l2 2.3V21a1 1 0 0 1-1 1H9.2a1 1 0 0 1-1-1V7l2-2.3Z"/><path d="M8.7 11h6.6"/>',
+  leaf: '<path d="M20 4C10 4 4 10 4 18c8 0 14-6 14-14Z"/><path d="M6.5 17.5 18 6"/>',
+  wine: '<path d="M7.2 3h9.6l-1 6.2a4.3 4.3 0 0 1-7.6 0Z"/><path d="M12 13.3V20M8 21.6h8"/>',
+  sprout: '<path d="M12 22v-9.4"/><path d="M12 12.6C6.8 12.6 3.6 9.4 3.6 4c5.4 0 8.6 3.2 8.6 8.6Z"/><path d="M12 10.2c0-4.3 3-6.7 8.4-6.7 0 4.3-2 7.5-8.4 6.7Z"/>',
+  crescent: '<path d="M15.5 3.2A9 9 0 1 0 20.8 15a7 7 0 0 1-5.3-11.8Z"/>',
+  award: '<circle cx="12" cy="8.3" r="5"/><path d="M9 12.6 7.2 21.5 12 18.7l4.8 2.8L15 12.6"/>',
+  flame: '<path d="M12 2.3c1.3 4-2.9 5.4-2.9 9.3a4.9 4.9 0 0 0 9.8 0c0-2-1-3.2-2-4 0 2-1 2.2-1 2.2.6-3.4-1.2-5.4-3.9-7.5Z"/>',
+  droplet: '<path d="M12 2.3c4 6 7 9.7 7 13.2a7 7 0 0 1-14 0c0-3.5 3-7.2 7-13.2Z"/>',
+  candy: '<path d="M8.3 8.3 10.6 6l7.4 7.4-2.3 2.3Z"/><path d="M16 16 18.3 13.7M6 6 8.3 3.7M3.7 11.9 6 9.6M11.9 20.3l2.3-2.3"/>',
+  percent: '<path d="M5 19 19 5"/><circle cx="7.2" cy="7.2" r="2.2"/><circle cx="16.8" cy="16.8" r="2.2"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  trash: '<path d="M4.5 7h15M9.5 7V4.2h5V7"/><path d="M6.5 7 7.5 20h9l1-13"/>',
+  barcode: '<path d="M3.5 5v14M7 5v14M9.7 5v14M13 5v14M15.7 5v14M18 5v14M20.5 5v14"/>',
+  ban: '<circle cx="12" cy="12" r="9"/><path d="M5.8 5.8 18.2 18.2"/>',
+  arrowRight: '<path d="M4.5 12h15M13.5 6l6 6-6 6"/>',
+  package: '<path d="M21 8 12 3.3 3 8l9 4.7 9-4.7Z"/><path d="M3 8v8.3l9 4.7 9-4.7V8"/><path d="M12 12.7V21"/>',
+  history: '<path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v4.5h4.5"/><path d="M12 8v4.5l3.2 2"/>',
+  spinner: '<circle cx="12" cy="12" r="9" opacity="0.2"/><path d="M21 12a9 9 0 0 0-9-9"/>',
+};
+function iconSvg(name, cls) {
+  const inner = ICONS[name] || ICONS.info;
+  return `<svg class="icon${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+}
+function mountIcons(root) {
+  (root || document).querySelectorAll('[data-icon]').forEach(el => {
+    el.innerHTML = iconSvg(el.dataset.icon);
+    el.classList.add('icon-slot');
+  });
+}
+
+/* Icons representing each allergen / diet, used across chips, reasons, tags */
+const ALLERGEN_ICON = { milk: 'milk', eggs: 'egg', fish: 'fish', shellfish: 'shrimp', molluscs: 'shrimp', 'tree-nuts': 'nut', peanuts: 'nut', wheat: 'wheat', soy: 'bean', sesame: 'circleDot', mustard: 'bottle', celery: 'leaf', sulphites: 'wine', lupin: 'sprout' };
+const DIET_ICON = { 'gluten-free': 'wheat', vegan: 'sprout', vegetarian: 'leaf', 'dairy-free': 'milk', halal: 'crescent', kosher: 'award', keto: 'flame', 'low-sodium': 'droplet', paleo: 'package', 'nut-free': 'nut' };
 
 /* ---------------------------------------------------------------------
    Reference data: allergens & diets, with keyword fallbacks used when
@@ -17,33 +80,33 @@ const RECENTS_KEY = 'safebite_recents_v1';
    mentions the substance in plain language.
    --------------------------------------------------------------------- */
 const ALLERGENS = [
-  { id: 'milk', label: '🥛 Dairy / Milk', offTag: 'en:milk', keywords: ['milk', 'cream', 'butter', 'cheese', 'whey', 'casein', 'lactose', 'yogurt', 'ghee'] },
-  { id: 'eggs', label: '🥚 Eggs', offTag: 'en:eggs', keywords: ['egg', 'albumin', 'ovalbumin', 'mayonnaise'] },
-  { id: 'fish', label: '🐟 Fish', offTag: 'en:fish', keywords: ['fish', 'anchovy', 'cod', 'salmon', 'tuna', 'gelatin (fish)'] },
-  { id: 'shellfish', label: '🦐 Shellfish', offTag: 'en:crustaceans', keywords: ['shrimp', 'prawn', 'crab', 'lobster', 'crustacean', 'shellfish'] },
-  { id: 'molluscs', label: '🦪 Molluscs', offTag: 'en:molluscs', keywords: ['mussel', 'oyster', 'squid', 'clam', 'snail', 'mollusc'] },
-  { id: 'tree-nuts', label: '🌰 Tree Nuts', offTag: 'en:nuts', keywords: ['almond', 'hazelnut', 'walnut', 'cashew', 'pistachio', 'pecan', 'macadamia', 'brazil nut'] },
-  { id: 'peanuts', label: '🥜 Peanuts', offTag: 'en:peanuts', keywords: ['peanut', 'groundnut', 'arachis'] },
-  { id: 'wheat', label: '🌾 Wheat', offTag: 'en:gluten', keywords: ['wheat', 'flour', 'semolina', 'spelt', 'durum'] },
-  { id: 'soy', label: '🫘 Soy', offTag: 'en:soybeans', keywords: ['soy', 'soya', 'edamame', 'tofu'] },
-  { id: 'sesame', label: '◯ Sesame', offTag: 'en:sesame-seeds', keywords: ['sesame', 'tahini'] },
-  { id: 'mustard', label: '🌭 Mustard', offTag: 'en:mustard', keywords: ['mustard'] },
-  { id: 'celery', label: '🥬 Celery', offTag: 'en:celery', keywords: ['celery', 'celeriac'] },
-  { id: 'sulphites', label: '🍷 Sulphites', offTag: 'en:sulphur-dioxide-and-sulphites', keywords: ['sulphite', 'sulfite', 'so2'] },
-  { id: 'lupin', label: '🌱 Lupin', offTag: 'en:lupin', keywords: ['lupin', 'lupine'] },
+  { id: 'milk', label: 'Dairy / Milk', offTag: 'en:milk', keywords: ['milk', 'cream', 'butter', 'cheese', 'whey', 'casein', 'lactose', 'yogurt', 'ghee'] },
+  { id: 'eggs', label: 'Eggs', offTag: 'en:eggs', keywords: ['egg', 'albumin', 'ovalbumin', 'mayonnaise'] },
+  { id: 'fish', label: 'Fish', offTag: 'en:fish', keywords: ['fish', 'anchovy', 'cod', 'salmon', 'tuna', 'gelatin (fish)'] },
+  { id: 'shellfish', label: 'Shellfish', offTag: 'en:crustaceans', keywords: ['shrimp', 'prawn', 'crab', 'lobster', 'crustacean', 'shellfish'] },
+  { id: 'molluscs', label: 'Molluscs', offTag: 'en:molluscs', keywords: ['mussel', 'oyster', 'squid', 'clam', 'snail', 'mollusc'] },
+  { id: 'tree-nuts', label: 'Tree Nuts', offTag: 'en:nuts', keywords: ['almond', 'hazelnut', 'walnut', 'cashew', 'pistachio', 'pecan', 'macadamia', 'brazil nut'] },
+  { id: 'peanuts', label: 'Peanuts', offTag: 'en:peanuts', keywords: ['peanut', 'groundnut', 'arachis'] },
+  { id: 'wheat', label: 'Wheat', offTag: 'en:gluten', keywords: ['wheat', 'flour', 'semolina', 'spelt', 'durum'] },
+  { id: 'soy', label: 'Soy', offTag: 'en:soybeans', keywords: ['soy', 'soya', 'edamame', 'tofu'] },
+  { id: 'sesame', label: 'Sesame', offTag: 'en:sesame-seeds', keywords: ['sesame', 'tahini'] },
+  { id: 'mustard', label: 'Mustard', offTag: 'en:mustard', keywords: ['mustard'] },
+  { id: 'celery', label: 'Celery', offTag: 'en:celery', keywords: ['celery', 'celeriac'] },
+  { id: 'sulphites', label: 'Sulphites', offTag: 'en:sulphur-dioxide-and-sulphites', keywords: ['sulphite', 'sulfite', 'so2'] },
+  { id: 'lupin', label: 'Lupin', offTag: 'en:lupin', keywords: ['lupin', 'lupine'] },
 ];
 
 const DIETS = [
-  { id: 'gluten-free', label: '🚫🌾 Gluten-Free', type: 'gluten-free' },
-  { id: 'vegan', label: '🌿 Vegan', type: 'vegan' },
-  { id: 'vegetarian', label: '🥕 Vegetarian', type: 'vegetarian' },
-  { id: 'dairy-free', label: '🚫🥛 Dairy-Free', type: 'dairy-free' },
-  { id: 'halal', label: '☪️ Halal', type: 'halal' },
-  { id: 'kosher', label: '✡️ Kosher', type: 'kosher' },
-  { id: 'keto', label: '🥑 Keto / Low-Carb', type: 'keto' },
-  { id: 'low-sodium', label: '🧂 Low-Sodium', type: 'low-sodium' },
-  { id: 'paleo', label: '🍖 Paleo', type: 'paleo' },
-  { id: 'nut-free', label: '🚫🥜 Nut-Free (all)', type: 'nut-free' },
+  { id: 'gluten-free', label: 'Gluten-Free', type: 'gluten-free' },
+  { id: 'vegan', label: 'Vegan', type: 'vegan' },
+  { id: 'vegetarian', label: 'Vegetarian', type: 'vegetarian' },
+  { id: 'dairy-free', label: 'Dairy-Free', type: 'dairy-free' },
+  { id: 'halal', label: 'Halal', type: 'halal' },
+  { id: 'kosher', label: 'Kosher', type: 'kosher' },
+  { id: 'keto', label: 'Keto / Low-Carb', type: 'keto' },
+  { id: 'low-sodium', label: 'Low-Sodium', type: 'low-sodium' },
+  { id: 'paleo', label: 'Paleo', type: 'paleo' },
+  { id: 'nut-free', label: 'Nut-Free (all)', type: 'nut-free' },
 ];
 
 const NON_VEGAN_KEYWORDS = ['milk', 'cream', 'butter', 'cheese', 'whey', 'casein', 'egg', 'honey', 'gelatin', 'gelatine', 'meat', 'beef', 'pork', 'chicken', 'fish', 'lard', 'anchovy', 'shellac', 'carmine'];
@@ -79,44 +142,82 @@ function pushRecent(entry) {
 let profile = loadProfile();
 
 /* ---------------------------------------------------------------------
-   Navigation
+   Navigation + view transitions
    --------------------------------------------------------------------- */
 const views = document.querySelectorAll('.view');
-function showView(id) {
+const ANIM_CLASSES = ['anim-slide-in-right', 'anim-slide-in-left', 'anim-modal-in', 'anim-fade'];
+
+function showView(id, transition) {
+  const current = document.querySelector('.view.active');
+  if (current && current.id === id) return;
+
+  let anim = transition;
+  if (!anim) {
+    // sensible defaults so callers that don't specify still animate nicely
+    if (id === 'view-home') anim = 'anim-slide-in-left';
+    else if (id === 'view-result') anim = 'anim-slide-in-right';
+    else anim = 'anim-modal-in';
+  }
+
   views.forEach(v => v.classList.toggle('active', v.id === id));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === id));
+  moveNavIndicator(id);
+
+  const target = document.getElementById(id);
+  ANIM_CLASSES.forEach(c => target.classList.remove(c));
+  // force reflow so the animation restarts even if the same class was used last time
+  void target.offsetWidth;
+  target.classList.add(anim);
+
   window.scrollTo(0, 0);
   if (id !== 'view-scanner') stopScanner();
 }
 
+function moveNavIndicator(id) {
+  const map = { 'view-home': 0, 'view-scanner-open': 1, 'view-profile': 2 };
+  const indicator = document.getElementById('navIndicator');
+  if (!indicator) return;
+  const idx = id === 'view-scanner' ? 1 : map[id];
+  if (idx === undefined) return;
+  indicator.style.transform = `translateX(${idx * 100}%)`;
+}
+
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    if (btn.dataset.nav === 'view-scanner-open') { openScanner(); }
-    else showView(btn.dataset.nav);
+    if (btn.dataset.nav === 'view-scanner-open') { openScanner(); moveNavIndicator('view-scanner-open'); }
+    else showView(btn.dataset.nav, btn.dataset.nav === 'view-home' ? 'anim-fade' : 'anim-modal-in');
   });
 });
-document.getElementById('profileBtn').addEventListener('click', () => { renderProfileForm(); showView('view-profile'); });
-document.getElementById('closeProfileBtn').addEventListener('click', () => showView('view-home'));
-document.getElementById('closeScannerBtn').addEventListener('click', () => showView('view-home'));
-document.getElementById('backFromResultBtn').addEventListener('click', () => showView('view-home'));
-document.getElementById('openScannerBtn').addEventListener('click', openScanner);
+document.getElementById('profileBtn').addEventListener('click', () => { renderProfileForm(); showView('view-profile', 'anim-modal-in'); });
+document.getElementById('closeProfileBtn').addEventListener('click', () => showView('view-home', 'anim-fade'));
+document.getElementById('closeScannerBtn').addEventListener('click', () => showView('view-home', 'anim-fade'));
+document.getElementById('backFromResultBtn').addEventListener('click', () => showView('view-home', 'anim-slide-in-left'));
+document.getElementById('openScannerBtn').addEventListener('click', () => { openScanner(); moveNavIndicator('view-scanner-open'); });
 
 /* ---------------------------------------------------------------------
    Profile form rendering
    --------------------------------------------------------------------- */
-function renderChipGrid(container, items, selectedIds, onToggle) {
+function renderChipGrid(container, items, selectedIds, iconMap, onToggle) {
   container.innerHTML = '';
-  items.forEach(item => {
+  items.forEach((item, i) => {
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'chip' + (selectedIds.includes(item.id) ? ' selected' : '');
-    chip.textContent = item.label;
+    chip.style.animationDelay = (i * 25) + 'ms';
+    chip.innerHTML = `${iconSvg(iconMap[item.id] || 'info', 'chip-icon')}<span>${escapeHtml(item.label)}</span>`;
     chip.addEventListener('click', () => {
-      chip.classList.toggle('selected');
-      onToggle(item.id, chip.classList.contains('selected'));
+      const nowSelected = !chip.classList.contains('selected');
+      chip.classList.toggle('selected', nowSelected);
+      if (nowSelected) bounce(chip);
+      onToggle(item.id, nowSelected);
     });
     container.appendChild(chip);
   });
+}
+function bounce(el) {
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
 }
 
 function renderTagInput(container, tags, onChange) {
@@ -130,8 +231,8 @@ function renderTagInput(container, tags, onChange) {
     tags.slice().reverse().forEach((tag, idxRev) => {
       const idx = tags.length - 1 - idxRev;
       const pill = document.createElement('span');
-      pill.className = 'tag-pill';
-      pill.innerHTML = `<span></span><button type="button" aria-label="Remove">✕</button>`;
+      pill.className = 'tag-pill pop';
+      pill.innerHTML = `${iconSvg('ban', 'tag-icon')}<span></span><button type="button" aria-label="Remove">${iconSvg('x')}</button>`;
       pill.querySelector('span').textContent = tag;
       pill.querySelector('button').addEventListener('click', () => {
         tags.splice(idx, 1);
@@ -160,10 +261,10 @@ function renderTagInput(container, tags, onChange) {
 let workingProfile;
 function renderProfileForm() {
   workingProfile = JSON.parse(JSON.stringify(profile));
-  renderChipGrid(document.getElementById('allergyGrid'), ALLERGENS, workingProfile.allergies, (id, on) => {
+  renderChipGrid(document.getElementById('allergyGrid'), ALLERGENS, workingProfile.allergies, ALLERGEN_ICON, (id, on) => {
     workingProfile.allergies = on ? [...new Set([...workingProfile.allergies, id])] : workingProfile.allergies.filter(a => a !== id);
   });
-  renderChipGrid(document.getElementById('dietGrid'), DIETS, workingProfile.diets, (id, on) => {
+  renderChipGrid(document.getElementById('dietGrid'), DIETS, workingProfile.diets, DIET_ICON, (id, on) => {
     workingProfile.diets = on ? [...new Set([...workingProfile.diets, id])] : workingProfile.diets.filter(d => d !== id);
   });
   renderTagInput(document.getElementById('ingredientTagInput'), workingProfile.avoidIngredients, (t) => { workingProfile.avoidIngredients = t; });
@@ -189,11 +290,12 @@ document.getElementById('profileForm').addEventListener('submit', (e) => {
   commitProfileForm();
   const toast = document.getElementById('savedToast');
   toast.classList.remove('hidden');
-  setTimeout(() => showView('view-home'), 500);
+  toast.classList.remove('toast-in'); void toast.offsetWidth; toast.classList.add('toast-in');
+  setTimeout(() => showView('view-home', 'anim-fade'), 550);
 });
 document.getElementById('saveProfileTopBtn').addEventListener('click', () => {
   commitProfileForm();
-  showView('view-home');
+  showView('view-home', 'anim-fade');
 });
 
 function renderProfileSummary() {
@@ -202,17 +304,17 @@ function renderProfileSummary() {
   if (!hasAny) {
     card.innerHTML = `
       <h3>Your Profile</h3>
-      <p class="empty-hint">You haven't set up a dietary profile yet. Tap 👤 above to add allergies, diets, and ingredients to avoid — it takes under a minute.</p>
-      <button class="link-btn" id="setupProfileNow">Set up now →</button>`;
-    card.querySelector('#setupProfileNow').addEventListener('click', () => { renderProfileForm(); showView('view-profile'); });
+      <p class="empty-hint">You haven't set up a dietary profile yet. Add allergies, diets, and ingredients to avoid — it takes under a minute.</p>
+      <button class="link-btn" id="setupProfileNow">Set up now ${iconSvg('arrowRight')}</button>`;
+    card.querySelector('#setupProfileNow').addEventListener('click', () => { renderProfileForm(); showView('view-profile', 'anim-modal-in'); });
     return;
   }
   const chips = [];
-  profile.allergies.forEach(id => chips.push(ALLERGENS.find(a => a.id === id)?.label));
-  profile.diets.forEach(id => chips.push(DIETS.find(d => d.id === id)?.label));
-  profile.avoidIngredients.forEach(t => chips.push('🚫 ' + t));
-  profile.avoidFoods.forEach(t => chips.push('🙅 ' + t));
-  card.innerHTML = `<h3>Your Profile</h3><div class="chips">${chips.map(c => `<span class="chip-mini">${escapeHtml(c)}</span>`).join('')}</div>`;
+  profile.allergies.forEach(id => { const a = ALLERGENS.find(x => x.id === id); if (a) chips.push({ icon: ALLERGEN_ICON[id], label: a.label }); });
+  profile.diets.forEach(id => { const d = DIETS.find(x => x.id === id); if (d) chips.push({ icon: DIET_ICON[id], label: d.label }); });
+  profile.avoidIngredients.forEach(t => chips.push({ icon: 'ban', label: t }));
+  profile.avoidFoods.forEach(t => chips.push({ icon: 'ban', label: t }));
+  card.innerHTML = `<h3>Your Profile</h3><div class="chips">${chips.map(c => `<span class="chip-mini">${iconSvg(c.icon, 'chip-mini-icon')}${escapeHtml(c.label)}</span>`).join('')}</div>`;
 }
 
 /* ---------------------------------------------------------------------
@@ -220,7 +322,7 @@ function renderProfileSummary() {
    --------------------------------------------------------------------- */
 let html5QrCode = null;
 function openScanner() {
-  showView('view-scanner');
+  showView('view-scanner', 'anim-modal-in');
   const statusEl = document.getElementById('scannerStatus');
   statusEl.textContent = 'Starting camera…';
   if (!window.Html5Qrcode) {
@@ -283,30 +385,31 @@ document.getElementById('searchForm').addEventListener('submit', (e) => {
 
 async function runSearch(query) {
   const resultsEl = document.getElementById('homeResults');
-  resultsEl.innerHTML = loadingRow('Searching products…');
+  resultsEl.innerHTML = skeletonRows(4);
   try {
     const res = await fetch(OFF_SEARCH_URL(query));
     if (!res.ok) throw new Error('Search request failed (' + res.status + ')');
     const data = await res.json();
     const products = (data.products || []).filter(p => p.product_name);
     if (!products.length) {
-      resultsEl.innerHTML = emptyState('🔍', 'No products found for "' + escapeHtml(query) + '". Try a different name or scan the barcode instead.');
+      resultsEl.innerHTML = emptyState('search', 'No products found for "' + escapeHtml(query) + '". Try a different name or scan the barcode instead.');
       return;
     }
     resultsEl.innerHTML = '';
-    products.forEach(p => resultsEl.appendChild(renderSearchRow(p)));
+    products.forEach((p, i) => resultsEl.appendChild(renderSearchRow(p, i)));
   } catch (err) {
     resultsEl.innerHTML = errorBox('Couldn\'t reach the food database. Check your internet connection and try again.');
   }
 }
 
-function renderSearchRow(p) {
+function renderSearchRow(p, i) {
   const row = document.createElement('div');
-  row.className = 'result-row';
+  row.className = 'result-row stagger-in';
+  row.style.animationDelay = (i * 35) + 'ms';
   const img = p.image_front_small_url
     ? `<img src="${p.image_front_small_url}" alt="">`
-    : `<div class="ph">🍽️</div>`;
-  row.innerHTML = `${img}<div class="rr-text"><div class="rr-title">${escapeHtml(p.product_name)}</div><div class="rr-sub">${escapeHtml(p.brands || 'Unknown brand')}${p.quantity ? ' · ' + escapeHtml(p.quantity) : ''}</div></div><span>›</span>`;
+    : `<div class="ph">${iconSvg('package')}</div>`;
+  row.innerHTML = `${img}<div class="rr-text"><div class="rr-title">${escapeHtml(p.product_name)}</div><div class="rr-sub">${escapeHtml(p.brands || 'Unknown brand')}${p.quantity ? ' · ' + escapeHtml(p.quantity) : ''}</div></div><span class="rr-chevron">${iconSvg('chevronRight')}</span>`;
   row.addEventListener('click', () => lookupAndShow(p.code));
   return row;
 }
@@ -315,9 +418,9 @@ function renderSearchRow(p) {
    Product lookup + rendering result
    --------------------------------------------------------------------- */
 async function lookupAndShow(code) {
-  showView('view-result');
+  showView('view-result', 'anim-slide-in-right');
   const el = document.getElementById('resultContent');
-  el.innerHTML = loadingRow('Looking up product…');
+  el.innerHTML = resultSkeleton();
   try {
     const res = await fetch(OFF_PRODUCT_URL(code));
     if (!res.ok) throw new Error('Lookup failed (' + res.status + ')');
@@ -325,12 +428,12 @@ async function lookupAndShow(code) {
     if (data.status !== 1 || !data.product) {
       el.innerHTML = `
         <div class="result-banner rb-caution">
-          <span class="emoji">❓</span>
+          <span class="rb-icon">${iconSvg('info')}</span>
           <h2>Product not found</h2>
           <p>Barcode ${escapeHtml(code)} isn't in the Open Food Facts database yet.</p>
         </div>
-        <div class="reason-item sev-caution">
-          <div class="ri-icon">⚠️</div>
+        <div class="reason-item sev-caution stagger-in">
+          <div class="ri-icon">${iconSvg('alertTriangle')}</div>
           <div><div class="ri-title">We can't verify this product</div>
           <div class="ri-detail">Without ingredient data we cannot confirm it's safe. Check the physical label carefully, or search for it by name.</div></div>
         </div>`;
@@ -350,26 +453,26 @@ function renderResult(product, code) {
   const el = document.getElementById('resultContent');
 
   const bannerClass = verdict.level === 'safe' ? 'rb-safe' : verdict.level === 'caution' ? 'rb-caution' : 'rb-danger';
-  const bannerEmoji = verdict.level === 'safe' ? '✅' : verdict.level === 'caution' ? '⚠️' : '❌';
+  const bannerIcon = verdict.level === 'safe' ? 'checkCircle' : verdict.level === 'caution' ? 'alertTriangle' : 'xCircle';
   const bannerTitle = verdict.level === 'safe' ? 'Safe for your profile' : verdict.level === 'caution' ? 'Check carefully' : 'Not suitable for you';
 
   const img = product.image_front_url || product.image_front_small_url;
-  const productImgHtml = img ? `<img src="${img}" alt="">` : `<div class="ph">🍽️</div>`;
+  const productImgHtml = img ? `<img src="${img}" alt="">` : `<div class="ph">${iconSvg('package')}</div>`;
 
   const reasonsHtml = verdict.reasons.length
-    ? verdict.reasons.map(r => `
-        <li class="reason-item sev-${r.level}">
-          <div class="ri-icon">${r.level === 'danger' ? '❌' : r.level === 'caution' ? '⚠️' : '✅'}</div>
+    ? verdict.reasons.map((r, i) => `
+        <li class="reason-item sev-${r.level} stagger-in" style="animation-delay:${i * 45}ms">
+          <div class="ri-icon">${iconSvg(r.level === 'danger' ? 'xCircle' : r.level === 'caution' ? 'alertTriangle' : 'checkCircle')}</div>
           <div><div class="ri-title">${escapeHtml(r.title)}</div><div class="ri-detail">${escapeHtml(r.detail)}</div></div>
         </li>`).join('')
-    : `<li class="reason-item sev-safe"><div class="ri-icon">✅</div><div><div class="ri-title">No conflicts found</div><div class="ri-detail">Nothing in this product matched your allergies, diets, or avoid-lists.</div></div></li>`;
+    : `<li class="reason-item sev-safe stagger-in"><div class="ri-icon">${iconSvg('checkCircle')}</div><div><div class="ri-title">No conflicts found</div><div class="ri-detail">Nothing in this product matched your allergies, diets, or avoid-lists.</div></div></li>`;
 
   const ingredientsText = product.ingredients_text_en || product.ingredients_text;
   const nutriments = product.nutriments || {};
 
   el.innerHTML = `
     <div class="result-banner ${bannerClass}">
-      <span class="emoji">${bannerEmoji}</span>
+      <span class="rb-icon">${iconSvg(bannerIcon)}</span>
       <h2>${bannerTitle}</h2>
       <p>${escapeHtml(verdict.summary)}</p>
     </div>
@@ -389,18 +492,77 @@ function renderResult(product, code) {
     ${nutriments && Object.keys(nutriments).length ? `
     <div class="section-title">Nutrition (per 100g)</div>
     <div class="nutri-grid">
-      ${nutriCell('Sugar', nutriments['sugars_100g'], 'g')}
-      ${nutriCell('Sodium', nutriments['sodium_100g'] != null ? nutriments['sodium_100g'] * 1000 : null, 'mg')}
-      ${nutriCell('Sat. Fat', nutriments['saturated-fat_100g'], 'g')}
-      ${nutriCell('Energy', nutriments['energy-kcal_100g'], 'kcal')}
+      ${nutriCell('candy', 'Sugar', nutriments['sugars_100g'], 'g')}
+      ${nutriCell('droplet', 'Sodium', nutriments['sodium_100g'] != null ? nutriments['sodium_100g'] * 1000 : null, 'mg')}
+      ${nutriCell('percent', 'Sat. Fat', nutriments['saturated-fat_100g'], 'g')}
+      ${nutriCell('flame', 'Energy', nutriments['energy-kcal_100g'], 'kcal')}
     </div>` : ''}
 
     <div class="section-title">Ingredients</div>
     <div class="ingredients-box">${ingredientsText ? escapeHtml(ingredientsText) : 'No ingredient list available for this product.'}</div>
+
+    ${verdict.level !== 'safe' ? `<div id="altSection"></div>` : ''}
   `;
+
+  if (verdict.level !== 'safe') {
+    renderAlternatives(product);
+  }
 }
-function nutriCell(label, val, unit) {
-  return `<div class="nutri-cell"><div class="nc-val">${val != null ? Math.round(val * 10) / 10 + unit : '—'}</div><div class="nc-label">${label}</div></div>`;
+function nutriCell(icon, label, val, unit) {
+  return `<div class="nutri-cell">${iconSvg(icon, 'nutri-icon')}<div><div class="nc-val">${val != null ? Math.round(val * 10) / 10 + unit : '—'}</div><div class="nc-label">${label}</div></div></div>`;
+}
+
+/* ---------------------------------------------------------------------
+   SAFER ALTERNATIVES — recommends other real products in the same
+   category that pass this user's specific profile.
+   --------------------------------------------------------------------- */
+async function renderAlternatives(product) {
+  const section = document.getElementById('altSection');
+  if (!section) return;
+  section.innerHTML = `
+    <div class="section-title alt-title">${iconSvg('sparkles', 'alt-title-icon')}Safer Alternatives For You</div>
+    <div class="alt-loading">${skeletonRows(2)}</div>`;
+
+  const alts = await fetchAlternatives(product, profile);
+  const loadingEl = section.querySelector('.alt-loading');
+  if (!loadingEl) return; // user navigated away
+
+  if (!alts.length) {
+    loadingEl.innerHTML = emptyState('sparkles', "We couldn't find a safer alternative in this category yet — try searching manually.");
+    return;
+  }
+  loadingEl.innerHTML = alts.map((p, i) => `
+    <div class="result-row alt-row stagger-in" data-code="${escapeHtml(p.code)}" style="animation-delay:${i * 50}ms">
+      ${p.image_front_small_url ? `<img src="${p.image_front_small_url}" alt="">` : `<div class="ph">${iconSvg('package')}</div>`}
+      <div class="rr-text"><div class="rr-title">${escapeHtml(p.product_name)}</div><div class="rr-sub">${escapeHtml(p.brands || 'Unknown brand')}</div></div>
+      <span class="badge badge-safe">${iconSvg('checkCircle')} Safe</span>
+    </div>`).join('');
+  loadingEl.querySelectorAll('.alt-row').forEach(row => {
+    row.addEventListener('click', () => lookupAndShow(row.dataset.code));
+  });
+}
+
+async function fetchAlternatives(product, profile) {
+  const catTags = (product.categories_tags || []).slice();
+  if (!catTags.length) return [];
+  const tagsToTry = catTags.slice(Math.max(0, catTags.length - 3)).reverse(); // most specific first
+  for (const tag of tagsToTry) {
+    try {
+      const res = await fetch(OFF_CATEGORY_URL(tag));
+      if (!res.ok) continue;
+      const data = await res.json();
+      const candidates = (data.products || []).filter(p => p.code && p.code !== product.code && p.product_name);
+      const safe = [];
+      for (const c of candidates) {
+        if (evaluateProduct(c, profile).level === 'safe') {
+          safe.push(c);
+          if (safe.length >= 3) break;
+        }
+      }
+      if (safe.length) return safe;
+    } catch (e) { /* try the next, broader category tag */ }
+  }
+  return [];
 }
 
 /* ---------------------------------------------------------------------
@@ -425,20 +587,20 @@ function evaluateProduct(product, profile) {
     const a = ALLERGENS.find(x => x.id === id);
     if (!a) return;
     if (allergenTags.includes(a.offTag)) {
-      reasons.push({ level: 'danger', title: `Contains ${a.label.replace(/^\S+\s/, '')}`, detail: `Labeled by the manufacturer as containing this allergen.` });
+      reasons.push({ level: 'danger', title: `Contains ${a.label}`, detail: `Labeled by the manufacturer as containing this allergen.` });
       return;
     }
     if (traceTags.includes(a.offTag)) {
-      reasons.push({ level: 'caution', title: `May contain traces of ${a.label.replace(/^\S+\s/, '')}`, detail: `The manufacturer warns this product may contain traces due to shared equipment/facilities.` });
+      reasons.push({ level: 'caution', title: `May contain traces of ${a.label}`, detail: `The manufacturer warns this product may contain traces due to shared equipment/facilities.` });
       return;
     }
     if (hasIngredientText && textHasAny(ingredientsText, a.keywords)) {
       const hit = a.keywords.find(k => ingredientsText.includes(k));
-      reasons.push({ level: 'danger', title: `Contains ${a.label.replace(/^\S+\s/, '')}`, detail: `Ingredient list mentions "${hit}".` });
+      reasons.push({ level: 'danger', title: `Contains ${a.label}`, detail: `Ingredient list mentions "${hit}".` });
       return;
     }
     if (!hasIngredientText) {
-      reasons.push({ level: 'caution', title: `Can't verify ${a.label.replace(/^\S+\s/, '')}`, detail: `No ingredient list is available to confirm this is free of your allergen.` });
+      reasons.push({ level: 'caution', title: `Can't verify ${a.label}`, detail: `No ingredient list is available to confirm this is free of your allergen.` });
     }
   });
 
@@ -615,20 +777,33 @@ function renderRecents() {
   const list = loadRecents();
   const el = document.getElementById('recentScans');
   if (!list.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<h3>Recently Checked</h3><div class="results-list">${list.map(r => `
-    <div class="result-row" data-code="${escapeHtml(r.code)}">
-      ${r.image ? `<img src="${r.image}" alt="">` : `<div class="ph">🍽️</div>`}
+  el.innerHTML = `<h3>${iconSvg('history', 'section-h-icon')}Recently Checked</h3><div class="results-list">${list.map((r, i) => `
+    <div class="result-row stagger-in" style="animation-delay:${i * 35}ms" data-code="${escapeHtml(r.code)}">
+      ${r.image ? `<img src="${r.image}" alt="">` : `<div class="ph">${iconSvg('package')}</div>`}
       <div class="rr-text"><div class="rr-title">${escapeHtml(r.name)}</div><div class="rr-sub">Barcode ${escapeHtml(r.code)}</div></div>
-      <span>›</span>
+      <span class="rr-chevron">${iconSvg('chevronRight')}</span>
     </div>`).join('')}</div>`;
   el.querySelectorAll('.result-row').forEach(row => {
     row.addEventListener('click', () => lookupAndShow(row.dataset.code));
   });
 }
 
-function loadingRow(text) { return `<div class="loading-row"><div class="spinner"></div>${escapeHtml(text)}</div>`; }
-function emptyState(emoji, text) { return `<div class="empty-state"><span class="es-emoji">${emoji}</span>${escapeHtml(text)}</div>`; }
-function errorBox(text) { return `<div class="error-box">⚠️ ${escapeHtml(text)}</div>`; }
+function skeletonRows(n) {
+  return `<div class="results-list">${Array.from({ length: n }).map(() => `
+    <div class="result-row skeleton-row">
+      <div class="ph skeleton"></div>
+      <div class="rr-text"><div class="skeleton skeleton-line" style="width:70%"></div><div class="skeleton skeleton-line" style="width:40%"></div></div>
+    </div>`).join('')}</div>`;
+}
+function resultSkeleton() {
+  return `
+    <div class="result-banner rb-skeleton skeleton"></div>
+    <div class="product-card"><div class="ph skeleton"></div><div style="flex:1"><div class="skeleton skeleton-line" style="width:60%"></div><div class="skeleton skeleton-line" style="width:40%"></div></div></div>
+    <div class="skeleton skeleton-block"></div>
+    <div class="skeleton skeleton-block"></div>`;
+}
+function emptyState(icon, text) { return `<div class="empty-state">${iconSvg(icon, 'es-icon')}${escapeHtml(text)}</div>`; }
+function errorBox(text) { return `<div class="error-box">${iconSvg('alertTriangle')} ${escapeHtml(text)}</div>`; }
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
@@ -636,7 +811,7 @@ function escapeHtml(str) {
 /* ---------------------------------------------------------------------
    Init
    --------------------------------------------------------------------- */
+mountIcons();
 renderProfileSummary();
 renderRecents();
-
-if (!('serviceWorker' in navigator)) { /* offline caching not critical to core function */ }
+moveNavIndicator('view-home');

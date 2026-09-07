@@ -5,26 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SafeBite — Personal Food Safety Scanner</title>
 <meta name="description" content="Scan or search any food product and instantly know if it's safe for your allergies, diet, and preferences.">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#0b0d12">
 <style>
 :root{
-  --bg:#0f1115;
-  --bg2:#161922;
-  --panel:#1c202b;
-  --panel2:#242938;
-  --line:#2c3141;
-  --ink:#f2f4f8;
-  --sub:#9aa2b2;
+  --bg:#0b0d12;
+  --bg2:#12151d;
+  --panel:#171b25;
+  --panel2:#1f2430;
+  --line:#282e3d;
+  --line-soft:#20242f;
+  --ink:#f3f5f9;
+  --sub:#93a0b4;
   --accent:#4fd1a5;
-  --accent-ink:#06251b;
+  --accent2:#3bb98f;
+  --accent-ink:#052018;
   --blue:#5b9dff;
-  --safe:#37c977;
-  --safe-bg:#132a20;
+  --safe:#3ddc8a;
+  --safe-bg:#0f2a1e;
   --caution:#f5b942;
-  --caution-bg:#2e2712;
-  --danger:#ff5a67;
-  --danger-bg:#301418;
+  --caution-bg:#2d2410;
+  --danger:#ff5f6d;
+  --danger-bg:#301419;
   --radius:16px;
+  --ease-out: cubic-bezier(.22,1,.36,1);
+  --ease-spring: cubic-bezier(.34,1.56,.64,1);
   font-size:16px;
 }
 *{box-sizing:border-box;}
@@ -35,6 +39,7 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   -webkit-tap-highlight-color:transparent;
   overscroll-behavior-y:none;
+  letter-spacing:-.01em;
 }
 #app{
   max-width:520px;
@@ -42,195 +47,277 @@ body{
   min-height:100vh;
   display:flex;
   flex-direction:column;
-  padding-bottom:76px;
+  padding-bottom:80px;
+  background:
+    radial-gradient(600px 300px at 50% -80px, rgba(79,209,165,.10), transparent 70%),
+    var(--bg);
 }
 .muted{color:var(--sub);}
 .small{font-size:.82rem;}
 .center{text-align:center;}
 .hidden{display:none!important;}
 
+/* ---- Icons ---- */
+.icon{ width:20px; height:20px; display:inline-block; vertical-align:-4px; flex-shrink:0; }
+.icon-slot{ display:inline-flex; }
+.brand-mark .icon{ width:22px; height:22px; color:var(--accent); }
+.btn-icon .icon{ width:20px; height:20px; }
+.chip-icon{ width:16px; height:16px; margin-right:6px; vertical-align:-3px; opacity:.9; }
+.chip-mini-icon{ width:13px; height:13px; margin-right:5px; vertical-align:-2px; }
+.tag-icon{ width:12px; height:12px; opacity:.7; }
+.nutri-icon{ width:22px; height:22px; color:var(--sub); flex-shrink:0; }
+.section-h-icon{ width:15px; height:15px; margin-right:6px; vertical-align:-2px; }
+.es-icon{ width:34px; height:34px; display:block; margin:0 auto 10px; color:var(--sub); opacity:.6; }
+.rr-chevron .icon{ width:17px; height:17px; color:var(--sub); }
+.alt-title-icon{ width:15px; height:15px; margin-right:6px; vertical-align:-2px; color:var(--accent); }
+.rb-icon .icon{ width:44px; height:44px; }
+.badge .icon{ width:12px; height:12px; vertical-align:-1px; margin-right:2px; }
+
 /* Topbar */
 .topbar{
   position:sticky; top:0; z-index:20;
   display:flex; align-items:center; justify-content:space-between;
-  padding:14px 16px calc(10px + env(safe-area-inset-top,0px));
+  padding:14px 18px calc(10px + env(safe-area-inset-top,0px));
   padding-top:calc(14px + env(safe-area-inset-top,0px));
-  background:rgba(15,17,21,.9);
-  backdrop-filter:blur(10px);
-  border-bottom:1px solid var(--line);
+  background:rgba(11,13,18,.82);
+  backdrop-filter:blur(14px) saturate(140%);
+  border-bottom:1px solid var(--line-soft);
 }
-.brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:1.15rem;letter-spacing:-.02em;}
-.brand-mark{font-size:1.3rem;}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:1.14rem;letter-spacing:-.02em;}
 .icon-btn{
   background:var(--panel); border:1px solid var(--line); color:var(--ink);
-  width:40px;height:40px;border-radius:12px;font-size:1.1rem;
+  width:40px;height:40px;border-radius:12px;
   display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:transform .15s var(--ease-spring), background .15s ease, border-color .15s ease;
 }
-.icon-btn:active{transform:scale(.94);}
+.icon-btn:active{transform:scale(.90);}
+.icon-btn:hover{border-color:var(--accent);}
 
-/* Views */
+/* Views + transitions */
 #views{flex:1; position:relative;}
-.view{display:none; padding:18px 16px 8px; animation:fadeIn .18s ease;}
+.view{display:none; padding:20px 18px 8px;}
 .view.active{display:block;}
-@keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
 
-.hero h1{font-size:1.5rem; margin:6px 0 4px; letter-spacing:-.02em;}
-.hero p{margin:0 0 20px;}
+@keyframes slideInRight{ from{ transform:translateX(28px); opacity:0 } to{ transform:none; opacity:1 } }
+@keyframes slideInLeft{ from{ transform:translateX(-28px); opacity:0 } to{ transform:none; opacity:1 } }
+@keyframes modalIn{ from{ transform:translateY(36px) scale(.98); opacity:0 } to{ transform:none; opacity:1 } }
+@keyframes fadeIn{ from{opacity:0} to{opacity:1} }
+.view.anim-slide-in-right{ animation:slideInRight .38s var(--ease-out) both; }
+.view.anim-slide-in-left{ animation:slideInLeft .38s var(--ease-out) both; }
+.view.anim-modal-in{ animation:modalIn .42s var(--ease-out) both; }
+.view.anim-fade{ animation:fadeIn .28s ease both; }
+
+.hero h1{font-size:1.55rem; margin:6px 0 4px; letter-spacing:-.03em; font-weight:800;}
+.hero p{margin:0 0 22px;}
 
 .btn{
   border:none; border-radius:14px; font-weight:700; cursor:pointer;
-  font-size:1rem; padding:14px 18px; transition:transform .1s ease, filter .15s ease;
+  font-size:1rem; padding:14px 18px;
+  transition:transform .15s var(--ease-spring), filter .15s ease, box-shadow .2s ease;
 }
-.btn:active{transform:scale(.97);}
-.btn-big{width:100%; display:flex; align-items:center; justify-content:center; gap:10px; font-size:1.05rem;}
-.btn-primary{background:var(--accent); color:var(--accent-ink);}
+.btn:active{transform:scale(.965);}
+.btn-big{width:100%; display:flex; align-items:center; justify-content:center; gap:9px; font-size:1.02rem;}
+.btn-primary{background:linear-gradient(155deg,var(--accent),var(--accent2)); color:var(--accent-ink); box-shadow:0 8px 24px -8px rgba(79,209,165,.55);}
+.btn-primary:active{box-shadow:0 4px 14px -6px rgba(79,209,165,.5);}
 .btn-secondary{background:var(--panel2); color:var(--ink); border:1px solid var(--line);}
-.btn-icon{font-size:1.3rem;}
+.btn-secondary:hover{border-color:#3a4256;}
 
-.or-divider{display:flex; align-items:center; gap:10px; margin:20px 0; color:var(--sub); font-size:.85rem;}
+.or-divider{display:flex; align-items:center; gap:10px; margin:20px 0; color:var(--sub); font-size:.83rem;}
 .or-divider::before, .or-divider::after{content:""; flex:1; height:1px; background:var(--line);}
 
-.search-form{display:flex; gap:8px;}
+.search-form{display:flex; gap:8px; position:relative; align-items:center;}
+.search-icon{position:absolute; left:14px; color:var(--sub); pointer-events:none;}
+.search-icon .icon{width:18px;height:18px;}
 .search-form input{
   flex:1; background:var(--panel); border:1px solid var(--line); color:var(--ink);
-  border-radius:12px; padding:13px 14px; font-size:1rem;
+  border-radius:12px; padding:13px 14px 13px 40px; font-size:1rem;
+  transition:border-color .15s ease, box-shadow .15s ease;
 }
-.search-form input:focus{outline:2px solid var(--accent); outline-offset:1px;}
+.search-form input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,209,165,.15);}
 
-.manual-barcode{margin-top:14px; text-align:center;}
-.link-btn{background:none; border:none; color:var(--blue); font-size:.88rem; cursor:pointer; padding:6px;}
-.manual-barcode-form{display:flex; gap:8px; margin-top:10px;}
+.manual-barcode{margin-top:16px; text-align:center;}
+.link-btn{background:none; border:none; color:var(--blue); font-size:.87rem; cursor:pointer; padding:6px; display:inline-flex; align-items:center; gap:6px;}
+.link-btn .icon{width:14px;height:14px;}
+.manual-barcode-form{display:flex; gap:8px; margin-top:10px; animation:fadeIn .25s ease both;}
 .manual-barcode-form input{
   flex:1; background:var(--panel); border:1px solid var(--line); color:var(--ink);
   border-radius:12px; padding:12px 14px; font-size:1rem;
 }
+.manual-barcode-form input:focus{outline:none; border-color:var(--accent);}
 
 .results-list{margin-top:16px; display:flex; flex-direction:column; gap:10px;}
 .result-row{
   display:flex; gap:12px; align-items:center; background:var(--panel);
-  border:1px solid var(--line); border-radius:14px; padding:10px 12px; cursor:pointer;
+  border:1px solid var(--line); border-radius:14px; padding:11px 13px; cursor:pointer;
+  transition:transform .15s var(--ease-spring), border-color .15s ease, background .15s ease;
 }
+.result-row:hover{border-color:#333a4c; background:var(--panel2);}
+.result-row:active{transform:scale(.98);}
 .result-row img{width:48px;height:48px;border-radius:10px;object-fit:cover;background:var(--panel2);}
-.result-row .ph{width:48px;height:48px;border-radius:10px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;}
+.result-row .ph{width:48px;height:48px;border-radius:10px;background:var(--panel2);display:flex;align-items:center;justify-content:center;color:var(--sub);}
+.result-row .ph .icon{width:22px;height:22px;}
 .result-row .rr-text{flex:1; min-width:0;}
-.result-row .rr-title{font-weight:600; font-size:.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.result-row .rr-sub{color:var(--sub); font-size:.8rem;}
-.badge{padding:4px 9px; border-radius:20px; font-size:.72rem; font-weight:800; white-space:nowrap;}
+.result-row .rr-title{font-weight:650; font-size:.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.result-row .rr-sub{color:var(--sub); font-size:.8rem; margin-top:1px;}
+.badge{padding:5px 10px; border-radius:20px; font-size:.72rem; font-weight:800; white-space:nowrap; display:inline-flex; align-items:center;}
 .badge-safe{background:var(--safe-bg); color:var(--safe);}
 .badge-caution{background:var(--caution-bg); color:var(--caution);}
 .badge-danger{background:var(--danger-bg); color:var(--danger);}
 
-.profile-summary-card{
-  margin-top:24px; background:var(--panel); border:1px solid var(--line);
-  border-radius:16px; padding:14px 16px;
-}
-.profile-summary-card h3{margin:0 0 8px; font-size:.9rem; color:var(--sub); text-transform:uppercase; letter-spacing:.04em;}
-.profile-summary-card .chips{display:flex; flex-wrap:wrap; gap:6px;}
-.profile-summary-card .chip-mini{background:var(--panel2); border:1px solid var(--line); padding:4px 10px; border-radius:20px; font-size:.78rem;}
-.profile-summary-card .empty-hint{color:var(--sub); font-size:.88rem;}
-.profile-summary-card a, .profile-summary-card button.link-btn{margin-top:4px;}
+@keyframes staggerUp{ from{ transform:translateY(10px); opacity:0 } to{ transform:none; opacity:1 } }
+.stagger-in{ animation:staggerUp .4s var(--ease-out) both; }
 
-#recentScans{margin-top:22px;}
-#recentScans h3{font-size:.9rem; color:var(--sub); text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px;}
+.profile-summary-card{
+  margin-top:26px; background:var(--panel); border:1px solid var(--line);
+  border-radius:16px; padding:16px 17px;
+}
+.profile-summary-card h3{margin:0 0 10px; font-size:.86rem; color:var(--sub); text-transform:uppercase; letter-spacing:.06em; font-weight:700;}
+.profile-summary-card .chips{display:flex; flex-wrap:wrap; gap:7px;}
+.profile-summary-card .chip-mini{display:inline-flex; align-items:center; background:var(--panel2); border:1px solid var(--line); padding:5px 11px; border-radius:20px; font-size:.78rem;}
+.profile-summary-card .empty-hint{color:var(--sub); font-size:.88rem; line-height:1.5;}
+
+#recentScans{margin-top:24px;}
+#recentScans h3{display:flex; align-items:center; font-size:.86rem; color:var(--sub); text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; font-weight:700;}
 
 /* Scanner */
 .scanner-header, .result-header{
   display:flex; align-items:center; justify-content:space-between;
-  margin:-18px -16px 14px; padding:14px 16px; border-bottom:1px solid var(--line);
+  margin:-20px -18px 16px; padding:14px 18px; border-bottom:1px solid var(--line-soft);
   font-weight:700;
 }
-#qr-reader{border-radius:16px; overflow:hidden; background:#000;}
-#qr-reader video{border-radius:16px;}
+#qr-reader{border-radius:18px; overflow:hidden; background:#000; box-shadow:0 12px 32px -12px rgba(0,0,0,.6);}
+#qr-reader video{border-radius:18px;}
 
 /* Result view */
 .result-banner{
-  border-radius:20px; padding:26px 20px; text-align:center; margin-bottom:18px;
+  border-radius:22px; padding:30px 20px; text-align:center; margin-bottom:20px;
 }
-.result-banner .emoji{font-size:2.6rem; display:block; margin-bottom:8px;}
-.result-banner h2{margin:0 0 6px; font-size:1.4rem;}
+.result-banner .rb-icon{display:block; margin-bottom:10px;}
+.result-banner .rb-icon .icon{ animation:popIn .55s var(--ease-spring) both; }
+@keyframes popIn{ 0%{transform:scale(.3) rotate(-8deg); opacity:0} 60%{transform:scale(1.12) rotate(2deg); opacity:1} 100%{transform:scale(1) rotate(0)} }
+.result-banner h2{margin:0 0 6px; font-size:1.42rem; letter-spacing:-.02em;}
 .result-banner p{margin:0; opacity:.85;}
-.rb-safe{background:linear-gradient(160deg,var(--safe-bg),#0f2117); border:1px solid #1d4632;}
-.rb-caution{background:linear-gradient(160deg,var(--caution-bg),#20190a); border:1px solid #4a3a12;}
-.rb-danger{background:linear-gradient(160deg,var(--danger-bg),#210b0e); border:1px solid #4a1a20;}
+.rb-safe{background:linear-gradient(160deg,var(--safe-bg),#0c2118); border:1px solid #1e4a34; color:var(--safe);}
+.rb-safe h2{color:var(--ink);}
+.rb-caution{background:linear-gradient(160deg,var(--caution-bg),#221b0c); border:1px solid #4d3d13; color:var(--caution);}
+.rb-caution h2{color:var(--ink);}
+.rb-danger{background:linear-gradient(160deg,var(--danger-bg),#280f13); border:1px solid #4f1b22; color:var(--danger);}
+.rb-danger h2{color:var(--ink);}
 
-.product-card{display:flex; gap:14px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:18px;}
+.product-card{display:flex; gap:14px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:20px;}
 .product-card img{width:64px;height:64px;border-radius:12px;object-fit:cover;background:var(--panel2);}
-.product-card .ph{width:64px;height:64px;border-radius:12px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:1.8rem;}
-.product-card .pc-title{font-weight:700; font-size:1.05rem;}
+.product-card .ph{width:64px;height:64px;border-radius:12px;background:var(--panel2);display:flex;align-items:center;justify-content:center;color:var(--sub);}
+.product-card .ph .icon{width:28px;height:28px;}
+.product-card .pc-title{font-weight:700; font-size:1.04rem; letter-spacing:-.01em;}
 .product-card .pc-sub{color:var(--sub); font-size:.85rem; margin-top:2px;}
 
-.reason-list{list-style:none; margin:0 0 20px; padding:0; display:flex; flex-direction:column; gap:10px;}
+.reason-list{list-style:none; margin:0 0 22px; padding:0; display:flex; flex-direction:column; gap:10px;}
 .reason-item{
   display:flex; gap:12px; background:var(--panel); border:1px solid var(--line);
-  border-radius:14px; padding:12px 14px;
+  border-radius:14px; padding:13px 14px;
 }
-.reason-item .ri-icon{font-size:1.2rem; line-height:1.3;}
+.reason-item .ri-icon{flex-shrink:0; margin-top:1px;}
 .reason-item .ri-title{font-weight:700; font-size:.92rem;}
-.reason-item .ri-detail{color:var(--sub); font-size:.85rem; margin-top:2px;}
-.reason-item.sev-danger{border-color:#4a1a20;}
-.reason-item.sev-caution{border-color:#4a3a12;}
-.reason-item.sev-safe{border-color:#1d4632;}
+.reason-item .ri-detail{color:var(--sub); font-size:.85rem; margin-top:2px; line-height:1.45;}
+.reason-item.sev-danger{border-color:#4f1b22;} .reason-item.sev-danger .ri-icon{color:var(--danger);}
+.reason-item.sev-caution{border-color:#4d3d13;} .reason-item.sev-caution .ri-icon{color:var(--caution);}
+.reason-item.sev-safe{border-color:#1e4a34;} .reason-item.sev-safe .ri-icon{color:var(--safe);}
 
-.section-title{font-size:.82rem; text-transform:uppercase; letter-spacing:.05em; color:var(--sub); margin:20px 0 10px;}
-.ingredients-box{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; font-size:.88rem; line-height:1.5; color:var(--sub); margin-bottom:20px;}
-.nutri-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;}
-.nutri-cell{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px;}
-.nutri-cell .nc-val{font-weight:800; font-size:1.05rem;}
-.nutri-cell .nc-label{font-size:.75rem; color:var(--sub);}
+.section-title{display:flex; align-items:center; font-size:.82rem; text-transform:uppercase; letter-spacing:.06em; color:var(--sub); margin:22px 0 11px; font-weight:700;}
+.alt-title{color:var(--accent);}
+.ingredients-box{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:15px; font-size:.88rem; line-height:1.55; color:var(--sub); margin-bottom:22px;}
+.nutri-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:22px;}
+.nutri-cell{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 13px; display:flex; align-items:center; gap:10px;}
+.nutri-cell .nc-val{font-weight:800; font-size:1.03rem;}
+.nutri-cell .nc-label{font-size:.74rem; color:var(--sub);}
+
+.alt-row{border-color:#1e4a34;}
+.alt-row .badge{margin-left:4px;}
 
 /* Profile form */
-.pf-section{border:1px solid var(--line); background:var(--panel); border-radius:16px; padding:16px; margin:0 0 16px;}
-.pf-section legend{font-weight:800; padding:0 4px; font-size:1rem;}
-.chip-grid{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;}
+.pf-section{border:1px solid var(--line); background:var(--panel); border-radius:16px; padding:17px; margin:0 0 16px;}
+.pf-section legend{font-weight:800; padding:0 4px; font-size:1rem; letter-spacing:-.01em;}
+.chip-grid{display:flex; flex-wrap:wrap; gap:8px; margin-top:9px;}
 .chip{
+  display:inline-flex; align-items:center;
   padding:9px 14px; border-radius:20px; background:var(--panel2); border:1px solid var(--line);
-  font-size:.88rem; cursor:pointer; user-select:none; color:var(--ink);
+  font-size:.87rem; cursor:pointer; user-select:none; color:var(--ink);
+  transition:transform .15s var(--ease-spring), background .18s ease, border-color .18s ease, color .18s ease;
+  animation:staggerUp .35s var(--ease-out) both;
 }
-.chip.selected{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:700;}
+.chip:active{transform:scale(.94);}
+.chip.selected{background:linear-gradient(155deg,var(--accent),var(--accent2)); color:var(--accent-ink); border-color:transparent; font-weight:700;}
+.chip.pop{animation:chipPop .38s var(--ease-spring);}
+@keyframes chipPop{ 0%{transform:scale(1)} 40%{transform:scale(1.12)} 100%{transform:scale(1)} }
 
-.tag-input{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;}
-.tag-pill{display:flex; align-items:center; gap:6px; background:var(--panel2); border:1px solid var(--line); border-radius:20px; padding:7px 8px 7px 13px; font-size:.85rem;}
-.tag-pill button{background:none; border:none; color:var(--sub); cursor:pointer; font-size:.95rem; padding:2px 4px;}
+.tag-input{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:9px;}
+.tag-pill{display:flex; align-items:center; gap:6px; background:var(--panel2); border:1px solid var(--line); border-radius:20px; padding:7px 8px 7px 12px; font-size:.85rem;}
+.tag-pill.pop{animation:chipPop .38s var(--ease-spring);}
+.tag-pill button{background:none; border:none; color:var(--sub); cursor:pointer; padding:2px; display:flex;}
+.tag-pill button .icon{width:13px;height:13px;}
 .tag-input input{
   flex:1; min-width:140px; background:transparent; border:none; color:var(--ink); font-size:.92rem; padding:8px 4px; outline:none;
 }
 
-.limit-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--line);}
+.limit-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-top:1px solid var(--line);}
 .limit-row:first-of-type{border-top:none;}
 .limit-row input{width:90px; background:var(--panel2); border:1px solid var(--line); color:var(--ink); border-radius:10px; padding:8px 10px; text-align:right;}
+.limit-row input:focus{outline:none; border-color:var(--accent);}
 
-.saved-toast{text-align:center; color:var(--safe); font-weight:700; margin-top:10px;}
+.saved-toast{display:flex; align-items:center; justify-content:center; gap:7px; text-align:center; color:var(--safe); font-weight:700; margin-top:12px;}
+.saved-toast.toast-in{animation:toastIn .4s var(--ease-spring) both;}
+@keyframes toastIn{ from{ transform:translateY(8px); opacity:0 } to{ transform:none; opacity:1 } }
 
 /* Bottom nav */
 .bottom-nav{
   position:fixed; bottom:0; left:0; right:0; z-index:30;
   display:flex; max-width:520px; margin:0 auto;
-  background:rgba(20,23,30,.95); backdrop-filter:blur(10px);
-  border-top:1px solid var(--line);
+  background:rgba(15,18,25,.86); backdrop-filter:blur(16px) saturate(140%);
+  border-top:1px solid var(--line-soft);
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
-.nav-btn{
-  flex:1; background:none; border:none; color:var(--sub); padding:10px 0 8px;
-  display:flex; flex-direction:column; align-items:center; gap:2px; font-size:.72rem; cursor:pointer;
+.nav-indicator{
+  position:absolute; top:6px; bottom:6px; left:0; width:calc(100% / 3);
+  background:var(--panel2); border-radius:14px;
+  transition:transform .35s var(--ease-spring);
+  z-index:0;
 }
-.nav-btn span{font-size:1.25rem;}
+.nav-btn{
+  position:relative; z-index:1;
+  flex:1; background:none; border:none; color:var(--sub); padding:11px 0 9px;
+  display:flex; flex-direction:column; align-items:center; gap:3px; font-size:.72rem; cursor:pointer;
+  transition:color .2s ease, transform .15s var(--ease-spring);
+}
+.nav-btn:active{transform:scale(.92);}
+.nav-btn .icon{width:22px;height:22px;}
 .nav-btn.active{color:var(--accent);}
 
+/* Skeletons */
+.skeleton{
+  background:linear-gradient(100deg, var(--panel) 30%, var(--panel2) 45%, var(--panel) 60%);
+  background-size:250% 100%;
+  animation:shimmer 1.5s ease-in-out infinite;
+  border:1px solid var(--line);
+}
+@keyframes shimmer{ 0%{background-position:180% 0} 100%{background-position:-80% 0} }
+.skeleton-row .ph{border:none;}
+.skeleton-line{height:11px; border-radius:6px; margin:6px 0;}
+.skeleton-block{height:64px; border-radius:14px; margin-bottom:22px;}
+.rb-skeleton{height:150px; border-radius:22px;}
+
 .loading-row{display:flex; align-items:center; gap:10px; color:var(--sub); padding:16px 0; justify-content:center;}
-.spinner{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:spin .7s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
 
-.empty-state{text-align:center; padding:30px 10px; color:var(--sub);}
-.empty-state .es-emoji{font-size:2.2rem; display:block; margin-bottom:8px;}
+.empty-state{text-align:center; padding:34px 14px; color:var(--sub); animation:fadeIn .3s ease both;}
 
-.error-box{background:var(--danger-bg); border:1px solid #4a1a20; color:#ffb3b8; border-radius:14px; padding:14px; font-size:.9rem;}
+.error-box{display:flex; align-items:center; gap:8px; background:var(--danger-bg); border:1px solid #4f1b22; color:#ffb3b8; border-radius:14px; padding:14px; font-size:.9rem;}
+.error-box .icon{flex-shrink:0;}
 
 @media (min-width:600px){
   body{background:linear-gradient(180deg,var(--bg2),var(--bg));}
 }
 
 </style>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234fd1a5'%3E%3Cpath d='M12 2.5 19.5 5.5V11c0 5.2-3.4 9.5-7.5 11-4.1-1.5-7.5-5.8-7.5-11V5.5Z'/%3E%3C/svg%3E">
 </head>
 <body>
 
@@ -238,8 +325,8 @@ body{
 
   <!-- ===== Header ===== -->
   <header class="topbar">
-    <div class="brand"><span class="brand-mark">🛡️</span><span>SafeBite</span></div>
-    <button id="profileBtn" class="icon-btn" title="Your profile" aria-label="Your profile">👤</button>
+    <div class="brand"><span class="brand-mark" data-icon="shield"></span><span>SafeBite</span></div>
+    <button id="profileBtn" class="icon-btn" title="Your profile" aria-label="Your profile"><span data-icon="user"></span></button>
   </header>
 
   <!-- ===== Views ===== -->
@@ -253,18 +340,19 @@ body{
       </div>
 
       <button id="openScannerBtn" class="btn btn-primary btn-big">
-        <span class="btn-icon">📷</span> Scan Barcode
+        <span class="btn-icon" data-icon="camera"></span> Scan Barcode
       </button>
 
       <div class="or-divider"><span>or</span></div>
 
       <form id="searchForm" class="search-form" autocomplete="off">
+        <span class="search-icon" data-icon="search"></span>
         <input id="searchInput" type="search" placeholder="Search a food or product name…" inputmode="search" />
         <button type="submit" class="btn btn-secondary">Search</button>
       </form>
 
       <div id="manualBarcodeWrap" class="manual-barcode">
-        <button id="showManualEntry" class="link-btn">Enter barcode number manually</button>
+        <button id="showManualEntry" class="link-btn"><span data-icon="barcode"></span>Enter barcode number manually</button>
         <form id="manualBarcodeForm" class="manual-barcode-form hidden">
           <input id="manualBarcodeInput" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="e.g. 3017620422003" />
           <button type="submit" class="btn btn-secondary">Check</button>
@@ -281,7 +369,7 @@ body{
     <!-- SCANNER VIEW -->
     <section id="view-scanner" class="view">
       <div class="scanner-header">
-        <button id="closeScannerBtn" class="icon-btn" aria-label="Close scanner">✕</button>
+        <button id="closeScannerBtn" class="icon-btn" aria-label="Close scanner"><span data-icon="x"></span></button>
         <span>Point camera at barcode</span>
         <span style="width:40px"></span>
       </div>
@@ -292,7 +380,7 @@ body{
     <!-- RESULT VIEW -->
     <section id="view-result" class="view">
       <div class="result-header">
-        <button id="backFromResultBtn" class="icon-btn" aria-label="Back">←</button>
+        <button id="backFromResultBtn" class="icon-btn" aria-label="Back"><span data-icon="chevronLeft"></span></button>
         <span>Result</span>
         <span style="width:40px"></span>
       </div>
@@ -302,9 +390,9 @@ body{
     <!-- PROFILE VIEW -->
     <section id="view-profile" class="view">
       <div class="result-header">
-        <button id="closeProfileBtn" class="icon-btn" aria-label="Close">✕</button>
+        <button id="closeProfileBtn" class="icon-btn" aria-label="Close"><span data-icon="x"></span></button>
         <span>Your Profile</span>
-        <button id="saveProfileTopBtn" class="icon-btn" title="Save">✓</button>
+        <button id="saveProfileTopBtn" class="icon-btn" title="Save"><span data-icon="check"></span></button>
       </div>
 
       <form id="profileForm" class="profile-form">
@@ -349,7 +437,7 @@ body{
         </fieldset>
 
         <button type="submit" class="btn btn-primary btn-big">Save Profile</button>
-        <p id="savedToast" class="saved-toast hidden">Profile saved ✓</p>
+        <p id="savedToast" class="saved-toast hidden"><span data-icon="checkCircle"></span>Profile saved</p>
       </form>
     </section>
 
@@ -357,9 +445,10 @@ body{
 
   <!-- ===== Bottom nav ===== -->
   <nav class="bottom-nav">
-    <button class="nav-btn active" data-nav="view-home"><span>🏠</span>Home</button>
-    <button class="nav-btn" data-nav="view-scanner-open"><span>📷</span>Scan</button>
-    <button class="nav-btn" data-nav="view-profile"><span>👤</span>Profile</button>
+    <div class="nav-indicator" id="navIndicator"></div>
+    <button class="nav-btn active" data-nav="view-home"><span data-icon="home"></span>Home</button>
+    <button class="nav-btn" data-nav="view-scanner-open"><span data-icon="camera"></span>Scan</button>
+    <button class="nav-btn" data-nav="view-profile"><span data-icon="user"></span>Profile</button>
   </nav>
 
 </div>
@@ -371,13 +460,76 @@ body{
    - Profile persisted in localStorage
    - Product data from the Open Food Facts public API (real, free, no key)
    - Barcode scanning via device camera (html5-qrcode)
+   - Hand-built vector icon set (no emoji, no external icon requests)
    ========================================================================= */
 
 const OFF_PRODUCT_URL = code => `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=code,product_name,brands,image_front_small_url,image_front_url,ingredients_text,ingredients_text_en,lang,allergens_tags,traces_tags,labels_tags,categories_tags,categories,nutriments,quantity`;
 const OFF_SEARCH_URL = q => `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&fields=code,product_name,brands,image_front_small_url,quantity`;
+const OFF_CATEGORY_URL = tag => `https://world.openfoodfacts.org/api/v2/search?categories_tags=${encodeURIComponent(tag)}&page_size=40&fields=code,product_name,brands,image_front_small_url,ingredients_text,ingredients_text_en,lang,allergens_tags,traces_tags,labels_tags,categories_tags,categories,nutriments`;
 
 const STORAGE_KEY = 'safebite_profile_v1';
 const RECENTS_KEY = 'safebite_recents_v1';
+
+/* ---------------------------------------------------------------------
+   Vector icon set — hand-built, stroke-based line icons (24x24, MIT-style
+   free use, no external requests, no emoji). Each entry is inner-SVG markup.
+   --------------------------------------------------------------------- */
+const ICONS = {
+  shield: '<path d="M12 2.5 19.5 5.5V11c0 5.2-3.4 9.5-7.5 11-4.1-1.5-7.5-5.8-7.5-11V5.5Z"/>',
+  user: '<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.5c0-3.9 3.4-6 7.5-6s7.5 2.1 7.5 6"/>',
+  camera: '<path d="M4 8.5h3.2l1.6-2h6.4l1.6 2H20v10.5H4Z"/><circle cx="12" cy="13.2" r="3.4"/>',
+  search: '<circle cx="10.8" cy="10.8" r="6.3"/><path d="M19.5 19.5 15.3 15.3"/>',
+  home: '<path d="M4 11 12 4l8 7"/><path d="M6 9.8V20h12V9.8"/><path d="M10 20v-5h4v5"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  check: '<path d="M5 13l4.5 4.5L19 8"/>',
+  chevronLeft: '<path d="M15 4.5 8 12l7 7.5"/>',
+  chevronRight: '<path d="M9 4.5 16 12l-7 7.5"/>',
+  alertTriangle: '<path d="M12 3 22 20.5H2Z"/><path d="M12 9.5v5"/><circle cx="12" cy="17" r=".9" fill="currentColor" stroke="none"/>',
+  checkCircle: '<circle cx="12" cy="12" r="9"/><path d="M7.8 12.3l2.8 2.8L16.4 9"/>',
+  xCircle: '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11.2v5.3"/><circle cx="12" cy="7.6" r=".9" fill="currentColor" stroke="none"/>',
+  sparkles: '<path d="M11.5 3c.9 3.4 2.1 4.6 5.5 5.5-3.4.9-4.6 2.1-5.5 5.5-.9-3.4-2.1-4.6-5.5-5.5C9.4 7.6 10.6 6.4 11.5 3Z"/><path d="M18.3 14c.5 1.8 1.1 2.4 2.9 2.9-1.8.5-2.4 1.1-2.9 2.9-.5-1.8-1.1-2.4-2.9-2.9 1.8-.5 2.4-1.1 2.9-2.9Z"/>',
+  milk: '<path d="M9.3 2h5.4v3l1.9 2.8V21a1 1 0 0 1-1 1H8.4a1 1 0 0 1-1-1V7.8L9.3 5Z"/><path d="M7.4 12h9.2"/>',
+  egg: '<path d="M12 22c4.4 0 7.2-4 7.2-8.4C19.2 8.6 16 2 12 2S4.8 8.6 4.8 13.6C4.8 18 7.6 22 12 22Z"/>',
+  fish: '<path d="M2.5 12.5c3.3-4.2 8.6-6.2 13.7-4.2 2.1.8 4 2.2 5.3 4.2-1.3 2-3.2 3.4-5.3 4.2-5.1 2-10.4 0-13.7-4.2Z"/><circle cx="16" cy="11" r=".7" fill="currentColor" stroke="none"/><path d="M2.5 12.5.8 9.6m1.7 2.9-1.7 3"/>',
+  shrimp: '<path d="M5 15c-1-5.5 2.2-11 8-11 2.6 0 4.5 1.7 4.5 4 0 3.4-3 4.3-3.6 7.4-.4 2.2.6 3.6 1.6 4.1" /><circle cx="13.2" cy="6" r="1"/><path d="M4.5 16.5 3 18"/>',
+  nut: '<path d="M12 2.3c4.3 2 6.6 6 6.6 10 0 5.3-3.2 9.7-6.6 9.7S5.4 17.6 5.4 12.3c0-4 2.3-8 6.6-10Z"/><path d="M12 6.5v11"/>',
+  wheat: '<path d="M12 2v20"/><path d="M12 5.5 9.3 7.3l2.7 1.8 2.7-1.8L12 5.5Z"/><path d="M12 10.5 9.3 12.3l2.7 1.8 2.7-1.8-2.7-1.8Z"/><path d="M12 15.5 9.3 17.3l2.7 1.8 2.7-1.8-2.7-1.8Z"/>',
+  bean: '<path d="M6.2 16.4C2.9 12.3 4 5.9 9 3.8c4.3-1.7 8.6 1 8.6 5.4 0 5.4-4.3 6.4-6.4 9.6-1.6 2.4-3.7 1.1-5-2.4Z"/>',
+  circleDot: '<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/>',
+  bottle: '<path d="M10.2 2h3.6v2.7l2 2.3V21a1 1 0 0 1-1 1H9.2a1 1 0 0 1-1-1V7l2-2.3Z"/><path d="M8.7 11h6.6"/>',
+  leaf: '<path d="M20 4C10 4 4 10 4 18c8 0 14-6 14-14Z"/><path d="M6.5 17.5 18 6"/>',
+  wine: '<path d="M7.2 3h9.6l-1 6.2a4.3 4.3 0 0 1-7.6 0Z"/><path d="M12 13.3V20M8 21.6h8"/>',
+  sprout: '<path d="M12 22v-9.4"/><path d="M12 12.6C6.8 12.6 3.6 9.4 3.6 4c5.4 0 8.6 3.2 8.6 8.6Z"/><path d="M12 10.2c0-4.3 3-6.7 8.4-6.7 0 4.3-2 7.5-8.4 6.7Z"/>',
+  crescent: '<path d="M15.5 3.2A9 9 0 1 0 20.8 15a7 7 0 0 1-5.3-11.8Z"/>',
+  award: '<circle cx="12" cy="8.3" r="5"/><path d="M9 12.6 7.2 21.5 12 18.7l4.8 2.8L15 12.6"/>',
+  flame: '<path d="M12 2.3c1.3 4-2.9 5.4-2.9 9.3a4.9 4.9 0 0 0 9.8 0c0-2-1-3.2-2-4 0 2-1 2.2-1 2.2.6-3.4-1.2-5.4-3.9-7.5Z"/>',
+  droplet: '<path d="M12 2.3c4 6 7 9.7 7 13.2a7 7 0 0 1-14 0c0-3.5 3-7.2 7-13.2Z"/>',
+  candy: '<path d="M8.3 8.3 10.6 6l7.4 7.4-2.3 2.3Z"/><path d="M16 16 18.3 13.7M6 6 8.3 3.7M3.7 11.9 6 9.6M11.9 20.3l2.3-2.3"/>',
+  percent: '<path d="M5 19 19 5"/><circle cx="7.2" cy="7.2" r="2.2"/><circle cx="16.8" cy="16.8" r="2.2"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  trash: '<path d="M4.5 7h15M9.5 7V4.2h5V7"/><path d="M6.5 7 7.5 20h9l1-13"/>',
+  barcode: '<path d="M3.5 5v14M7 5v14M9.7 5v14M13 5v14M15.7 5v14M18 5v14M20.5 5v14"/>',
+  ban: '<circle cx="12" cy="12" r="9"/><path d="M5.8 5.8 18.2 18.2"/>',
+  arrowRight: '<path d="M4.5 12h15M13.5 6l6 6-6 6"/>',
+  package: '<path d="M21 8 12 3.3 3 8l9 4.7 9-4.7Z"/><path d="M3 8v8.3l9 4.7 9-4.7V8"/><path d="M12 12.7V21"/>',
+  history: '<path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v4.5h4.5"/><path d="M12 8v4.5l3.2 2"/>',
+  spinner: '<circle cx="12" cy="12" r="9" opacity="0.2"/><path d="M21 12a9 9 0 0 0-9-9"/>',
+};
+function iconSvg(name, cls) {
+  const inner = ICONS[name] || ICONS.info;
+  return `<svg class="icon${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+}
+function mountIcons(root) {
+  (root || document).querySelectorAll('[data-icon]').forEach(el => {
+    el.innerHTML = iconSvg(el.dataset.icon);
+    el.classList.add('icon-slot');
+  });
+}
+
+/* Icons representing each allergen / diet, used across chips, reasons, tags */
+const ALLERGEN_ICON = { milk: 'milk', eggs: 'egg', fish: 'fish', shellfish: 'shrimp', molluscs: 'shrimp', 'tree-nuts': 'nut', peanuts: 'nut', wheat: 'wheat', soy: 'bean', sesame: 'circleDot', mustard: 'bottle', celery: 'leaf', sulphites: 'wine', lupin: 'sprout' };
+const DIET_ICON = { 'gluten-free': 'wheat', vegan: 'sprout', vegetarian: 'leaf', 'dairy-free': 'milk', halal: 'crescent', kosher: 'award', keto: 'flame', 'low-sodium': 'droplet', paleo: 'package', 'nut-free': 'nut' };
 
 /* ---------------------------------------------------------------------
    Reference data: allergens & diets, with keyword fallbacks used when
@@ -385,33 +537,33 @@ const RECENTS_KEY = 'safebite_recents_v1';
    mentions the substance in plain language.
    --------------------------------------------------------------------- */
 const ALLERGENS = [
-  { id: 'milk', label: '🥛 Dairy / Milk', offTag: 'en:milk', keywords: ['milk', 'cream', 'butter', 'cheese', 'whey', 'casein', 'lactose', 'yogurt', 'ghee'] },
-  { id: 'eggs', label: '🥚 Eggs', offTag: 'en:eggs', keywords: ['egg', 'albumin', 'ovalbumin', 'mayonnaise'] },
-  { id: 'fish', label: '🐟 Fish', offTag: 'en:fish', keywords: ['fish', 'anchovy', 'cod', 'salmon', 'tuna', 'gelatin (fish)'] },
-  { id: 'shellfish', label: '🦐 Shellfish', offTag: 'en:crustaceans', keywords: ['shrimp', 'prawn', 'crab', 'lobster', 'crustacean', 'shellfish'] },
-  { id: 'molluscs', label: '🦪 Molluscs', offTag: 'en:molluscs', keywords: ['mussel', 'oyster', 'squid', 'clam', 'snail', 'mollusc'] },
-  { id: 'tree-nuts', label: '🌰 Tree Nuts', offTag: 'en:nuts', keywords: ['almond', 'hazelnut', 'walnut', 'cashew', 'pistachio', 'pecan', 'macadamia', 'brazil nut'] },
-  { id: 'peanuts', label: '🥜 Peanuts', offTag: 'en:peanuts', keywords: ['peanut', 'groundnut', 'arachis'] },
-  { id: 'wheat', label: '🌾 Wheat', offTag: 'en:gluten', keywords: ['wheat', 'flour', 'semolina', 'spelt', 'durum'] },
-  { id: 'soy', label: '🫘 Soy', offTag: 'en:soybeans', keywords: ['soy', 'soya', 'edamame', 'tofu'] },
-  { id: 'sesame', label: '◯ Sesame', offTag: 'en:sesame-seeds', keywords: ['sesame', 'tahini'] },
-  { id: 'mustard', label: '🌭 Mustard', offTag: 'en:mustard', keywords: ['mustard'] },
-  { id: 'celery', label: '🥬 Celery', offTag: 'en:celery', keywords: ['celery', 'celeriac'] },
-  { id: 'sulphites', label: '🍷 Sulphites', offTag: 'en:sulphur-dioxide-and-sulphites', keywords: ['sulphite', 'sulfite', 'so2'] },
-  { id: 'lupin', label: '🌱 Lupin', offTag: 'en:lupin', keywords: ['lupin', 'lupine'] },
+  { id: 'milk', label: 'Dairy / Milk', offTag: 'en:milk', keywords: ['milk', 'cream', 'butter', 'cheese', 'whey', 'casein', 'lactose', 'yogurt', 'ghee'] },
+  { id: 'eggs', label: 'Eggs', offTag: 'en:eggs', keywords: ['egg', 'albumin', 'ovalbumin', 'mayonnaise'] },
+  { id: 'fish', label: 'Fish', offTag: 'en:fish', keywords: ['fish', 'anchovy', 'cod', 'salmon', 'tuna', 'gelatin (fish)'] },
+  { id: 'shellfish', label: 'Shellfish', offTag: 'en:crustaceans', keywords: ['shrimp', 'prawn', 'crab', 'lobster', 'crustacean', 'shellfish'] },
+  { id: 'molluscs', label: 'Molluscs', offTag: 'en:molluscs', keywords: ['mussel', 'oyster', 'squid', 'clam', 'snail', 'mollusc'] },
+  { id: 'tree-nuts', label: 'Tree Nuts', offTag: 'en:nuts', keywords: ['almond', 'hazelnut', 'walnut', 'cashew', 'pistachio', 'pecan', 'macadamia', 'brazil nut'] },
+  { id: 'peanuts', label: 'Peanuts', offTag: 'en:peanuts', keywords: ['peanut', 'groundnut', 'arachis'] },
+  { id: 'wheat', label: 'Wheat', offTag: 'en:gluten', keywords: ['wheat', 'flour', 'semolina', 'spelt', 'durum'] },
+  { id: 'soy', label: 'Soy', offTag: 'en:soybeans', keywords: ['soy', 'soya', 'edamame', 'tofu'] },
+  { id: 'sesame', label: 'Sesame', offTag: 'en:sesame-seeds', keywords: ['sesame', 'tahini'] },
+  { id: 'mustard', label: 'Mustard', offTag: 'en:mustard', keywords: ['mustard'] },
+  { id: 'celery', label: 'Celery', offTag: 'en:celery', keywords: ['celery', 'celeriac'] },
+  { id: 'sulphites', label: 'Sulphites', offTag: 'en:sulphur-dioxide-and-sulphites', keywords: ['sulphite', 'sulfite', 'so2'] },
+  { id: 'lupin', label: 'Lupin', offTag: 'en:lupin', keywords: ['lupin', 'lupine'] },
 ];
 
 const DIETS = [
-  { id: 'gluten-free', label: '🚫🌾 Gluten-Free', type: 'gluten-free' },
-  { id: 'vegan', label: '🌿 Vegan', type: 'vegan' },
-  { id: 'vegetarian', label: '🥕 Vegetarian', type: 'vegetarian' },
-  { id: 'dairy-free', label: '🚫🥛 Dairy-Free', type: 'dairy-free' },
-  { id: 'halal', label: '☪️ Halal', type: 'halal' },
-  { id: 'kosher', label: '✡️ Kosher', type: 'kosher' },
-  { id: 'keto', label: '🥑 Keto / Low-Carb', type: 'keto' },
-  { id: 'low-sodium', label: '🧂 Low-Sodium', type: 'low-sodium' },
-  { id: 'paleo', label: '🍖 Paleo', type: 'paleo' },
-  { id: 'nut-free', label: '🚫🥜 Nut-Free (all)', type: 'nut-free' },
+  { id: 'gluten-free', label: 'Gluten-Free', type: 'gluten-free' },
+  { id: 'vegan', label: 'Vegan', type: 'vegan' },
+  { id: 'vegetarian', label: 'Vegetarian', type: 'vegetarian' },
+  { id: 'dairy-free', label: 'Dairy-Free', type: 'dairy-free' },
+  { id: 'halal', label: 'Halal', type: 'halal' },
+  { id: 'kosher', label: 'Kosher', type: 'kosher' },
+  { id: 'keto', label: 'Keto / Low-Carb', type: 'keto' },
+  { id: 'low-sodium', label: 'Low-Sodium', type: 'low-sodium' },
+  { id: 'paleo', label: 'Paleo', type: 'paleo' },
+  { id: 'nut-free', label: 'Nut-Free (all)', type: 'nut-free' },
 ];
 
 const NON_VEGAN_KEYWORDS = ['milk', 'cream', 'butter', 'cheese', 'whey', 'casein', 'egg', 'honey', 'gelatin', 'gelatine', 'meat', 'beef', 'pork', 'chicken', 'fish', 'lard', 'anchovy', 'shellac', 'carmine'];
@@ -447,44 +599,82 @@ function pushRecent(entry) {
 let profile = loadProfile();
 
 /* ---------------------------------------------------------------------
-   Navigation
+   Navigation + view transitions
    --------------------------------------------------------------------- */
 const views = document.querySelectorAll('.view');
-function showView(id) {
+const ANIM_CLASSES = ['anim-slide-in-right', 'anim-slide-in-left', 'anim-modal-in', 'anim-fade'];
+
+function showView(id, transition) {
+  const current = document.querySelector('.view.active');
+  if (current && current.id === id) return;
+
+  let anim = transition;
+  if (!anim) {
+    // sensible defaults so callers that don't specify still animate nicely
+    if (id === 'view-home') anim = 'anim-slide-in-left';
+    else if (id === 'view-result') anim = 'anim-slide-in-right';
+    else anim = 'anim-modal-in';
+  }
+
   views.forEach(v => v.classList.toggle('active', v.id === id));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === id));
+  moveNavIndicator(id);
+
+  const target = document.getElementById(id);
+  ANIM_CLASSES.forEach(c => target.classList.remove(c));
+  // force reflow so the animation restarts even if the same class was used last time
+  void target.offsetWidth;
+  target.classList.add(anim);
+
   window.scrollTo(0, 0);
   if (id !== 'view-scanner') stopScanner();
 }
 
+function moveNavIndicator(id) {
+  const map = { 'view-home': 0, 'view-scanner-open': 1, 'view-profile': 2 };
+  const indicator = document.getElementById('navIndicator');
+  if (!indicator) return;
+  const idx = id === 'view-scanner' ? 1 : map[id];
+  if (idx === undefined) return;
+  indicator.style.transform = `translateX(${idx * 100}%)`;
+}
+
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    if (btn.dataset.nav === 'view-scanner-open') { openScanner(); }
-    else showView(btn.dataset.nav);
+    if (btn.dataset.nav === 'view-scanner-open') { openScanner(); moveNavIndicator('view-scanner-open'); }
+    else showView(btn.dataset.nav, btn.dataset.nav === 'view-home' ? 'anim-fade' : 'anim-modal-in');
   });
 });
-document.getElementById('profileBtn').addEventListener('click', () => { renderProfileForm(); showView('view-profile'); });
-document.getElementById('closeProfileBtn').addEventListener('click', () => showView('view-home'));
-document.getElementById('closeScannerBtn').addEventListener('click', () => showView('view-home'));
-document.getElementById('backFromResultBtn').addEventListener('click', () => showView('view-home'));
-document.getElementById('openScannerBtn').addEventListener('click', openScanner);
+document.getElementById('profileBtn').addEventListener('click', () => { renderProfileForm(); showView('view-profile', 'anim-modal-in'); });
+document.getElementById('closeProfileBtn').addEventListener('click', () => showView('view-home', 'anim-fade'));
+document.getElementById('closeScannerBtn').addEventListener('click', () => showView('view-home', 'anim-fade'));
+document.getElementById('backFromResultBtn').addEventListener('click', () => showView('view-home', 'anim-slide-in-left'));
+document.getElementById('openScannerBtn').addEventListener('click', () => { openScanner(); moveNavIndicator('view-scanner-open'); });
 
 /* ---------------------------------------------------------------------
    Profile form rendering
    --------------------------------------------------------------------- */
-function renderChipGrid(container, items, selectedIds, onToggle) {
+function renderChipGrid(container, items, selectedIds, iconMap, onToggle) {
   container.innerHTML = '';
-  items.forEach(item => {
+  items.forEach((item, i) => {
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'chip' + (selectedIds.includes(item.id) ? ' selected' : '');
-    chip.textContent = item.label;
+    chip.style.animationDelay = (i * 25) + 'ms';
+    chip.innerHTML = `${iconSvg(iconMap[item.id] || 'info', 'chip-icon')}<span>${escapeHtml(item.label)}</span>`;
     chip.addEventListener('click', () => {
-      chip.classList.toggle('selected');
-      onToggle(item.id, chip.classList.contains('selected'));
+      const nowSelected = !chip.classList.contains('selected');
+      chip.classList.toggle('selected', nowSelected);
+      if (nowSelected) bounce(chip);
+      onToggle(item.id, nowSelected);
     });
     container.appendChild(chip);
   });
+}
+function bounce(el) {
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
 }
 
 function renderTagInput(container, tags, onChange) {
@@ -498,8 +688,8 @@ function renderTagInput(container, tags, onChange) {
     tags.slice().reverse().forEach((tag, idxRev) => {
       const idx = tags.length - 1 - idxRev;
       const pill = document.createElement('span');
-      pill.className = 'tag-pill';
-      pill.innerHTML = `<span></span><button type="button" aria-label="Remove">✕</button>`;
+      pill.className = 'tag-pill pop';
+      pill.innerHTML = `${iconSvg('ban', 'tag-icon')}<span></span><button type="button" aria-label="Remove">${iconSvg('x')}</button>`;
       pill.querySelector('span').textContent = tag;
       pill.querySelector('button').addEventListener('click', () => {
         tags.splice(idx, 1);
@@ -528,10 +718,10 @@ function renderTagInput(container, tags, onChange) {
 let workingProfile;
 function renderProfileForm() {
   workingProfile = JSON.parse(JSON.stringify(profile));
-  renderChipGrid(document.getElementById('allergyGrid'), ALLERGENS, workingProfile.allergies, (id, on) => {
+  renderChipGrid(document.getElementById('allergyGrid'), ALLERGENS, workingProfile.allergies, ALLERGEN_ICON, (id, on) => {
     workingProfile.allergies = on ? [...new Set([...workingProfile.allergies, id])] : workingProfile.allergies.filter(a => a !== id);
   });
-  renderChipGrid(document.getElementById('dietGrid'), DIETS, workingProfile.diets, (id, on) => {
+  renderChipGrid(document.getElementById('dietGrid'), DIETS, workingProfile.diets, DIET_ICON, (id, on) => {
     workingProfile.diets = on ? [...new Set([...workingProfile.diets, id])] : workingProfile.diets.filter(d => d !== id);
   });
   renderTagInput(document.getElementById('ingredientTagInput'), workingProfile.avoidIngredients, (t) => { workingProfile.avoidIngredients = t; });
@@ -557,11 +747,12 @@ document.getElementById('profileForm').addEventListener('submit', (e) => {
   commitProfileForm();
   const toast = document.getElementById('savedToast');
   toast.classList.remove('hidden');
-  setTimeout(() => showView('view-home'), 500);
+  toast.classList.remove('toast-in'); void toast.offsetWidth; toast.classList.add('toast-in');
+  setTimeout(() => showView('view-home', 'anim-fade'), 550);
 });
 document.getElementById('saveProfileTopBtn').addEventListener('click', () => {
   commitProfileForm();
-  showView('view-home');
+  showView('view-home', 'anim-fade');
 });
 
 function renderProfileSummary() {
@@ -570,17 +761,17 @@ function renderProfileSummary() {
   if (!hasAny) {
     card.innerHTML = `
       <h3>Your Profile</h3>
-      <p class="empty-hint">You haven't set up a dietary profile yet. Tap 👤 above to add allergies, diets, and ingredients to avoid — it takes under a minute.</p>
-      <button class="link-btn" id="setupProfileNow">Set up now →</button>`;
-    card.querySelector('#setupProfileNow').addEventListener('click', () => { renderProfileForm(); showView('view-profile'); });
+      <p class="empty-hint">You haven't set up a dietary profile yet. Add allergies, diets, and ingredients to avoid — it takes under a minute.</p>
+      <button class="link-btn" id="setupProfileNow">Set up now ${iconSvg('arrowRight')}</button>`;
+    card.querySelector('#setupProfileNow').addEventListener('click', () => { renderProfileForm(); showView('view-profile', 'anim-modal-in'); });
     return;
   }
   const chips = [];
-  profile.allergies.forEach(id => chips.push(ALLERGENS.find(a => a.id === id)?.label));
-  profile.diets.forEach(id => chips.push(DIETS.find(d => d.id === id)?.label));
-  profile.avoidIngredients.forEach(t => chips.push('🚫 ' + t));
-  profile.avoidFoods.forEach(t => chips.push('🙅 ' + t));
-  card.innerHTML = `<h3>Your Profile</h3><div class="chips">${chips.map(c => `<span class="chip-mini">${escapeHtml(c)}</span>`).join('')}</div>`;
+  profile.allergies.forEach(id => { const a = ALLERGENS.find(x => x.id === id); if (a) chips.push({ icon: ALLERGEN_ICON[id], label: a.label }); });
+  profile.diets.forEach(id => { const d = DIETS.find(x => x.id === id); if (d) chips.push({ icon: DIET_ICON[id], label: d.label }); });
+  profile.avoidIngredients.forEach(t => chips.push({ icon: 'ban', label: t }));
+  profile.avoidFoods.forEach(t => chips.push({ icon: 'ban', label: t }));
+  card.innerHTML = `<h3>Your Profile</h3><div class="chips">${chips.map(c => `<span class="chip-mini">${iconSvg(c.icon, 'chip-mini-icon')}${escapeHtml(c.label)}</span>`).join('')}</div>`;
 }
 
 /* ---------------------------------------------------------------------
@@ -588,7 +779,7 @@ function renderProfileSummary() {
    --------------------------------------------------------------------- */
 let html5QrCode = null;
 function openScanner() {
-  showView('view-scanner');
+  showView('view-scanner', 'anim-modal-in');
   const statusEl = document.getElementById('scannerStatus');
   statusEl.textContent = 'Starting camera…';
   if (!window.Html5Qrcode) {
@@ -651,30 +842,31 @@ document.getElementById('searchForm').addEventListener('submit', (e) => {
 
 async function runSearch(query) {
   const resultsEl = document.getElementById('homeResults');
-  resultsEl.innerHTML = loadingRow('Searching products…');
+  resultsEl.innerHTML = skeletonRows(4);
   try {
     const res = await fetch(OFF_SEARCH_URL(query));
     if (!res.ok) throw new Error('Search request failed (' + res.status + ')');
     const data = await res.json();
     const products = (data.products || []).filter(p => p.product_name);
     if (!products.length) {
-      resultsEl.innerHTML = emptyState('🔍', 'No products found for "' + escapeHtml(query) + '". Try a different name or scan the barcode instead.');
+      resultsEl.innerHTML = emptyState('search', 'No products found for "' + escapeHtml(query) + '". Try a different name or scan the barcode instead.');
       return;
     }
     resultsEl.innerHTML = '';
-    products.forEach(p => resultsEl.appendChild(renderSearchRow(p)));
+    products.forEach((p, i) => resultsEl.appendChild(renderSearchRow(p, i)));
   } catch (err) {
     resultsEl.innerHTML = errorBox('Couldn\'t reach the food database. Check your internet connection and try again.');
   }
 }
 
-function renderSearchRow(p) {
+function renderSearchRow(p, i) {
   const row = document.createElement('div');
-  row.className = 'result-row';
+  row.className = 'result-row stagger-in';
+  row.style.animationDelay = (i * 35) + 'ms';
   const img = p.image_front_small_url
     ? `<img src="${p.image_front_small_url}" alt="">`
-    : `<div class="ph">🍽️</div>`;
-  row.innerHTML = `${img}<div class="rr-text"><div class="rr-title">${escapeHtml(p.product_name)}</div><div class="rr-sub">${escapeHtml(p.brands || 'Unknown brand')}${p.quantity ? ' · ' + escapeHtml(p.quantity) : ''}</div></div><span>›</span>`;
+    : `<div class="ph">${iconSvg('package')}</div>`;
+  row.innerHTML = `${img}<div class="rr-text"><div class="rr-title">${escapeHtml(p.product_name)}</div><div class="rr-sub">${escapeHtml(p.brands || 'Unknown brand')}${p.quantity ? ' · ' + escapeHtml(p.quantity) : ''}</div></div><span class="rr-chevron">${iconSvg('chevronRight')}</span>`;
   row.addEventListener('click', () => lookupAndShow(p.code));
   return row;
 }
@@ -683,9 +875,9 @@ function renderSearchRow(p) {
    Product lookup + rendering result
    --------------------------------------------------------------------- */
 async function lookupAndShow(code) {
-  showView('view-result');
+  showView('view-result', 'anim-slide-in-right');
   const el = document.getElementById('resultContent');
-  el.innerHTML = loadingRow('Looking up product…');
+  el.innerHTML = resultSkeleton();
   try {
     const res = await fetch(OFF_PRODUCT_URL(code));
     if (!res.ok) throw new Error('Lookup failed (' + res.status + ')');
@@ -693,12 +885,12 @@ async function lookupAndShow(code) {
     if (data.status !== 1 || !data.product) {
       el.innerHTML = `
         <div class="result-banner rb-caution">
-          <span class="emoji">❓</span>
+          <span class="rb-icon">${iconSvg('info')}</span>
           <h2>Product not found</h2>
           <p>Barcode ${escapeHtml(code)} isn't in the Open Food Facts database yet.</p>
         </div>
-        <div class="reason-item sev-caution">
-          <div class="ri-icon">⚠️</div>
+        <div class="reason-item sev-caution stagger-in">
+          <div class="ri-icon">${iconSvg('alertTriangle')}</div>
           <div><div class="ri-title">We can't verify this product</div>
           <div class="ri-detail">Without ingredient data we cannot confirm it's safe. Check the physical label carefully, or search for it by name.</div></div>
         </div>`;
@@ -718,26 +910,26 @@ function renderResult(product, code) {
   const el = document.getElementById('resultContent');
 
   const bannerClass = verdict.level === 'safe' ? 'rb-safe' : verdict.level === 'caution' ? 'rb-caution' : 'rb-danger';
-  const bannerEmoji = verdict.level === 'safe' ? '✅' : verdict.level === 'caution' ? '⚠️' : '❌';
+  const bannerIcon = verdict.level === 'safe' ? 'checkCircle' : verdict.level === 'caution' ? 'alertTriangle' : 'xCircle';
   const bannerTitle = verdict.level === 'safe' ? 'Safe for your profile' : verdict.level === 'caution' ? 'Check carefully' : 'Not suitable for you';
 
   const img = product.image_front_url || product.image_front_small_url;
-  const productImgHtml = img ? `<img src="${img}" alt="">` : `<div class="ph">🍽️</div>`;
+  const productImgHtml = img ? `<img src="${img}" alt="">` : `<div class="ph">${iconSvg('package')}</div>`;
 
   const reasonsHtml = verdict.reasons.length
-    ? verdict.reasons.map(r => `
-        <li class="reason-item sev-${r.level}">
-          <div class="ri-icon">${r.level === 'danger' ? '❌' : r.level === 'caution' ? '⚠️' : '✅'}</div>
+    ? verdict.reasons.map((r, i) => `
+        <li class="reason-item sev-${r.level} stagger-in" style="animation-delay:${i * 45}ms">
+          <div class="ri-icon">${iconSvg(r.level === 'danger' ? 'xCircle' : r.level === 'caution' ? 'alertTriangle' : 'checkCircle')}</div>
           <div><div class="ri-title">${escapeHtml(r.title)}</div><div class="ri-detail">${escapeHtml(r.detail)}</div></div>
         </li>`).join('')
-    : `<li class="reason-item sev-safe"><div class="ri-icon">✅</div><div><div class="ri-title">No conflicts found</div><div class="ri-detail">Nothing in this product matched your allergies, diets, or avoid-lists.</div></div></li>`;
+    : `<li class="reason-item sev-safe stagger-in"><div class="ri-icon">${iconSvg('checkCircle')}</div><div><div class="ri-title">No conflicts found</div><div class="ri-detail">Nothing in this product matched your allergies, diets, or avoid-lists.</div></div></li>`;
 
   const ingredientsText = product.ingredients_text_en || product.ingredients_text;
   const nutriments = product.nutriments || {};
 
   el.innerHTML = `
     <div class="result-banner ${bannerClass}">
-      <span class="emoji">${bannerEmoji}</span>
+      <span class="rb-icon">${iconSvg(bannerIcon)}</span>
       <h2>${bannerTitle}</h2>
       <p>${escapeHtml(verdict.summary)}</p>
     </div>
@@ -757,18 +949,77 @@ function renderResult(product, code) {
     ${nutriments && Object.keys(nutriments).length ? `
     <div class="section-title">Nutrition (per 100g)</div>
     <div class="nutri-grid">
-      ${nutriCell('Sugar', nutriments['sugars_100g'], 'g')}
-      ${nutriCell('Sodium', nutriments['sodium_100g'] != null ? nutriments['sodium_100g'] * 1000 : null, 'mg')}
-      ${nutriCell('Sat. Fat', nutriments['saturated-fat_100g'], 'g')}
-      ${nutriCell('Energy', nutriments['energy-kcal_100g'], 'kcal')}
+      ${nutriCell('candy', 'Sugar', nutriments['sugars_100g'], 'g')}
+      ${nutriCell('droplet', 'Sodium', nutriments['sodium_100g'] != null ? nutriments['sodium_100g'] * 1000 : null, 'mg')}
+      ${nutriCell('percent', 'Sat. Fat', nutriments['saturated-fat_100g'], 'g')}
+      ${nutriCell('flame', 'Energy', nutriments['energy-kcal_100g'], 'kcal')}
     </div>` : ''}
 
     <div class="section-title">Ingredients</div>
     <div class="ingredients-box">${ingredientsText ? escapeHtml(ingredientsText) : 'No ingredient list available for this product.'}</div>
+
+    ${verdict.level !== 'safe' ? `<div id="altSection"></div>` : ''}
   `;
+
+  if (verdict.level !== 'safe') {
+    renderAlternatives(product);
+  }
 }
-function nutriCell(label, val, unit) {
-  return `<div class="nutri-cell"><div class="nc-val">${val != null ? Math.round(val * 10) / 10 + unit : '—'}</div><div class="nc-label">${label}</div></div>`;
+function nutriCell(icon, label, val, unit) {
+  return `<div class="nutri-cell">${iconSvg(icon, 'nutri-icon')}<div><div class="nc-val">${val != null ? Math.round(val * 10) / 10 + unit : '—'}</div><div class="nc-label">${label}</div></div></div>`;
+}
+
+/* ---------------------------------------------------------------------
+   SAFER ALTERNATIVES — recommends other real products in the same
+   category that pass this user's specific profile.
+   --------------------------------------------------------------------- */
+async function renderAlternatives(product) {
+  const section = document.getElementById('altSection');
+  if (!section) return;
+  section.innerHTML = `
+    <div class="section-title alt-title">${iconSvg('sparkles', 'alt-title-icon')}Safer Alternatives For You</div>
+    <div class="alt-loading">${skeletonRows(2)}</div>`;
+
+  const alts = await fetchAlternatives(product, profile);
+  const loadingEl = section.querySelector('.alt-loading');
+  if (!loadingEl) return; // user navigated away
+
+  if (!alts.length) {
+    loadingEl.innerHTML = emptyState('sparkles', "We couldn't find a safer alternative in this category yet — try searching manually.");
+    return;
+  }
+  loadingEl.innerHTML = alts.map((p, i) => `
+    <div class="result-row alt-row stagger-in" data-code="${escapeHtml(p.code)}" style="animation-delay:${i * 50}ms">
+      ${p.image_front_small_url ? `<img src="${p.image_front_small_url}" alt="">` : `<div class="ph">${iconSvg('package')}</div>`}
+      <div class="rr-text"><div class="rr-title">${escapeHtml(p.product_name)}</div><div class="rr-sub">${escapeHtml(p.brands || 'Unknown brand')}</div></div>
+      <span class="badge badge-safe">${iconSvg('checkCircle')} Safe</span>
+    </div>`).join('');
+  loadingEl.querySelectorAll('.alt-row').forEach(row => {
+    row.addEventListener('click', () => lookupAndShow(row.dataset.code));
+  });
+}
+
+async function fetchAlternatives(product, profile) {
+  const catTags = (product.categories_tags || []).slice();
+  if (!catTags.length) return [];
+  const tagsToTry = catTags.slice(Math.max(0, catTags.length - 3)).reverse(); // most specific first
+  for (const tag of tagsToTry) {
+    try {
+      const res = await fetch(OFF_CATEGORY_URL(tag));
+      if (!res.ok) continue;
+      const data = await res.json();
+      const candidates = (data.products || []).filter(p => p.code && p.code !== product.code && p.product_name);
+      const safe = [];
+      for (const c of candidates) {
+        if (evaluateProduct(c, profile).level === 'safe') {
+          safe.push(c);
+          if (safe.length >= 3) break;
+        }
+      }
+      if (safe.length) return safe;
+    } catch (e) { /* try the next, broader category tag */ }
+  }
+  return [];
 }
 
 /* ---------------------------------------------------------------------
@@ -793,20 +1044,20 @@ function evaluateProduct(product, profile) {
     const a = ALLERGENS.find(x => x.id === id);
     if (!a) return;
     if (allergenTags.includes(a.offTag)) {
-      reasons.push({ level: 'danger', title: `Contains ${a.label.replace(/^\S+\s/, '')}`, detail: `Labeled by the manufacturer as containing this allergen.` });
+      reasons.push({ level: 'danger', title: `Contains ${a.label}`, detail: `Labeled by the manufacturer as containing this allergen.` });
       return;
     }
     if (traceTags.includes(a.offTag)) {
-      reasons.push({ level: 'caution', title: `May contain traces of ${a.label.replace(/^\S+\s/, '')}`, detail: `The manufacturer warns this product may contain traces due to shared equipment/facilities.` });
+      reasons.push({ level: 'caution', title: `May contain traces of ${a.label}`, detail: `The manufacturer warns this product may contain traces due to shared equipment/facilities.` });
       return;
     }
     if (hasIngredientText && textHasAny(ingredientsText, a.keywords)) {
       const hit = a.keywords.find(k => ingredientsText.includes(k));
-      reasons.push({ level: 'danger', title: `Contains ${a.label.replace(/^\S+\s/, '')}`, detail: `Ingredient list mentions "${hit}".` });
+      reasons.push({ level: 'danger', title: `Contains ${a.label}`, detail: `Ingredient list mentions "${hit}".` });
       return;
     }
     if (!hasIngredientText) {
-      reasons.push({ level: 'caution', title: `Can't verify ${a.label.replace(/^\S+\s/, '')}`, detail: `No ingredient list is available to confirm this is free of your allergen.` });
+      reasons.push({ level: 'caution', title: `Can't verify ${a.label}`, detail: `No ingredient list is available to confirm this is free of your allergen.` });
     }
   });
 
@@ -983,20 +1234,33 @@ function renderRecents() {
   const list = loadRecents();
   const el = document.getElementById('recentScans');
   if (!list.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<h3>Recently Checked</h3><div class="results-list">${list.map(r => `
-    <div class="result-row" data-code="${escapeHtml(r.code)}">
-      ${r.image ? `<img src="${r.image}" alt="">` : `<div class="ph">🍽️</div>`}
+  el.innerHTML = `<h3>${iconSvg('history', 'section-h-icon')}Recently Checked</h3><div class="results-list">${list.map((r, i) => `
+    <div class="result-row stagger-in" style="animation-delay:${i * 35}ms" data-code="${escapeHtml(r.code)}">
+      ${r.image ? `<img src="${r.image}" alt="">` : `<div class="ph">${iconSvg('package')}</div>`}
       <div class="rr-text"><div class="rr-title">${escapeHtml(r.name)}</div><div class="rr-sub">Barcode ${escapeHtml(r.code)}</div></div>
-      <span>›</span>
+      <span class="rr-chevron">${iconSvg('chevronRight')}</span>
     </div>`).join('')}</div>`;
   el.querySelectorAll('.result-row').forEach(row => {
     row.addEventListener('click', () => lookupAndShow(row.dataset.code));
   });
 }
 
-function loadingRow(text) { return `<div class="loading-row"><div class="spinner"></div>${escapeHtml(text)}</div>`; }
-function emptyState(emoji, text) { return `<div class="empty-state"><span class="es-emoji">${emoji}</span>${escapeHtml(text)}</div>`; }
-function errorBox(text) { return `<div class="error-box">⚠️ ${escapeHtml(text)}</div>`; }
+function skeletonRows(n) {
+  return `<div class="results-list">${Array.from({ length: n }).map(() => `
+    <div class="result-row skeleton-row">
+      <div class="ph skeleton"></div>
+      <div class="rr-text"><div class="skeleton skeleton-line" style="width:70%"></div><div class="skeleton skeleton-line" style="width:40%"></div></div>
+    </div>`).join('')}</div>`;
+}
+function resultSkeleton() {
+  return `
+    <div class="result-banner rb-skeleton skeleton"></div>
+    <div class="product-card"><div class="ph skeleton"></div><div style="flex:1"><div class="skeleton skeleton-line" style="width:60%"></div><div class="skeleton skeleton-line" style="width:40%"></div></div></div>
+    <div class="skeleton skeleton-block"></div>
+    <div class="skeleton skeleton-block"></div>`;
+}
+function emptyState(icon, text) { return `<div class="empty-state">${iconSvg(icon, 'es-icon')}${escapeHtml(text)}</div>`; }
+function errorBox(text) { return `<div class="error-box">${iconSvg('alertTriangle')} ${escapeHtml(text)}</div>`; }
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
@@ -1004,10 +1268,10 @@ function escapeHtml(str) {
 /* ---------------------------------------------------------------------
    Init
    --------------------------------------------------------------------- */
+mountIcons();
 renderProfileSummary();
 renderRecents();
-
-if (!('serviceWorker' in navigator)) { /* offline caching not critical to core function */ }
+moveNavIndicator('view-home');
 
 </script>
 </body>
