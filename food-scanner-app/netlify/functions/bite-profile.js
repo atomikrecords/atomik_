@@ -24,7 +24,7 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid or missing BiteID.' }) };
   }
 
-  const store = getStore('bite-profiles');
+  const store = getBlobStore();
 
   if (event.httpMethod === 'GET') {
     const data = await store.get(id, { type: 'json' });
@@ -44,6 +44,23 @@ exports.handler = async (event) => {
 
   return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed.' }) };
 };
+
+// Netlify Blobs is supposed to auto-configure on any live deploy — no
+// action needed most of the time. If that automatic detection doesn't work
+// for a given site (some accounts/plans need it spelled out explicitly),
+// set BLOBS_SITE_ID and BLOBS_TOKEN as environment variables in Netlify
+// (Site configuration → Environment variables) and this falls back to
+// using them: BLOBS_SITE_ID is your Site ID (Site configuration → General
+// → Site details), BLOBS_TOKEN is a Personal Access Token (User settings
+// → Applications → New access token).
+function getBlobStore() {
+  const siteID = process.env.BLOBS_SITE_ID;
+  const token = process.env.BLOBS_TOKEN;
+  if (siteID && token) {
+    return getStore({ name: 'bite-profiles', siteID, token });
+  }
+  return getStore('bite-profiles');
+}
 
 function sanitizeProfile(body) {
   return {
