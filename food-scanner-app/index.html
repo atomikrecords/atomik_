@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SafeBite — Personal Food Safety Scanner</title>
+<meta name="description" content="Scan or search any food product and instantly know if it's safe for your allergies, diet, and preferences.">
+<meta name="theme-color" content="#0f1115">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===== Header ===== -->
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">🛡️</span><span>SafeBite</span></div>
+    <button id="profileBtn" class="icon-btn" title="Your profile" aria-label="Your profile">👤</button>
+  </header>
+
+  <!-- ===== Views ===== -->
+  <main id="views">
+
+    <!-- HOME / SCAN VIEW -->
+    <section id="view-home" class="view active">
+      <div class="hero">
+        <h1>Is this food safe for you?</h1>
+        <p class="muted">Scan a barcode or search a product to check it against your profile.</p>
+      </div>
+
+      <button id="openScannerBtn" class="btn btn-primary btn-big">
+        <span class="btn-icon">📷</span> Scan Barcode
+      </button>
+
+      <div class="or-divider"><span>or</span></div>
+
+      <form id="searchForm" class="search-form" autocomplete="off">
+        <input id="searchInput" type="search" placeholder="Search a food or product name…" inputmode="search" />
+        <button type="submit" class="btn btn-secondary">Search</button>
+      </form>
+
+      <div id="manualBarcodeWrap" class="manual-barcode">
+        <button id="showManualEntry" class="link-btn">Enter barcode number manually</button>
+        <form id="manualBarcodeForm" class="manual-barcode-form hidden">
+          <input id="manualBarcodeInput" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="e.g. 3017620422003" />
+          <button type="submit" class="btn btn-secondary">Check</button>
+        </form>
+      </div>
+
+      <div id="homeResults" class="results-list"></div>
+
+      <div id="profileSummaryCard" class="profile-summary-card"></div>
+
+      <div id="recentScans"></div>
+    </section>
+
+    <!-- SCANNER VIEW -->
+    <section id="view-scanner" class="view">
+      <div class="scanner-header">
+        <button id="closeScannerBtn" class="icon-btn" aria-label="Close scanner">✕</button>
+        <span>Point camera at barcode</span>
+        <span style="width:40px"></span>
+      </div>
+      <div id="qr-reader"></div>
+      <p id="scannerStatus" class="muted center">Starting camera…</p>
+    </section>
+
+    <!-- RESULT VIEW -->
+    <section id="view-result" class="view">
+      <div class="result-header">
+        <button id="backFromResultBtn" class="icon-btn" aria-label="Back">←</button>
+        <span>Result</span>
+        <span style="width:40px"></span>
+      </div>
+      <div id="resultContent"></div>
+    </section>
+
+    <!-- PROFILE VIEW -->
+    <section id="view-profile" class="view">
+      <div class="result-header">
+        <button id="closeProfileBtn" class="icon-btn" aria-label="Close">✕</button>
+        <span>Your Profile</span>
+        <button id="saveProfileTopBtn" class="icon-btn" title="Save">✓</button>
+      </div>
+
+      <form id="profileForm" class="profile-form">
+
+        <fieldset class="pf-section">
+          <legend>Allergies &amp; Intolerances</legend>
+          <p class="muted small">We'll flag anything containing or possibly containing these.</p>
+          <div id="allergyGrid" class="chip-grid"></div>
+        </fieldset>
+
+        <fieldset class="pf-section">
+          <legend>Diet &amp; Lifestyle</legend>
+          <div id="dietGrid" class="chip-grid"></div>
+        </fieldset>
+
+        <fieldset class="pf-section">
+          <legend>Ingredients you avoid</legend>
+          <p class="muted small">e.g. high fructose corn syrup, palm oil, artificial dyes</p>
+          <div class="tag-input" id="ingredientTagInput"></div>
+        </fieldset>
+
+        <fieldset class="pf-section">
+          <legend>Foods / brands you avoid</legend>
+          <p class="muted small">Personal reasons, boycotts, dislikes — anything goes</p>
+          <div class="tag-input" id="foodTagInput"></div>
+        </fieldset>
+
+        <fieldset class="pf-section">
+          <legend>Nutrition limits (optional)</legend>
+          <div class="limit-row">
+            <label>Max sugar <span class="muted small">(g / 100g)</span></label>
+            <input type="number" id="limitSugar" min="0" step="1" placeholder="off">
+          </div>
+          <div class="limit-row">
+            <label>Max sodium <span class="muted small">(mg / 100g)</span></label>
+            <input type="number" id="limitSodium" min="0" step="1" placeholder="off">
+          </div>
+          <div class="limit-row">
+            <label>Max saturated fat <span class="muted small">(g / 100g)</span></label>
+            <input type="number" id="limitSatFat" min="0" step="1" placeholder="off">
+          </div>
+        </fieldset>
+
+        <button type="submit" class="btn btn-primary btn-big">Save Profile</button>
+        <p id="savedToast" class="saved-toast hidden">Profile saved ✓</p>
+      </form>
+    </section>
+
+  </main>
+
+  <!-- ===== Bottom nav ===== -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-nav="view-home"><span>🏠</span>Home</button>
+    <button class="nav-btn" data-nav="view-scanner-open"><span>📷</span>Scan</button>
+    <button class="nav-btn" data-nav="view-profile"><span>👤</span>Profile</button>
+  </nav>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
