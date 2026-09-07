@@ -7,12 +7,6 @@
    ========================================================================= */
 
 const OFF_PRODUCT_URL = code => `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=code,product_name,brands,image_front_small_url,image_front_url,ingredients_text,ingredients_text_en,lang,allergens_tags,traces_tags,labels_tags,categories_tags,categories,nutriments,quantity`;
-// Open Food Facts' modern search API (Search-a-licious). The older
-// cgi/search.pl endpoint is being retired and has started returning 503s,
-// so this is the primary path, with the legacy endpoint kept as a fallback
-// in case the new one has its own outage.
-const OFF_SEARCH_URL = q => `https://search.openfoodfacts.org/search?q=${encodeURIComponent(q)}&page_size=20&fields=code,product_name,brands,image_front_small_url,quantity`;
-const OFF_SEARCH_URL_LEGACY = q => `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&fields=code,product_name,brands,image_front_small_url,quantity`;
 const OFF_CATEGORY_URL = tag => `https://world.openfoodfacts.org/api/v2/search?categories_tags=${encodeURIComponent(tag)}&page_size=40&fields=code,product_name,brands,image_front_small_url,ingredients_text,ingredients_text_en,lang,allergens_tags,traces_tags,labels_tags,categories_tags,categories,nutriments`;
 
 const STORAGE_KEY = 'safebite_profile_v1';
@@ -22,7 +16,8 @@ const CONNECTIONS_KEY = 'safebite_connections_v1';
 const CONN_CACHE_PREFIX = 'safebite_conn_cache_';
 const DISMISSED_RECALLS_KEY = 'safebite_dismissed_recalls_v1';
 const RECALL_CACHE_PREFIX = 'safebite_recall_cache_';
-const BITE_API = '/api/bite-profile';
+const BITE_API = '/.netlify/functions/bite-profile';
+const SEARCH_API = '/.netlify/functions/search-proxy';
 
 /* ---------------------------------------------------------------------
    Vector icon set — hand-built, stroke-based line icons (24x24, MIT-style
@@ -611,9 +606,9 @@ async function runSearch(query) {
   const resultsEl = document.getElementById('homeResults');
   resultsEl.innerHTML = skeletonRows(4);
   try {
-    let products = await fetchSearchResults(OFF_SEARCH_URL(query), 'hits');
-    if (products === null) products = await fetchSearchResults(OFF_SEARCH_URL_LEGACY(query), 'products');
-    if (products === null) throw new Error('Both search endpoints failed');
+    let products = await searchViaProxy(query);
+    if (products === null) products = await searchDirectFallback(query);
+    if (products === null) throw new Error('All search paths failed');
 
     products = products.filter(p => p.product_name);
     if (!products.length) {
@@ -627,14 +622,31 @@ async function runSearch(query) {
   }
 }
 
-// Returns the array of results on success, or null on failure (so the
-// caller can fall back to the other endpoint instead of showing an error).
-async function fetchSearchResults(url, listKey) {
+// Routed through our own serverless proxy rather than calling Open Food
+// Facts directly from the browser: their current search API sends no CORS
+// header, so a direct browser fetch is silently blocked even though the
+// request itself succeeds. The proxy also retries across their two search
+// endpoints server-side. Returns null (rather than throwing) so the caller
+// can fall back — e.g. on the single-file build, which has no functions.
+async function searchViaProxy(query) {
   try {
+    const res = await fetch(`${SEARCH_API}?q=${encodeURIComponent(query)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data.products) ? data.products : null;
+  } catch (e) { return null; }
+}
+
+// Fallback for deployments with no serverless backend at all (the
+// standalone single-file build). Only Open Food Facts' legacy search
+// endpoint sends CORS headers a browser will actually honor.
+async function searchDirectFallback(query) {
+  try {
+    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&fields=code,product_name,brands,image_front_small_url,quantity`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
-    return Array.isArray(data[listKey]) ? data[listKey] : null;
+    return Array.isArray(data.products) ? data.products : null;
   } catch (e) { return null; }
 }
 
