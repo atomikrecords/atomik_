@@ -24,6 +24,8 @@
 
     <!-- HOME / SCAN VIEW -->
     <section id="view-home" class="view active">
+      <div id="recallAlerts"></div>
+
       <div class="hero">
         <h1>Is this food safe for you?</h1>
         <p class="muted">Scan a barcode or search a product to check it against your profile.</p>
@@ -84,6 +86,33 @@
         <span>Your Profile</span>
         <button id="saveProfileTopBtn" class="icon-btn" title="Save"><span data-icon="check"></span></button>
       </div>
+
+      <section class="pf-section bite-section">
+        <h2 class="pf-section-title">My BiteID</h2>
+        <p class="muted small">Share this code so family or friends can connect — you'll see if a product works for them too, right on the result screen.</p>
+        <div class="biteid-box">
+          <span class="biteid-code" id="myBiteIdText">····-····</span>
+          <button type="button" class="icon-btn" id="copyBiteIdBtn" title="Copy BiteID"><span data-icon="copy"></span></button>
+          <button type="button" class="icon-btn" id="shareBiteIdBtn" title="Share BiteID"><span data-icon="share"></span></button>
+        </div>
+        <p id="syncStatus" class="sync-status muted small"></p>
+      </section>
+
+      <section class="pf-section">
+        <h2 class="pf-section-title">Connected People</h2>
+        <p class="muted small">Add someone's BiteID to check products against their needs too.</p>
+        <div id="connectionsList" class="connections-list"></div>
+        <button type="button" class="link-btn" id="addConnectionBtn"><span data-icon="plus"></span>Add Someone</button>
+        <form id="addConnectionForm" class="add-connection-form hidden">
+          <input id="connIdInput" type="text" placeholder="Their BiteID (e.g. K7F3-QXN2)" autocomplete="off" autocapitalize="characters">
+          <input id="connNameInput" type="text" placeholder="Name (optional, e.g. Corey)" autocomplete="off">
+          <div class="add-connection-actions">
+            <button type="submit" class="btn btn-primary">Connect</button>
+            <button type="button" class="btn btn-secondary" id="cancelAddConnection">Cancel</button>
+          </div>
+          <p id="addConnectionError" class="error-text hidden"></p>
+        </form>
+      </section>
 
       <form id="profileForm" class="profile-form">
 

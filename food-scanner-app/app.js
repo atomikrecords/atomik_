@@ -12,6 +12,12 @@ const OFF_CATEGORY_URL = tag => `https://world.openfoodfacts.org/api/v2/search?c
 
 const STORAGE_KEY = 'safebite_profile_v1';
 const RECENTS_KEY = 'safebite_recents_v1';
+const BITE_ID_KEY = 'safebite_biteid_v1';
+const CONNECTIONS_KEY = 'safebite_connections_v1';
+const CONN_CACHE_PREFIX = 'safebite_conn_cache_';
+const DISMISSED_RECALLS_KEY = 'safebite_dismissed_recalls_v1';
+const RECALL_CACHE_PREFIX = 'safebite_recall_cache_';
+const BITE_API = '/api/bite-profile';
 
 /* ---------------------------------------------------------------------
    Vector icon set — hand-built, stroke-based line icons (24x24, MIT-style
@@ -58,6 +64,10 @@ const ICONS = {
   package: '<path d="M21 8 12 3.3 3 8l9 4.7 9-4.7Z"/><path d="M3 8v8.3l9 4.7 9-4.7V8"/><path d="M12 12.7V21"/>',
   history: '<path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v4.5h4.5"/><path d="M12 8v4.5l3.2 2"/>',
   spinner: '<circle cx="12" cy="12" r="9" opacity="0.2"/><path d="M21 12a9 9 0 0 0-9-9"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2.2"/><path d="M5 15V5.5A2.5 2.5 0 0 1 7.5 3H16"/>',
+  share: '<circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.1 10.8 16 6.5M8.1 13.2l7.9 4.3"/>',
+  users: '<circle cx="9" cy="8" r="3.1"/><path d="M2.8 20c0-3.3 2.8-5 6.2-5s6.2 1.7 6.2 5"/><circle cx="17.5" cy="9" r="2.6"/><path d="M15.8 20c.3-2.6 1.9-4.2 3.7-4.6"/>',
+  bell: '<path d="M6 9a6 6 0 0 1 12 0c0 4.2 1.5 5.8 1.5 5.8h-15S6 13.2 6 9Z"/><path d="M10 19a2 2 0 0 0 4 0"/>',
 };
 function iconSvg(name, cls) {
   const inner = ICONS[name] || ICONS.info;
@@ -142,6 +152,83 @@ function pushRecent(entry) {
 let profile = loadProfile();
 
 /* ---------------------------------------------------------------------
+   BiteID — a portable, shareable code for this profile. Backed by a tiny
+   serverless store (Netlify Functions + Blobs) so OTHER people's devices
+   can look it up. Only dietary-preference fields are ever stored under
+   it — no name, email, or account of any kind.
+   --------------------------------------------------------------------- */
+function getOrCreateBiteId() {
+  let id = localStorage.getItem(BITE_ID_KEY);
+  if (!id) { id = genBiteId(); localStorage.setItem(BITE_ID_KEY, id); }
+  return id;
+}
+function genBiteId() {
+  // Unambiguous alphabet (no 0/O/1/I/L) so codes are easy to read aloud/type.
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 8; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return s;
+}
+function formatBiteId(id) { return id.slice(0, 4) + '-' + id.slice(4); }
+function normalizeBiteId(raw) { return (raw || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase(); }
+
+async function syncOwnProfileToServer() {
+  const id = getOrCreateBiteId();
+  try {
+    const res = await fetch(`${BITE_API}?id=${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile),
+    });
+    return res.ok;
+  } catch (e) { return false; }
+}
+
+function loadConnections() {
+  try { return JSON.parse(localStorage.getItem(CONNECTIONS_KEY)) || []; } catch (e) { return []; }
+}
+function saveConnections(list) { localStorage.setItem(CONNECTIONS_KEY, JSON.stringify(list)); }
+
+async function fetchConnectionProfile(id, { force = false } = {}) {
+  const cacheKey = CONN_CACHE_PREFIX + id;
+  if (!force) {
+    const cached = readJson(cacheKey);
+    if (cached && Date.now() - cached.ts < 60 * 60 * 1000) return cached.profile;
+  }
+  try {
+    const res = await fetch(`${BITE_API}?id=${id}`);
+    if (!res.ok) throw new Error('not ok');
+    const data = await res.json();
+    if (!data.found) return null;
+    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), profile: data.profile }));
+    return data.profile;
+  } catch (e) {
+    const cached = readJson(cacheKey);
+    return cached ? cached.profile : null; // fall back to last-known data if offline
+  }
+}
+
+async function addConnection(rawId, nickname) {
+  const id = normalizeBiteId(rawId);
+  if (id.length < 6) return { ok: false, error: 'That BiteID looks too short — double check the code.' };
+  if (id === getOrCreateBiteId()) return { ok: false, error: "That's your own BiteID." };
+  const list = loadConnections();
+  if (list.some(c => c.id === id)) return { ok: false, error: 'Already connected to that BiteID.' };
+  const profileData = await fetchConnectionProfile(id, { force: true });
+  if (!profileData) return { ok: false, error: "Couldn't find that BiteID. Check the code and try again." };
+  list.push({ id, nickname: (nickname || '').trim() || formatBiteId(id) });
+  saveConnections(list);
+  return { ok: true };
+}
+function removeConnection(id) {
+  saveConnections(loadConnections().filter(c => c.id !== id));
+  localStorage.removeItem(CONN_CACHE_PREFIX + id);
+}
+function readJson(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
+}
+
+/* ---------------------------------------------------------------------
    Navigation + view transitions
    --------------------------------------------------------------------- */
 const views = document.querySelectorAll('.view');
@@ -185,7 +272,10 @@ function moveNavIndicator(id) {
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     if (btn.dataset.nav === 'view-scanner-open') { openScanner(); moveNavIndicator('view-scanner-open'); }
-    else showView(btn.dataset.nav, btn.dataset.nav === 'view-home' ? 'anim-fade' : 'anim-modal-in');
+    else {
+      if (btn.dataset.nav === 'view-profile') renderProfileForm();
+      showView(btn.dataset.nav, btn.dataset.nav === 'view-home' ? 'anim-fade' : 'anim-modal-in');
+    }
   });
 });
 document.getElementById('profileBtn').addEventListener('click', () => { renderProfileForm(); showView('view-profile', 'anim-modal-in'); });
@@ -273,6 +363,7 @@ function renderProfileForm() {
   document.getElementById('limitSodium').value = workingProfile.limits.sodium ?? '';
   document.getElementById('limitSatFat').value = workingProfile.limits.satFat ?? '';
   document.getElementById('savedToast').classList.add('hidden');
+  renderBiteIdSection();
 }
 
 function commitProfileForm() {
@@ -282,6 +373,8 @@ function commitProfileForm() {
   profile = workingProfile;
   saveProfile(profile);
   renderProfileSummary();
+  setSyncStatus('syncing');
+  syncOwnProfileToServer().then(ok => setSyncStatus(ok ? 'synced' : 'failed'));
 }
 function parseFloatOrNull(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
 
@@ -316,6 +409,113 @@ function renderProfileSummary() {
   profile.avoidFoods.forEach(t => chips.push({ icon: 'ban', label: t }));
   card.innerHTML = `<h3>Your Profile</h3><div class="chips">${chips.map(c => `<span class="chip-mini">${iconSvg(c.icon, 'chip-mini-icon')}${escapeHtml(c.label)}</span>`).join('')}</div>`;
 }
+
+/* ---------------------------------------------------------------------
+   BiteID + Connections UI
+   --------------------------------------------------------------------- */
+function renderBiteIdSection() {
+  const id = getOrCreateBiteId();
+  document.getElementById('myBiteIdText').textContent = formatBiteId(id);
+  setSyncStatus('idle');
+  renderConnectionsList();
+  // keep this device's copy of my profile fresh for anyone who has me added
+  syncOwnProfileToServer().then(ok => setSyncStatus(ok ? 'synced' : 'failed'));
+}
+
+function setSyncStatus(state) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  const map = {
+    idle: '',
+    syncing: 'Syncing your profile…',
+    synced: 'Up to date — connections see your latest profile.',
+    failed: "Couldn't sync (offline?). Your BiteID still works once you're back online.",
+  };
+  el.textContent = map[state] || '';
+  el.classList.toggle('sync-failed', state === 'failed');
+}
+
+function renderConnectionsList() {
+  const list = loadConnections();
+  const el = document.getElementById('connectionsList');
+  if (!list.length) {
+    el.innerHTML = `<p class="muted small conn-empty">Nobody connected yet — add a family member or friend's BiteID below.</p>`;
+    return;
+  }
+  el.innerHTML = list.map(c => `
+    <div class="conn-row" data-id="${escapeHtml(c.id)}">
+      <span class="conn-avatar">${iconSvg('users')}</span>
+      <div class="conn-text"><div class="conn-name">${escapeHtml(c.nickname)}</div><div class="conn-code">${escapeHtml(formatBiteId(c.id))}</div></div>
+      <button type="button" class="icon-btn conn-remove" aria-label="Remove ${escapeHtml(c.nickname)}">${iconSvg('trash')}</button>
+    </div>`).join('');
+  el.querySelectorAll('.conn-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('.conn-row');
+      removeConnection(row.dataset.id);
+      renderConnectionsList();
+    });
+  });
+}
+
+document.getElementById('copyBiteIdBtn').addEventListener('click', async () => {
+  const text = formatBiteId(getOrCreateBiteId());
+  try {
+    await navigator.clipboard.writeText(text);
+    flashIconBtn('copyBiteIdBtn', 'check');
+  } catch (e) { /* clipboard unavailable — silently ignore, code is still visible on screen */ }
+});
+document.getElementById('shareBiteIdBtn').addEventListener('click', async () => {
+  const text = formatBiteId(getOrCreateBiteId());
+  if (navigator.share) {
+    try { await navigator.share({ title: 'My SafeBite BiteID', text: `Add me on SafeBite so you can check if food is safe for me too — my BiteID is ${text}` }); }
+    catch (e) { /* user cancelled share sheet — no action needed */ }
+  } else {
+    try { await navigator.clipboard.writeText(text); flashIconBtn('shareBiteIdBtn', 'check'); } catch (e) {}
+  }
+});
+function flashIconBtn(id, iconName) {
+  const btn = document.getElementById(id);
+  const original = btn.innerHTML;
+  btn.innerHTML = iconSvg(iconName);
+  setTimeout(() => { btn.innerHTML = original; }, 1200);
+}
+
+document.getElementById('addConnectionBtn').addEventListener('click', () => {
+  document.getElementById('addConnectionForm').classList.remove('hidden');
+  document.getElementById('addConnectionBtn').classList.add('hidden');
+  document.getElementById('connIdInput').focus();
+});
+document.getElementById('cancelAddConnection').addEventListener('click', () => {
+  closeAddConnectionForm();
+});
+function closeAddConnectionForm() {
+  document.getElementById('addConnectionForm').classList.add('hidden');
+  document.getElementById('addConnectionBtn').classList.remove('hidden');
+  document.getElementById('connIdInput').value = '';
+  document.getElementById('connNameInput').value = '';
+  document.getElementById('addConnectionError').classList.add('hidden');
+}
+document.getElementById('addConnectionForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const submitBtn = e.target.querySelector('button[type=submit]');
+  const errorEl = document.getElementById('addConnectionError');
+  errorEl.classList.add('hidden');
+  submitBtn.disabled = true;
+  const originalLabel = submitBtn.textContent;
+  submitBtn.textContent = 'Connecting…';
+  const idVal = document.getElementById('connIdInput').value;
+  const nameVal = document.getElementById('connNameInput').value;
+  const result = await addConnection(idVal, nameVal);
+  submitBtn.disabled = false;
+  submitBtn.textContent = originalLabel;
+  if (result.ok) {
+    closeAddConnectionForm();
+    renderConnectionsList();
+  } else {
+    errorEl.textContent = result.error;
+    errorEl.classList.remove('hidden');
+  }
+});
 
 /* ---------------------------------------------------------------------
    Barcode scanner (html5-qrcode)
@@ -459,9 +659,10 @@ async function lookupAndShow(code) {
       return;
     }
     const product = data.product;
-    pushRecent({ code, name: product.product_name || code, image: product.image_front_small_url || '' });
+    pushRecent({ code, name: product.product_name || code, image: product.image_front_small_url || '', brand: product.brands || '' });
     renderResult(product, code);
     renderRecents();
+    checkRecalls();
   } catch (err) {
     el.innerHTML = errorBox('Couldn\'t reach the food database. Check your internet connection and try again.');
   }
@@ -505,6 +706,8 @@ function renderResult(product, code) {
       </div>
     </div>
 
+    <div id="connCheckSection"></div>
+
     <div class="section-title">Why</div>
     <ul class="reason-list">${reasonsHtml}</ul>
 
@@ -523,10 +726,53 @@ function renderResult(product, code) {
     ${verdict.level !== 'safe' ? `<div id="altSection"></div>` : ''}
   `;
 
+  renderConnCheck(product);
   if (verdict.level !== 'safe') {
     renderAlternatives(product);
   }
 }
+
+/* ---------------------------------------------------------------------
+   Check the scanned product against everyone the shopper is connected to.
+   --------------------------------------------------------------------- */
+async function renderConnCheck(product) {
+  const connections = loadConnections();
+  const section = document.getElementById('connCheckSection');
+  if (!section || !connections.length) return;
+
+  section.innerHTML = `
+    <div class="section-title conn-title">${iconSvg('users', 'conn-title-icon')}People You Shop For</div>
+    <div class="conn-check-list">${connections.map(c => `
+      <div class="conn-check-row conn-check-loading" data-id="${escapeHtml(c.id)}">
+        <span class="conn-avatar">${iconSvg('users')}</span>
+        <div class="conn-text"><div class="conn-name">${escapeHtml(c.nickname)}</div><div class="conn-status muted small">Checking…</div></div>
+      </div>`).join('')}</div>`;
+
+  await Promise.all(connections.map(async (c) => {
+    const row = section.querySelector(`.conn-check-row[data-id="${cssEscape(c.id)}"]`);
+    if (!row) return;
+    const theirProfile = await fetchConnectionProfile(c.id);
+    row.classList.remove('conn-check-loading');
+    if (!theirProfile) {
+      row.classList.add('conn-check-unknown');
+      row.querySelector('.conn-status').textContent = "Couldn't check — connect to the internet and try again.";
+      row.querySelector('.conn-avatar').innerHTML = iconSvg('info');
+      return;
+    }
+    const verdict = evaluateProduct(product, theirProfile);
+    if (verdict.level === 'safe') {
+      row.classList.add('conn-check-safe');
+      row.querySelector('.conn-status').innerHTML = `${iconSvg('checkCircle')} Safe for ${escapeHtml(c.nickname)} too`;
+      row.querySelector('.conn-avatar').innerHTML = iconSvg('checkCircle');
+    } else {
+      row.classList.add(verdict.level === 'danger' ? 'conn-check-danger' : 'conn-check-caution');
+      const topReason = verdict.reasons[0];
+      row.querySelector('.conn-status').innerHTML = `<strong>${verdict.level === 'danger' ? 'Not safe' : 'Check first'} for ${escapeHtml(c.nickname)}</strong> — ${escapeHtml(topReason ? topReason.title : 'flagged by their profile')}`;
+      row.querySelector('.conn-avatar').innerHTML = iconSvg(verdict.level === 'danger' ? 'xCircle' : 'alertTriangle');
+    }
+  }));
+}
+function cssEscape(s) { return String(s).replace(/[^A-Za-z0-9_-]/g, '\\$&'); }
 function nutriCell(icon, label, val, unit) {
   return `<div class="nutri-cell">${iconSvg(icon, 'nutri-icon')}<div><div class="nc-val">${val != null ? Math.round(val * 10) / 10 + unit : '—'}</div><div class="nc-label">${label}</div></div></div>`;
 }
@@ -807,6 +1053,84 @@ function renderRecents() {
   });
 }
 
+/* ---------------------------------------------------------------------
+   Recall & reformulation alerts — cross-checks the user's own scan
+   history against the FDA's public food-recall feed. Entirely
+   client-side (no backend needed): it only ever reads this device's
+   own Recently Checked list.
+   --------------------------------------------------------------------- */
+async function checkRecalls() {
+  const container = document.getElementById('recallAlerts');
+  if (!container) return;
+  const recents = loadRecents();
+  if (!recents.length) { container.innerHTML = ''; return; }
+  const dismissed = loadDismissedRecalls();
+  const found = [];
+  for (const r of recents.slice(0, 8)) {
+    const match = await getRecallForProduct(r);
+    if (match && !dismissed.includes(match.id)) found.push({ ...match, productName: r.name });
+  }
+  renderRecallAlerts(found);
+}
+
+async function getRecallForProduct(recent) {
+  const cacheKey = RECALL_CACHE_PREFIX + recent.code;
+  const cached = readJson(cacheKey);
+  if (cached && Date.now() - cached.ts < 24 * 60 * 60 * 1000) return cached.result;
+  const result = await fetchRecallMatch(recent.name, recent.brand);
+  try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), result })); } catch (e) {}
+  return result;
+}
+
+async function fetchRecallMatch(name, brand) {
+  if (!name) return null;
+  const terms = [];
+  if (brand) terms.push(`product_description:"${sanitizeFdaTerm(brand.split(',')[0])}"`);
+  const firstWords = name.split(/\s+/).slice(0, 3).join(' ');
+  if (!firstWords) return null;
+  terms.push(`product_description:"${sanitizeFdaTerm(firstWords)}"`);
+  const query = terms.join(' AND ') + ' AND status:"Ongoing"';
+  try {
+    const res = await fetch(`https://api.fda.gov/food/enforcement.json?search=${encodeURIComponent(query)}&limit=1`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.results || !data.results.length) return null;
+    const r = data.results[0];
+    return {
+      id: r.event_id || r.recall_number || (r.product_description || '').slice(0, 40),
+      reason: r.reason_for_recall || 'Reason not specified by the FDA report.',
+      firm: r.recalling_firm || '',
+    };
+  } catch (e) { return null; }
+}
+function sanitizeFdaTerm(s) { return String(s).replace(/["\\]/g, '').trim(); }
+
+function renderRecallAlerts(alerts) {
+  const container = document.getElementById('recallAlerts');
+  if (!alerts.length) { container.innerHTML = ''; return; }
+  container.innerHTML = alerts.map((a, i) => `
+    <div class="recall-card stagger-in" style="animation-delay:${i * 40}ms" data-id="${escapeHtml(a.id)}">
+      <div class="recall-icon">${iconSvg('bell')}</div>
+      <div class="recall-body">
+        <div class="recall-title">Active recall: ${escapeHtml(a.productName)}</div>
+        <div class="recall-detail">${escapeHtml(a.reason)}${a.firm ? ' — ' + escapeHtml(a.firm) : ''}</div>
+        <div class="recall-note">Matched by product name — double check against the label or FDA.gov before assuming this applies to your specific item.</div>
+      </div>
+      <button type="button" class="icon-btn recall-dismiss" aria-label="Dismiss">${iconSvg('x')}</button>
+    </div>`).join('');
+  container.querySelectorAll('.recall-card').forEach(card => {
+    card.querySelector('.recall-dismiss').addEventListener('click', () => {
+      const id = card.dataset.id;
+      const d = loadDismissedRecalls();
+      d.push(id);
+      saveDismissedRecalls(d);
+      card.remove();
+    });
+  });
+}
+function loadDismissedRecalls() { return readJson(DISMISSED_RECALLS_KEY) || []; }
+function saveDismissedRecalls(list) { localStorage.setItem(DISMISSED_RECALLS_KEY, JSON.stringify(list)); }
+
 function skeletonRows(n) {
   return `<div class="results-list">${Array.from({ length: n }).map(() => `
     <div class="result-row skeleton-row">
@@ -834,3 +1158,4 @@ mountIcons();
 renderProfileSummary();
 renderRecents();
 moveNavIndicator('view-home');
+checkRecalls();

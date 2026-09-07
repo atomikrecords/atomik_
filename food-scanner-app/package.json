@@ -1,0 +1,9 @@
+{
+  "name": "safebite-functions",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Serverless functions backing SafeBite's BiteID family/friend profile sharing.",
+  "dependencies": {
+    "@netlify/blobs": "^7.0.0"
+  }
+}

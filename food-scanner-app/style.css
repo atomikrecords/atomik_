@@ -228,6 +228,73 @@ body{
 /* Profile form */
 .pf-section{border:1px solid var(--line); background:var(--panel); border-radius:16px; padding:17px; margin:0 0 16px;}
 .pf-section legend{font-weight:800; padding:0 4px; font-size:1rem; letter-spacing:-.01em;}
+.pf-section-title{font-weight:800; font-size:1rem; letter-spacing:-.01em; margin:0 0 4px;}
+
+/* BiteID + Connections */
+.bite-section{background:linear-gradient(160deg, rgba(79,209,165,.10), var(--panel) 55%); border-color:#245f47;}
+.biteid-box{display:flex; align-items:center; gap:10px; margin-top:12px;}
+.biteid-code{
+  flex:1; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:1.28rem; font-weight:700; letter-spacing:.08em; color:var(--accent);
+  background:var(--panel2); border:1px dashed #2f6d55; border-radius:12px; padding:12px 14px; text-align:center;
+}
+.sync-status{margin:10px 2px 0; min-height:1em;}
+.sync-status.sync-failed{color:var(--caution);}
+
+.connections-list{display:flex; flex-direction:column; gap:8px; margin:10px 0 12px;}
+.conn-empty{margin:6px 2px 12px;}
+.conn-row, .conn-check-row{
+  display:flex; align-items:center; gap:12px; background:var(--panel2); border:1px solid var(--line);
+  border-radius:14px; padding:11px 13px;
+}
+.conn-avatar{
+  width:38px; height:38px; border-radius:50%; background:var(--panel); border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--sub);
+}
+.conn-avatar .icon{width:19px;height:19px;}
+.conn-text{flex:1; min-width:0;}
+.conn-name{font-weight:650; font-size:.93rem;}
+.conn-code{font-size:.78rem; color:var(--sub); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; letter-spacing:.04em;}
+.conn-remove{width:36px; height:36px;}
+
+.add-connection-form{display:flex; flex-direction:column; gap:9px; margin-top:12px; animation:fadeIn .25s ease both;}
+.add-connection-form input{
+  background:var(--panel2); border:1px solid var(--line); color:var(--ink);
+  border-radius:12px; padding:12px 14px; font-size:.95rem;
+}
+.add-connection-form input:focus{outline:none; border-color:var(--accent);}
+.add-connection-actions{display:flex; gap:8px;}
+.add-connection-actions .btn{flex:1; padding:11px;}
+.error-text{color:var(--danger); font-size:.83rem; margin:0;}
+
+/* Connection check on the result screen */
+.conn-title{color:var(--blue);}
+.conn-title-icon{color:var(--blue);}
+.conn-check-list{display:flex; flex-direction:column; gap:8px; margin-bottom:6px;}
+.conn-check-row{transition:border-color .2s ease;}
+.conn-check-row .conn-status{margin-top:1px; display:flex; align-items:center; gap:5px;}
+.conn-check-row .conn-status .icon{width:14px;height:14px;}
+.conn-check-loading .conn-avatar{animation:pulseFade 1.1s ease-in-out infinite;}
+@keyframes pulseFade{ 0%,100%{opacity:.5} 50%{opacity:1} }
+.conn-check-safe{border-color:#1e4a34;} .conn-check-safe .conn-avatar{color:var(--safe); border-color:#1e4a34;}
+.conn-check-caution{border-color:#4d3d13;} .conn-check-caution .conn-avatar{color:var(--caution); border-color:#4d3d13;}
+.conn-check-danger{border-color:#4f1b22;} .conn-check-danger .conn-avatar{color:var(--danger); border-color:#4f1b22;}
+.conn-check-danger .conn-status strong, .conn-check-caution .conn-status strong{color:var(--ink);}
+.conn-check-unknown .conn-status{color:var(--sub);}
+
+/* Recall alerts */
+#recallAlerts{display:flex; flex-direction:column; gap:10px; margin-bottom:6px;}
+.recall-card{
+  display:flex; gap:12px; align-items:flex-start; background:linear-gradient(155deg,var(--danger-bg),#22101a);
+  border:1px solid #4f1b22; border-radius:16px; padding:14px;
+}
+.recall-icon{color:var(--danger); flex-shrink:0; margin-top:1px;}
+.recall-body{flex:1; min-width:0;}
+.recall-title{font-weight:750; font-size:.94rem; color:var(--ink);}
+.recall-detail{font-size:.85rem; color:var(--sub); margin-top:3px; line-height:1.45;}
+.recall-note{font-size:.76rem; color:var(--sub); opacity:.8; margin-top:6px; line-height:1.4;}
+.recall-dismiss{width:32px; height:32px; flex-shrink:0; background:transparent; border-color:transparent;}
+.recall-dismiss:hover{border-color:var(--line);}
 .chip-grid{display:flex; flex-wrap:wrap; gap:8px; margin-top:9px;}
 .chip{
   display:inline-flex; align-items:center;
