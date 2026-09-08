@@ -2,7 +2,7 @@
 // signal (the exact situation this app needs to work in: grocery store
 // dead zones). App files are network-first so a redeploy always reaches
 // users promptly; the cached copy is only the fallback when offline.
-const CACHE_NAME = 'safebite-shell-v1';
+const CACHE_NAME = 'safebite-shell-v2';
 const SHELL_FILES = [
   '/',
   '/index.html',
