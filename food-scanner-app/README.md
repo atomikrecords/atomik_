@@ -14,6 +14,16 @@ A mobile-first web app that lets you build a dietary profile once, then scan a b
 - **Recall & reformulation alerts**: cross-references your own Recently Checked list against the FDA's public food-recall feed and surfaces an active recall as soon as you open the app.
 - **Graceful uncertainty**: if a product isn't in the database, its ingredient list is missing/in another language, or a connection's profile can't be reached, the app says so plainly rather than guessing.
 - **Recently checked** history for quick re-lookup.
+- **Installable app (PWA)**: add it to your phone's home screen for a real app icon, a full-screen app-like window, and offline access to the app itself once it's been opened at least once — useful in the exact dead zones (store basements, big-box backrooms) where you actually need it.
+
+## Installing it on a phone
+
+No app store needed — just send people the site link.
+
+- **iPhone**: open the link in **Safari** → tap the Share icon → **Add to Home Screen**.
+- **Android**: open the link in **Chrome** → tap the ⋮ menu → **Add to Home Screen** / **Install app** (Chrome sometimes prompts this automatically).
+
+It then opens like any other app: full-screen, its own icon, no browser bar. This only works on the real deployed site (HTTPS is required for the install prompt) — not `index-standalone.html` opened locally.
 
 ## Architecture
 

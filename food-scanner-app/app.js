@@ -1189,3 +1189,12 @@ renderProfileSummary();
 renderRecents();
 moveNavIndicator('view-home');
 checkRecalls();
+
+// Makes the app installable (Add to Home Screen) and usable with no
+// signal once it's been opened at least once — exactly the situation
+// this app needs to work in.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}

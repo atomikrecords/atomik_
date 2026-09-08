@@ -6,6 +6,7 @@
 <title>SafeBite — Personal Food Safety Scanner</title>
 <meta name="description" content="Scan or search any food product and instantly know if it's safe for your allergies, diet, and preferences.">
 <meta name="theme-color" content="#0b0d12">
+<link rel="manifest" href="manifest.json">
 <style>
 :root{
   --bg:#0b0d12;
@@ -385,6 +386,10 @@ body{
 
 </style>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234fd1a5'%3E%3Cpath d='M12 2.5 19.5 5.5V11c0 5.2-3.4 9.5-7.5 11-4.1-1.5-7.5-5.8-7.5-11V5.5Z'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SafeBite">
 </head>
 <body>
 
@@ -1742,6 +1747,15 @@ renderProfileSummary();
 renderRecents();
 moveNavIndicator('view-home');
 checkRecalls();
+
+// Makes the app installable (Add to Home Screen) and usable with no
+// signal once it's been opened at least once — exactly the situation
+// this app needs to work in.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
 
 </script>
 </body>
