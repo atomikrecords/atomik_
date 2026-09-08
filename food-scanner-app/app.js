@@ -32,7 +32,7 @@ const LAST_INTERSTITIAL_KEY = 'safebite_last_interstitial_v1';
    --------------------------------------------------------------------- */
 const ADS_CONFIG = {
   enabled: false,                     // flip to true once every value below is real
-  clientId: 'ca-pub-XXXXXXXXXXXXXXXX', // your AdSense Publisher ID
+  clientId: 'ca-pub-3442683568885336', // your AdSense Publisher ID
   bannerSlot: 'XXXXXXXXXX',            // ad unit ID for the bottom banner
   interstitialSlot: 'XXXXXXXXXX',      // ad unit ID for the every-5-scans interstitial
   scansPerInterstitial: 5,
