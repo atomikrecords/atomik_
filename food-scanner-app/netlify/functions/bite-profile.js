@@ -19,6 +19,22 @@ exports.handler = async (event) => {
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers };
 
+  // TEMPORARY diagnostic — never exposes the actual values, only whether
+  // they're present and how long they are, to debug why the function
+  // can't see them. Remove once BiteID sync is confirmed working.
+  if ((event.queryStringParameters || {}).debugEnv === '1') {
+    return {
+      statusCode: 200, headers, body: JSON.stringify({
+        hasSiteId: !!process.env.BLOBS_SITE_ID,
+        siteIdLength: (process.env.BLOBS_SITE_ID || '').length,
+        hasToken: !!process.env.BLOBS_TOKEN,
+        tokenLength: (process.env.BLOBS_TOKEN || '').length,
+        netlifyContext: process.env.CONTEXT || null,
+        netlifyBlobsContextPresent: !!process.env.NETLIFY_BLOBS_CONTEXT,
+      }),
+    };
+  }
+
   const id = ((event.queryStringParameters || {}).id || '').toUpperCase();
   if (!ID_PATTERN.test(id)) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid or missing BiteID.' }) };
