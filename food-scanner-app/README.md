@@ -25,6 +25,15 @@ No app store needed — just send people the site link.
 
 It then opens like any other app: full-screen, its own icon, no browser bar. This only works on the real deployed site (HTTPS is required for the install prompt) — not `index-standalone.html` opened locally.
 
+## Ads / monetization
+
+The app supports a bottom banner ad and an interstitial shown every 5th scan (skippable after 5 seconds, rate-limited so it can't fire back-to-back), via Google AdSense. Both are **off by default** — nothing ad-related loads or renders until you configure it:
+
+1. Sign up at [adsense.google.com](https://adsense.google.com) with this site's real deployed URL, and get approved (Google reviews the site first).
+2. Create two ad units (one "display" unit for the banner, one for the interstitial) and note their slot IDs, plus your Publisher ID (`ca-pub-...`).
+3. In `app.js`, find `ADS_CONFIG` near the top and fill in `clientId`, `bannerSlot`, `interstitialSlot`, then set `enabled: true`.
+4. A Privacy Policy (`privacy.html`, linked from the Profile screen) is included since AdSense requires one — read the note at the bottom of that page before relying on it for a live, monetized site.
+
 ## Architecture
 
 - **Frontend**: static HTML/CSS/JS, no build step, no framework.

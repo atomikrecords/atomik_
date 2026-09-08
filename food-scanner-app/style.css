@@ -43,6 +43,7 @@ body{
     radial-gradient(600px 300px at 50% -80px, rgba(79,209,165,.10), transparent 70%),
     var(--bg);
 }
+#app.ads-enabled{padding-bottom:132px;} /* room for the banner ad above the nav */
 .muted{color:var(--sub);}
 .small{font-size:.82rem;}
 .center{text-align:center;}
@@ -326,10 +327,20 @@ body{
 .saved-toast.toast-in{animation:toastIn .4s var(--ease-spring) both;}
 @keyframes toastIn{ from{ transform:translateY(8px); opacity:0 } to{ transform:none; opacity:1 } }
 
+/* Bottom bar (banner ad slot, when configured, + nav) */
+.bottom-bar{
+  position:fixed; bottom:0; left:0; right:0; z-index:30;
+  max-width:520px; margin:0 auto;
+}
+.banner-ad{
+  min-height:50px; display:flex; align-items:center; justify-content:center;
+  background:var(--panel2); border-top:1px solid var(--line-soft); overflow:hidden;
+}
+
 /* Bottom nav */
 .bottom-nav{
-  position:fixed; bottom:0; left:0; right:0; z-index:30;
-  display:flex; max-width:520px; margin:0 auto;
+  position:relative;
+  display:flex;
   background:rgba(15,18,25,.86); backdrop-filter:blur(16px) saturate(140%);
   border-top:1px solid var(--line-soft);
   padding-bottom:env(safe-area-inset-bottom,0px);
@@ -373,3 +384,21 @@ body{
 @media (min-width:600px){
   body{background:linear-gradient(180deg,var(--bg2),var(--bg));}
 }
+
+/* Interstitial ad */
+.interstitial-overlay{
+  position:fixed; inset:0; z-index:100; background:rgba(4,5,8,.82);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  animation:fadeIn .25s ease both;
+}
+.interstitial-card{
+  background:var(--panel); border:1px solid var(--line); border-radius:20px;
+  padding:20px; max-width:340px; width:100%; text-align:center;
+}
+.interstitial-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--sub); margin-bottom:12px;}
+.interstitial-slot{min-height:250px; display:flex; align-items:center; justify-content:center; margin-bottom:16px; background:var(--panel2); border-radius:12px; overflow:hidden;}
+.interstitial-close{width:100%;}
+.interstitial-close:disabled{opacity:.55; cursor:default;}
+
+.legal-link{text-align:center; margin-top:18px;}
+.legal-link a{color:var(--sub); font-size:.8rem; text-decoration:underline;}

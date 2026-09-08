@@ -18,6 +18,27 @@ const DISMISSED_RECALLS_KEY = 'safebite_dismissed_recalls_v1';
 const RECALL_CACHE_PREFIX = 'safebite_recall_cache_';
 const BITE_API = '/.netlify/functions/bite-profile';
 const SEARCH_API = '/.netlify/functions/search-proxy';
+const SCAN_COUNT_KEY = 'safebite_scan_count_v1';
+const LAST_INTERSTITIAL_KEY = 'safebite_last_interstitial_v1';
+
+/* ---------------------------------------------------------------------
+   Ads (Google AdSense) — OFF by default. This app has no ad account of
+   its own baked in: to actually get paid, sign up at
+   https://adsense.google.com with the site's real deployed URL, get
+   approved, then fill in the three values below and flip `enabled` to
+   true. Nothing ad-related loads, renders, or is requested from Google
+   until this is fully configured — no broken ad slots, no console
+   errors, no half-set-up state.
+   --------------------------------------------------------------------- */
+const ADS_CONFIG = {
+  enabled: false,                     // flip to true once every value below is real
+  clientId: 'ca-pub-XXXXXXXXXXXXXXXX', // your AdSense Publisher ID
+  bannerSlot: 'XXXXXXXXXX',            // ad unit ID for the bottom banner
+  interstitialSlot: 'XXXXXXXXXX',      // ad unit ID for the every-5-scans interstitial
+  scansPerInterstitial: 5,
+  minSecondsBetweenInterstitials: 90,  // frequency cap so it can't fire back-to-back
+  interstitialCloseDelaySeconds: 5,    // must stay visible at least this long before it's closable
+};
 
 /* ---------------------------------------------------------------------
    Vector icon set — hand-built, stroke-based line icons (24x24, MIT-style
@@ -693,6 +714,7 @@ async function lookupAndShow(code) {
     renderResult(product, code);
     renderRecents();
     checkRecalls();
+    registerScanForAds();
   } catch (err) {
     el.innerHTML = errorBox('Couldn\'t reach the food database. Check your internet connection and try again.');
   }
@@ -1182,6 +1204,85 @@ function escapeHtml(str) {
 }
 
 /* ---------------------------------------------------------------------
+   Ads
+   --------------------------------------------------------------------- */
+function adsFullyConfigured() {
+  return ADS_CONFIG.enabled
+    && !ADS_CONFIG.clientId.includes('XXXX')
+    && !ADS_CONFIG.bannerSlot.includes('XXXX')
+    && !ADS_CONFIG.interstitialSlot.includes('XXXX');
+}
+
+function initAds() {
+  if (!adsFullyConfigured()) return;
+  document.getElementById('app').classList.add('ads-enabled');
+  loadAdSenseScript();
+  renderBannerAd();
+}
+
+function loadAdSenseScript() {
+  if (document.getElementById('adsbygoogle-js')) return;
+  const s = document.createElement('script');
+  s.id = 'adsbygoogle-js';
+  s.async = true;
+  s.crossOrigin = 'anonymous';
+  s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADS_CONFIG.clientId}`;
+  document.head.appendChild(s);
+}
+
+function renderBannerAd() {
+  const el = document.getElementById('bannerAdSlot');
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.innerHTML = `<ins class="adsbygoogle" style="display:block;width:100%;height:50px" data-ad-client="${ADS_CONFIG.clientId}" data-ad-slot="${ADS_CONFIG.bannerSlot}" data-ad-format="horizontal" data-full-width-responsive="true"></ins>`;
+  try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+}
+
+// Called after every successfully viewed product — counts toward the
+// every-Nth-scan interstitial, rate-limited so it can never fire twice
+// in quick succession regardless of how fast someone scans.
+function registerScanForAds() {
+  if (!adsFullyConfigured()) return;
+  const count = parseInt(localStorage.getItem(SCAN_COUNT_KEY) || '0', 10) + 1;
+  localStorage.setItem(SCAN_COUNT_KEY, String(count));
+  if (count % ADS_CONFIG.scansPerInterstitial !== 0) return;
+
+  const lastShown = parseInt(localStorage.getItem(LAST_INTERSTITIAL_KEY) || '0', 10);
+  if (Date.now() - lastShown < ADS_CONFIG.minSecondsBetweenInterstitials * 1000) return;
+
+  showInterstitialAd();
+}
+
+function showInterstitialAd() {
+  localStorage.setItem(LAST_INTERSTITIAL_KEY, String(Date.now()));
+
+  const overlay = document.getElementById('interstitialAd');
+  const slot = document.getElementById('interstitialAdSlot');
+  const closeBtn = document.getElementById('closeInterstitialBtn');
+
+  slot.innerHTML = `<ins class="adsbygoogle" style="display:inline-block;width:300px;height:250px" data-ad-client="${ADS_CONFIG.clientId}" data-ad-slot="${ADS_CONFIG.interstitialSlot}"></ins>`;
+  try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+
+  overlay.classList.remove('hidden');
+  closeBtn.disabled = true;
+  let remaining = ADS_CONFIG.interstitialCloseDelaySeconds;
+  closeBtn.textContent = `Continue in ${remaining}s`;
+  const timer = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(timer);
+      closeBtn.disabled = false;
+      closeBtn.textContent = 'Continue';
+    } else {
+      closeBtn.textContent = `Continue in ${remaining}s`;
+    }
+  }, 1000);
+}
+document.getElementById('closeInterstitialBtn').addEventListener('click', () => {
+  document.getElementById('interstitialAd').classList.add('hidden');
+});
+
+/* ---------------------------------------------------------------------
    Init
    --------------------------------------------------------------------- */
 mountIcons();
@@ -1189,6 +1290,7 @@ renderProfileSummary();
 renderRecents();
 moveNavIndicator('view-home');
 checkRecalls();
+initAds();
 
 // Makes the app installable (Add to Home Screen) and usable with no
 // signal once it's been opened at least once — exactly the situation

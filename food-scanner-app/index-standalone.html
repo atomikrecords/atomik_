@@ -53,6 +53,7 @@ body{
     radial-gradient(600px 300px at 50% -80px, rgba(79,209,165,.10), transparent 70%),
     var(--bg);
 }
+#app.ads-enabled{padding-bottom:132px;} /* room for the banner ad above the nav */
 .muted{color:var(--sub);}
 .small{font-size:.82rem;}
 .center{text-align:center;}
@@ -336,10 +337,20 @@ body{
 .saved-toast.toast-in{animation:toastIn .4s var(--ease-spring) both;}
 @keyframes toastIn{ from{ transform:translateY(8px); opacity:0 } to{ transform:none; opacity:1 } }
 
+/* Bottom bar (banner ad slot, when configured, + nav) */
+.bottom-bar{
+  position:fixed; bottom:0; left:0; right:0; z-index:30;
+  max-width:520px; margin:0 auto;
+}
+.banner-ad{
+  min-height:50px; display:flex; align-items:center; justify-content:center;
+  background:var(--panel2); border-top:1px solid var(--line-soft); overflow:hidden;
+}
+
 /* Bottom nav */
 .bottom-nav{
-  position:fixed; bottom:0; left:0; right:0; z-index:30;
-  display:flex; max-width:520px; margin:0 auto;
+  position:relative;
+  display:flex;
   background:rgba(15,18,25,.86); backdrop-filter:blur(16px) saturate(140%);
   border-top:1px solid var(--line-soft);
   padding-bottom:env(safe-area-inset-bottom,0px);
@@ -383,6 +394,24 @@ body{
 @media (min-width:600px){
   body{background:linear-gradient(180deg,var(--bg2),var(--bg));}
 }
+
+/* Interstitial ad */
+.interstitial-overlay{
+  position:fixed; inset:0; z-index:100; background:rgba(4,5,8,.82);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  animation:fadeIn .25s ease both;
+}
+.interstitial-card{
+  background:var(--panel); border:1px solid var(--line); border-radius:20px;
+  padding:20px; max-width:340px; width:100%; text-align:center;
+}
+.interstitial-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--sub); margin-bottom:12px;}
+.interstitial-slot{min-height:250px; display:flex; align-items:center; justify-content:center; margin-bottom:16px; background:var(--panel2); border-radius:12px; overflow:hidden;}
+.interstitial-close{width:100%;}
+.interstitial-close:disabled{opacity:.55; cursor:default;}
+
+.legal-link{text-align:center; margin-top:18px;}
+.legal-link a{color:var(--sub); font-size:.8rem; text-decoration:underline;}
 
 </style>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234fd1a5'%3E%3Cpath d='M12 2.5 19.5 5.5V11c0 5.2-3.4 9.5-7.5 11-4.1-1.5-7.5-5.8-7.5-11V5.5Z'/%3E%3C/svg%3E">
@@ -540,17 +569,31 @@ body{
         <button type="submit" class="btn btn-primary btn-big">Save Profile</button>
         <p id="savedToast" class="saved-toast hidden"><span data-icon="checkCircle"></span>Profile saved</p>
       </form>
+
+      <p class="legal-link"><a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a></p>
     </section>
 
   </main>
 
-  <!-- ===== Bottom nav ===== -->
-  <nav class="bottom-nav">
-    <div class="nav-indicator" id="navIndicator"></div>
-    <button class="nav-btn active" data-nav="view-home"><span data-icon="home"></span>Home</button>
-    <button class="nav-btn" data-nav="view-scanner-open"><span data-icon="camera"></span>Scan</button>
-    <button class="nav-btn" data-nav="view-profile"><span data-icon="user"></span>Profile</button>
-  </nav>
+  <!-- ===== Bottom bar: banner ad (only when configured) + nav ===== -->
+  <div class="bottom-bar">
+    <div id="bannerAdSlot" class="banner-ad hidden"></div>
+    <nav class="bottom-nav">
+      <div class="nav-indicator" id="navIndicator"></div>
+      <button class="nav-btn active" data-nav="view-home"><span data-icon="home"></span>Home</button>
+      <button class="nav-btn" data-nav="view-scanner-open"><span data-icon="camera"></span>Scan</button>
+      <button class="nav-btn" data-nav="view-profile"><span data-icon="user"></span>Profile</button>
+    </nav>
+  </div>
+
+  <!-- ===== Interstitial ad overlay (only shown when ads are configured) ===== -->
+  <div id="interstitialAd" class="interstitial-overlay hidden">
+    <div class="interstitial-card">
+      <div class="interstitial-label">Advertisement</div>
+      <div id="interstitialAdSlot" class="interstitial-slot"></div>
+      <button type="button" id="closeInterstitialBtn" class="btn btn-secondary interstitial-close" disabled>Continue</button>
+    </div>
+  </div>
 
 </div>
 
@@ -576,6 +619,27 @@ const DISMISSED_RECALLS_KEY = 'safebite_dismissed_recalls_v1';
 const RECALL_CACHE_PREFIX = 'safebite_recall_cache_';
 const BITE_API = '/.netlify/functions/bite-profile';
 const SEARCH_API = '/.netlify/functions/search-proxy';
+const SCAN_COUNT_KEY = 'safebite_scan_count_v1';
+const LAST_INTERSTITIAL_KEY = 'safebite_last_interstitial_v1';
+
+/* ---------------------------------------------------------------------
+   Ads (Google AdSense) — OFF by default. This app has no ad account of
+   its own baked in: to actually get paid, sign up at
+   https://adsense.google.com with the site's real deployed URL, get
+   approved, then fill in the three values below and flip `enabled` to
+   true. Nothing ad-related loads, renders, or is requested from Google
+   until this is fully configured — no broken ad slots, no console
+   errors, no half-set-up state.
+   --------------------------------------------------------------------- */
+const ADS_CONFIG = {
+  enabled: false,                     // flip to true once every value below is real
+  clientId: 'ca-pub-XXXXXXXXXXXXXXXX', // your AdSense Publisher ID
+  bannerSlot: 'XXXXXXXXXX',            // ad unit ID for the bottom banner
+  interstitialSlot: 'XXXXXXXXXX',      // ad unit ID for the every-5-scans interstitial
+  scansPerInterstitial: 5,
+  minSecondsBetweenInterstitials: 90,  // frequency cap so it can't fire back-to-back
+  interstitialCloseDelaySeconds: 5,    // must stay visible at least this long before it's closable
+};
 
 /* ---------------------------------------------------------------------
    Vector icon set — hand-built, stroke-based line icons (24x24, MIT-style
@@ -1251,6 +1315,7 @@ async function lookupAndShow(code) {
     renderResult(product, code);
     renderRecents();
     checkRecalls();
+    registerScanForAds();
   } catch (err) {
     el.innerHTML = errorBox('Couldn\'t reach the food database. Check your internet connection and try again.');
   }
@@ -1740,6 +1805,85 @@ function escapeHtml(str) {
 }
 
 /* ---------------------------------------------------------------------
+   Ads
+   --------------------------------------------------------------------- */
+function adsFullyConfigured() {
+  return ADS_CONFIG.enabled
+    && !ADS_CONFIG.clientId.includes('XXXX')
+    && !ADS_CONFIG.bannerSlot.includes('XXXX')
+    && !ADS_CONFIG.interstitialSlot.includes('XXXX');
+}
+
+function initAds() {
+  if (!adsFullyConfigured()) return;
+  document.getElementById('app').classList.add('ads-enabled');
+  loadAdSenseScript();
+  renderBannerAd();
+}
+
+function loadAdSenseScript() {
+  if (document.getElementById('adsbygoogle-js')) return;
+  const s = document.createElement('script');
+  s.id = 'adsbygoogle-js';
+  s.async = true;
+  s.crossOrigin = 'anonymous';
+  s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADS_CONFIG.clientId}`;
+  document.head.appendChild(s);
+}
+
+function renderBannerAd() {
+  const el = document.getElementById('bannerAdSlot');
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.innerHTML = `<ins class="adsbygoogle" style="display:block;width:100%;height:50px" data-ad-client="${ADS_CONFIG.clientId}" data-ad-slot="${ADS_CONFIG.bannerSlot}" data-ad-format="horizontal" data-full-width-responsive="true"></ins>`;
+  try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+}
+
+// Called after every successfully viewed product — counts toward the
+// every-Nth-scan interstitial, rate-limited so it can never fire twice
+// in quick succession regardless of how fast someone scans.
+function registerScanForAds() {
+  if (!adsFullyConfigured()) return;
+  const count = parseInt(localStorage.getItem(SCAN_COUNT_KEY) || '0', 10) + 1;
+  localStorage.setItem(SCAN_COUNT_KEY, String(count));
+  if (count % ADS_CONFIG.scansPerInterstitial !== 0) return;
+
+  const lastShown = parseInt(localStorage.getItem(LAST_INTERSTITIAL_KEY) || '0', 10);
+  if (Date.now() - lastShown < ADS_CONFIG.minSecondsBetweenInterstitials * 1000) return;
+
+  showInterstitialAd();
+}
+
+function showInterstitialAd() {
+  localStorage.setItem(LAST_INTERSTITIAL_KEY, String(Date.now()));
+
+  const overlay = document.getElementById('interstitialAd');
+  const slot = document.getElementById('interstitialAdSlot');
+  const closeBtn = document.getElementById('closeInterstitialBtn');
+
+  slot.innerHTML = `<ins class="adsbygoogle" style="display:inline-block;width:300px;height:250px" data-ad-client="${ADS_CONFIG.clientId}" data-ad-slot="${ADS_CONFIG.interstitialSlot}"></ins>`;
+  try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+
+  overlay.classList.remove('hidden');
+  closeBtn.disabled = true;
+  let remaining = ADS_CONFIG.interstitialCloseDelaySeconds;
+  closeBtn.textContent = `Continue in ${remaining}s`;
+  const timer = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(timer);
+      closeBtn.disabled = false;
+      closeBtn.textContent = 'Continue';
+    } else {
+      closeBtn.textContent = `Continue in ${remaining}s`;
+    }
+  }, 1000);
+}
+document.getElementById('closeInterstitialBtn').addEventListener('click', () => {
+  document.getElementById('interstitialAd').classList.add('hidden');
+});
+
+/* ---------------------------------------------------------------------
    Init
    --------------------------------------------------------------------- */
 mountIcons();
@@ -1747,6 +1891,7 @@ renderProfileSummary();
 renderRecents();
 moveNavIndicator('view-home');
 checkRecalls();
+initAds();
 
 // Makes the app installable (Add to Home Screen) and usable with no
 // signal once it's been opened at least once — exactly the situation

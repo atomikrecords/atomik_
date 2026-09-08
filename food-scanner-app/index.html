@@ -163,17 +163,31 @@
         <button type="submit" class="btn btn-primary btn-big">Save Profile</button>
         <p id="savedToast" class="saved-toast hidden"><span data-icon="checkCircle"></span>Profile saved</p>
       </form>
+
+      <p class="legal-link"><a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a></p>
     </section>
 
   </main>
 
-  <!-- ===== Bottom nav ===== -->
-  <nav class="bottom-nav">
-    <div class="nav-indicator" id="navIndicator"></div>
-    <button class="nav-btn active" data-nav="view-home"><span data-icon="home"></span>Home</button>
-    <button class="nav-btn" data-nav="view-scanner-open"><span data-icon="camera"></span>Scan</button>
-    <button class="nav-btn" data-nav="view-profile"><span data-icon="user"></span>Profile</button>
-  </nav>
+  <!-- ===== Bottom bar: banner ad (only when configured) + nav ===== -->
+  <div class="bottom-bar">
+    <div id="bannerAdSlot" class="banner-ad hidden"></div>
+    <nav class="bottom-nav">
+      <div class="nav-indicator" id="navIndicator"></div>
+      <button class="nav-btn active" data-nav="view-home"><span data-icon="home"></span>Home</button>
+      <button class="nav-btn" data-nav="view-scanner-open"><span data-icon="camera"></span>Scan</button>
+      <button class="nav-btn" data-nav="view-profile"><span data-icon="user"></span>Profile</button>
+    </nav>
+  </div>
+
+  <!-- ===== Interstitial ad overlay (only shown when ads are configured) ===== -->
+  <div id="interstitialAd" class="interstitial-overlay hidden">
+    <div class="interstitial-card">
+      <div class="interstitial-label">Advertisement</div>
+      <div id="interstitialAdSlot" class="interstitial-slot"></div>
+      <button type="button" id="closeInterstitialBtn" class="btn btn-secondary interstitial-close" disabled>Continue</button>
+    </div>
+  </div>
 
 </div>
 
