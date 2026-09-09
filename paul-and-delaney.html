@@ -9,16 +9,17 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Cinzel:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap">
 <style>
   :root{
-    --sage:#8a9b7e;
-    --sage-deep:#5f7156;
-    --sage-pale:#e7ecdf;
-    --navy:#1b2a4a;
-    --navy-deep:#0f1930;
-    --cream:#faf7f0;
-    --cream-deep:#f1ead9;
-    --ink:#20261f;
-    --gold:#c8a866;
-    --line: rgba(27,42,74,.14);
+    --sage:#9caf8a;
+    --sage-deep:#66795a;
+    --sage-pale:#e6ead9;
+    --navy:#182a4d;
+    --navy-deep:#0a1424;
+    --cream:#faf7ef;
+    --cream-deep:#f0e9d8;
+    --ink:#1e241c;
+    --gold:#c3a468;
+    --ivory:#fffaf1;
+    --line: rgba(24,42,77,.14);
     --ease: cubic-bezier(.16,1,.3,1);
     --ease-soft: cubic-bezier(.22,1,.36,1);
   }
@@ -36,11 +37,14 @@
   ::selection{ background:var(--sage); color:#fff; }
   h1,h2,h3,.serif{ font-family:'Cormorant Garamond', serif; }
   .display{ font-family:'Cinzel', serif; letter-spacing:.14em; text-transform:uppercase; }
+  a{ cursor:none; }
+  [data-hover]{ cursor:none; }
+  img{ max-width:100%; display:block; }
 
   /* ---------- custom cursor ---------- */
   .cursor{
     position:fixed; top:0; left:0; width:10px; height:10px; border-radius:50%;
-    background:var(--sage-deep); pointer-events:none; z-index:9999; mix-blend-mode:normal;
+    background:var(--sage-deep); pointer-events:none; z-index:9999;
     transform:translate(-50%,-50%); transition:width .25s var(--ease), height .25s var(--ease), background .25s var(--ease);
   }
   .cursor-ring{
@@ -73,15 +77,28 @@
 
   nav{
     position:fixed; top:0; left:0; right:0; z-index:400; display:flex; align-items:center; justify-content:space-between;
-    padding:26px 6vw; mix-blend-mode:difference; color:#fff; transition:padding .4s var(--ease);
+    padding:26px 5vw; mix-blend-mode:difference; color:#fff; transition:padding .4s var(--ease);
   }
-  nav.scrolled{ padding:14px 6vw; }
-  .nav-mark{ font-family:'Cinzel',serif; letter-spacing:.2em; font-size:14px; color:#fff; text-decoration:none; }
-  .nav-links{ display:flex; gap:36px; list-style:none; margin:0; padding:0; }
-  .nav-links a{ color:#fff; text-decoration:none; font-size:13px; letter-spacing:.12em; text-transform:uppercase; position:relative; }
+  nav.scrolled{ padding:14px 5vw; }
+  .nav-mark{ font-family:'Cinzel',serif; letter-spacing:.2em; font-size:14px; color:#fff; text-decoration:none; flex:none; }
+  .nav-links{ display:flex; gap:24px; list-style:none; margin:0; padding:0; flex-wrap:wrap; justify-content:flex-end; }
+  .nav-links a{ color:#fff; text-decoration:none; font-size:12px; letter-spacing:.1em; text-transform:uppercase; position:relative; white-space:nowrap; }
   .nav-links a::after{ content:''; position:absolute; left:0; bottom:-5px; width:0; height:1px; background:#fff; transition:width .4s var(--ease); }
   .nav-links a:hover::after{ width:100%; }
-  @media (max-width: 820px){ .nav-links{ display:none; } }
+  #navToggle{ display:none; }
+  @media (max-width: 980px){
+    .nav-links{
+      display:none; position:fixed; top:0; right:0; height:100vh; width:min(78vw,320px);
+      background:var(--navy-deep); flex-direction:column; align-items:flex-start; justify-content:center;
+      gap:26px; padding:40px; mix-blend-mode:normal; z-index:401;
+    }
+    .nav-links.open{ display:flex; }
+    .nav-links a{ font-size:15px; }
+    #navToggle{
+      display:flex; flex-direction:column; gap:5px; background:none; border:none; padding:8px; z-index:402; mix-blend-mode:difference;
+    }
+    #navToggle span{ width:22px; height:1px; background:#fff; display:block; }
+  }
 
   section{ position:relative; }
 
@@ -94,8 +111,8 @@
   .hero-veil{
     position:absolute; inset:0;
     background:
-      radial-gradient(ellipse at 50% 30%, rgba(138,155,126,.18), transparent 60%),
-      linear-gradient(180deg, rgba(15,25,48,.15), rgba(15,25,48,.75) 85%);
+      radial-gradient(ellipse at 50% 30%, rgba(156,175,138,.18), transparent 60%),
+      linear-gradient(180deg, rgba(10,20,36,.15), rgba(10,20,36,.78) 85%);
   }
   .hero-inner{ position:relative; z-index:2; text-align:center; color:var(--cream); padding:0 20px; }
   .hero-eyebrow{
@@ -107,7 +124,6 @@
     display:flex; align-items:center; justify-content:center; gap:clamp(14px,3vw,34px); flex-wrap:wrap;
   }
   .hero-names .name{ overflow:hidden; display:inline-block; }
-  .hero-names .name span{ display:inline-block; transform:translateY(105%); animation:riseName 1.2s var(--ease-soft) forwards; }
   .hero-names .amp{
     font-family:'Cormorant Garamond', serif; font-style:italic; font-size:.5em; color:var(--gold);
     opacity:0; animation:fadeUp 1s var(--ease-soft) .9s forwards;
@@ -139,31 +155,50 @@
   .reveal.in{ opacity:1; transform:translateY(0); }
   .reveal-scale{ opacity:0; transform:scale(.92); transition:opacity 1.1s var(--ease-soft), transform 1.1s var(--ease-soft); }
   .reveal-scale.in{ opacity:1; transform:scale(1); }
-  .stagger > *{ transition-delay:calc(var(--i,0) * 120ms); }
+  .stagger > *{ transition-delay:calc(var(--i,0) * 110ms); }
 
-  .section-pad{ padding:150px 8vw; }
+  .section-pad{ padding:130px 8vw; }
+  .section-pad.tight{ padding-top:90px; padding-bottom:90px; }
   .kicker{ font-size:12px; letter-spacing:.5em; text-transform:uppercase; color:var(--sage-deep); display:flex; align-items:center; gap:16px; justify-content:center; }
   .kicker::before,.kicker::after{ content:''; width:40px; height:1px; background:var(--sage-deep); }
   .section-title{ text-align:center; font-size:clamp(38px,6vw,72px); font-weight:400; margin:18px 0 0; color:var(--navy); }
+  .section-intro{ max-width:640px; margin:22px auto 0; text-align:center; font-size:16px; line-height:1.8; color:#454f41; }
+  .divider-mark{ text-align:center; margin:60px 0; color:var(--sage-deep); font-family:'Cormorant Garamond',serif; font-style:italic; font-size:22px; opacity:.7; }
 
-  /* ---------- story / intro ---------- */
+  /* ---------- welcome band ---------- */
+  #welcome{ background:var(--sage-pale); text-align:center; padding:90px 8vw; }
+  #welcome p{ max-width:760px; margin:0 auto; font-family:'Cormorant Garamond',serif; font-size:clamp(20px,2.4vw,28px); font-style:italic; line-height:1.7; color:var(--navy); }
+  #welcome .sign{ margin-top:26px; font-family:'Cinzel',serif; letter-spacing:.25em; font-size:13px; color:var(--sage-deep); }
+
+  /* ---------- story ---------- */
   #story{ background:var(--cream); text-align:center; }
-  .story-quote{ max-width:820px; margin:50px auto 0; font-size:clamp(20px,2.6vw,30px); font-weight:300; line-height:1.6; color:var(--navy); font-family:'Cormorant Garamond',serif; font-style:italic; }
+  .story-quote{ max-width:820px; margin:36px auto 0; font-size:clamp(20px,2.6vw,30px); font-weight:300; line-height:1.6; color:var(--navy); font-family:'Cormorant Garamond',serif; font-style:italic; }
   .monogram{
     width:96px; height:96px; margin:0 auto 26px; border:1px solid var(--gold); border-radius:50%;
     display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:26px; color:var(--navy); letter-spacing:.06em;
     position:relative;
   }
   .monogram::before{ content:''; position:absolute; inset:-14px; border:1px solid var(--sage); border-radius:50%; opacity:.5; }
+  .story-cols{ display:grid; grid-template-columns:repeat(3,1fr); gap:44px; max-width:1150px; margin:80px auto 0; text-align:left; }
+  @media (max-width:860px){ .story-cols{ grid-template-columns:1fr; } }
+  .story-card{ background:var(--ivory); border:1px solid var(--line); border-radius:6px; padding:34px 30px; }
+  .story-card .num{ font-family:'Cinzel',serif; font-size:12px; letter-spacing:.3em; color:var(--gold); }
+  .story-card h3{ margin:14px 0 12px; font-size:26px; color:var(--navy); }
+  .story-card p{ margin:0; font-size:15px; line-height:1.8; color:#454f41; }
 
-  /* ---------- timeline ---------- */
-  #timeline{ background:var(--navy-deep); color:var(--cream); }
-  #timeline .kicker{ color:var(--sage-pale); }
-  #timeline .kicker::before,#timeline .kicker::after{ background:var(--sage-pale); }
-  #timeline .section-title{ color:var(--cream); }
-  .tl{ max-width:900px; margin:90px auto 0; position:relative; }
+  /* ---------- weekend / schedule ---------- */
+  #weekend{ background:var(--navy-deep); color:var(--cream); }
+  #weekend .kicker{ color:var(--sage-pale); }
+  #weekend .kicker::before,#weekend .kicker::after{ background:var(--sage-pale); }
+  #weekend .section-title{ color:var(--cream); }
+  #weekend .section-intro{ color:var(--sage-pale); }
+  .day-group{ max-width:900px; margin:70px auto 0; }
+  .day-heading{ display:flex; align-items:center; gap:20px; margin-bottom:10px; }
+  .day-heading .d-line{ flex:1; height:1px; background:rgba(250,247,239,.18); }
+  .day-heading h3{ margin:0; font-size:28px; color:var(--gold); white-space:nowrap; }
+  .tl{ max-width:900px; margin:30px auto 90px; position:relative; }
   .tl::before{ content:''; position:absolute; left:50%; top:0; bottom:0; width:1px; background:linear-gradient(180deg, transparent, var(--sage), var(--gold), var(--sage), transparent); transform:translateX(-50%); }
-  .tl-item{ position:relative; width:50%; padding:0 60px 90px; }
+  .tl-item{ position:relative; width:50%; padding:0 60px 70px; }
   .tl-item:nth-child(odd){ left:0; text-align:right; }
   .tl-item:nth-child(even){ left:50%; text-align:left; }
   .tl-dot{
@@ -174,14 +209,15 @@
   .tl-item:nth-child(even) .tl-dot{ left:-7px; }
   .tl-item.in .tl-dot{ background:var(--gold); transform:scale(1.3); }
   .tl-time{ display:block; font-size:12px; letter-spacing:.3em; text-transform:uppercase; color:var(--gold); margin-bottom:8px; }
-  .tl-title{ font-size:28px; font-family:'Cormorant Garamond',serif; margin:0 0 8px; }
-  .tl-desc{ font-size:15px; color:var(--sage-pale); line-height:1.7; max-width:320px; }
+  .tl-title{ font-size:26px; font-family:'Cormorant Garamond',serif; margin:0 0 8px; }
+  .tl-desc{ font-size:14px; color:var(--sage-pale); line-height:1.7; max-width:300px; }
   .tl-item:nth-child(odd) .tl-desc{ margin-left:auto; }
   @media (max-width:760px){
     .tl::before{ left:14px; }
-    .tl-item, .tl-item:nth-child(even){ left:0; width:100%; text-align:left; padding:0 0 70px 46px; }
+    .tl-item, .tl-item:nth-child(even){ left:0; width:100%; text-align:left; padding:0 0 60px 46px; }
     .tl-item:nth-child(odd) .tl-dot,.tl-item:nth-child(even) .tl-dot{ left:7px; right:auto; }
     .tl-item:nth-child(odd) .tl-desc{ margin-left:0; }
+    .day-heading h3{ font-size:22px; }
   }
 
   /* ---------- venue ---------- */
@@ -193,7 +229,7 @@
     background:
       radial-gradient(circle at 30% 20%, rgba(255,255,255,.25), transparent 45%),
       linear-gradient(160deg, var(--sage) 0%, var(--sage-deep) 45%, var(--navy) 130%);
-    box-shadow:0 40px 80px -30px rgba(15,25,48,.45);
+    box-shadow:0 40px 80px -30px rgba(10,20,36,.45);
   }
   .venue-frame svg{ position:absolute; inset:0; width:100%; height:100%; }
   .venue-frame::after{
@@ -211,12 +247,25 @@
   }
   .venue-cta svg{ transition:transform .4s var(--ease); }
   .venue-cta:hover svg{ transform:translateX(6px); }
+  .venue-address{ margin-top:34px; padding-top:26px; border-top:1px solid var(--line); font-size:14px; color:var(--navy); line-height:1.9; }
+  .venue-address strong{ display:block; font-family:'Cinzel',serif; font-size:11px; letter-spacing:.25em; color:var(--sage-deep); margin-bottom:8px; }
+
+  /* mini gallery strip under venue */
+  .venue-strip{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; max-width:1200px; margin:60px auto 0; }
+  @media (max-width:760px){ .venue-strip{ grid-template-columns:repeat(2,1fr); } }
+  .strip-tile{
+    aspect-ratio:3/4; border-radius:4px; overflow:hidden; position:relative;
+    display:flex; align-items:flex-end; padding:14px; color:#fff; font-size:11px; letter-spacing:.15em; text-transform:uppercase;
+  }
+  .strip-tile span{ position:relative; z-index:1; }
+  .strip-tile .tile-bg{ position:absolute; inset:0; opacity:.9; }
+  .strip-tile::after{ content:''; position:absolute; inset:0; background:linear-gradient(180deg, transparent 40%, rgba(0,0,0,.55)); }
 
   /* ---------- countdown ---------- */
   #countdown{ background:var(--navy); color:var(--cream); text-align:center; position:relative; overflow:hidden; }
   #countdown::before{
     content:''; position:absolute; inset:0;
-    background-image:linear-gradient(rgba(250,247,240,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(250,247,240,.05) 1px, transparent 1px);
+    background-image:linear-gradient(rgba(250,247,239,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(250,247,239,.05) 1px, transparent 1px);
     background-size:52px 52px; mask-image:radial-gradient(ellipse at center, black, transparent 75%);
   }
   .cd-wrap{ position:relative; z-index:1; display:flex; gap:clamp(20px,5vw,80px); justify-content:center; flex-wrap:wrap; margin-top:60px; }
@@ -225,41 +274,102 @@
   .cd-label{ font-size:11px; letter-spacing:.4em; text-transform:uppercase; color:var(--gold); }
   .cd-sep{ font-family:'Cormorant Garamond',serif; font-size:clamp(30px,5vw,60px); color:var(--sage); align-self:flex-start; margin-top:6px; }
 
-  /* ---------- palette ---------- */
-  #palette{ background:var(--cream); text-align:center; }
-  .swatches{ display:flex; justify-content:center; gap:22px; margin-top:60px; flex-wrap:wrap; }
-  .swatch{ width:150px; }
-  .swatch-color{ width:150px; height:150px; border-radius:50%; box-shadow:0 20px 40px -18px rgba(0,0,0,.35); transition:transform .5s var(--ease); }
+  /* ---------- travel ---------- */
+  #travel{ background:var(--cream); }
+  .travel-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:30px; max-width:1150px; margin:70px auto 0; }
+  @media (max-width:900px){ .travel-grid{ grid-template-columns:1fr; } }
+  .travel-card{ background:var(--ivory); border:1px solid var(--line); border-radius:6px; padding:36px 30px; text-align:center; }
+  .travel-icon{ width:52px; height:52px; margin:0 auto 20px; border-radius:50%; background:var(--sage-pale); display:flex; align-items:center; justify-content:center; }
+  .travel-card h3{ margin:0 0 10px; font-size:24px; color:var(--navy); }
+  .travel-card p{ margin:0 0 6px; font-size:14px; line-height:1.75; color:#454f41; }
+  .travel-card .tag{ display:inline-block; margin-top:14px; font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--sage-deep); border:1px solid var(--sage); border-radius:20px; padding:6px 14px; }
+
+  /* ---------- attire / palette ---------- */
+  #attire{ background:var(--sage-pale); }
+  .swatches{ display:flex; justify-content:center; gap:22px; margin:60px 0 70px; flex-wrap:wrap; }
+  .swatch{ width:140px; }
+  .swatch-color{ width:140px; height:140px; border-radius:50%; box-shadow:0 20px 40px -18px rgba(0,0,0,.35); transition:transform .5s var(--ease); }
   .swatch:hover .swatch-color{ transform:translateY(-10px) scale(1.04); }
-  .swatch-name{ margin-top:16px; font-size:12px; letter-spacing:.25em; text-transform:uppercase; color:var(--navy); }
-  .swatch-hex{ font-size:11px; color:#8a8a8a; letter-spacing:.1em; margin-top:4px; }
+  .swatch-name{ margin-top:16px; font-size:12px; letter-spacing:.25em; text-transform:uppercase; color:var(--navy); text-align:center; }
+  .swatch-hex{ font-size:11px; color:#767767; letter-spacing:.1em; margin-top:4px; text-align:center; }
+  .attire-notes{ display:grid; grid-template-columns:1fr 1fr; gap:40px; max-width:900px; margin:0 auto; }
+  @media (max-width:760px){ .attire-notes{ grid-template-columns:1fr; } }
+  .attire-notes h4{ font-family:'Cinzel',serif; font-size:13px; letter-spacing:.2em; color:var(--sage-deep); margin:0 0 10px; }
+  .attire-notes p{ font-size:15px; line-height:1.8; color:#3b4438; margin:0; }
 
   /* ---------- party ---------- */
-  #party{ background:var(--sage-pale); }
-  .party-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:40px; max-width:1100px; margin:80px auto 0; }
+  #party{ background:var(--cream); }
+  .party-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:44px 30px; max-width:1150px; margin:80px auto 0; }
   .party-card{ text-align:center; }
   .party-photo{
-    width:180px; height:180px; margin:0 auto 22px; border-radius:50%; position:relative;
+    width:170px; height:170px; margin:0 auto 22px; border-radius:50%; position:relative;
     background:linear-gradient(150deg, var(--navy), var(--sage-deep));
-    display:flex; align-items:center; justify-content:center; font-family:'Cormorant Garamond',serif; font-size:44px; color:var(--cream);
-    box-shadow:0 24px 50px -22px rgba(27,42,74,.5);
+    display:flex; align-items:center; justify-content:center; font-family:'Cormorant Garamond',serif; font-size:42px; color:var(--cream);
+    box-shadow:0 24px 50px -22px rgba(24,42,77,.5);
   }
   .party-photo::after{ content:''; position:absolute; inset:-8px; border:1px solid var(--gold); border-radius:50%; opacity:0; transition:opacity .4s var(--ease), transform .4s var(--ease); transform:scale(.9); }
   .party-card:hover .party-photo::after{ opacity:1; transform:scale(1); }
-  .party-name{ font-family:'Cormorant Garamond',serif; font-size:24px; color:var(--navy); margin:0 0 4px; }
-  .party-role{ font-size:11px; letter-spacing:.25em; text-transform:uppercase; color:var(--sage-deep); }
+  .party-name{ font-family:'Cormorant Garamond',serif; font-size:23px; color:var(--navy); margin:0 0 4px; }
+  .party-role{ font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--sage-deep); margin-bottom:10px; }
+  .party-bio{ font-size:13px; line-height:1.7; color:#5c6456; max-width:230px; margin:0 auto; }
+  .party-sub{ text-align:center; font-family:'Cinzel',serif; font-size:13px; letter-spacing:.25em; color:var(--sage-deep); margin:90px 0 0; }
+
+  /* ---------- gallery ---------- */
+  #gallery{ background:var(--navy-deep); color:var(--cream); }
+  #gallery .kicker{ color:var(--sage-pale); }
+  #gallery .kicker::before,#gallery .kicker::after{ background:var(--sage-pale); }
+  #gallery .section-title{ color:var(--cream); }
+  #gallery .section-intro{ color:var(--sage-pale); }
+  .gallery-grid{ display:grid; grid-template-columns:repeat(4,1fr); grid-auto-rows:150px; gap:14px; max-width:1200px; margin:70px auto 0; }
+  .gallery-grid .g1{ grid-column:span 2; grid-row:span 2; }
+  .gallery-grid .g2{ grid-column:span 2; }
+  @media (max-width:760px){
+    .gallery-grid{ grid-template-columns:repeat(2,1fr); grid-auto-rows:120px; }
+    .gallery-grid .g1{ grid-column:span 2; grid-row:span 2; }
+    .gallery-grid .g2{ grid-column:span 1; }
+  }
+  .g-tile{
+    position:relative; border-radius:4px; overflow:hidden; display:flex; align-items:center; justify-content:center;
+    border:1px dashed rgba(250,247,239,.28); transition:transform .5s var(--ease);
+  }
+  .g-tile:hover{ transform:scale(1.02); }
+  .g-tile span{ font-family:'Cinzel',serif; font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:rgba(250,247,239,.55); }
+
+  /* ---------- registry ---------- */
+  #registry{ background:var(--cream); }
+  .registry-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:30px; max-width:1150px; margin:70px auto 0; }
+  @media (max-width:900px){ .registry-grid{ grid-template-columns:1fr; } }
+  .registry-card{ background:var(--ivory); border:1px solid var(--line); border-radius:6px; padding:40px 30px; text-align:center; position:relative; overflow:hidden; }
+  .registry-card::before{ content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--sage),var(--gold)); }
+  .registry-card h3{ margin:10px 0 12px; font-size:24px; color:var(--navy); }
+  .registry-card p{ font-size:14px; line-height:1.75; color:#454f41; margin:0 0 22px; }
+  .registry-btn{ display:inline-block; font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--navy); border-bottom:1px solid var(--navy); padding-bottom:5px; text-decoration:none; }
+
+  /* ---------- faq ---------- */
+  #faq{ background:var(--sage-pale); }
+  .faq-list{ max-width:760px; margin:70px auto 0; }
+  .faq-item{ border-bottom:1px solid rgba(24,42,77,.18); }
+  .faq-q{
+    width:100%; text-align:left; background:none; border:none; padding:24px 4px; cursor:none;
+    display:flex; align-items:center; justify-content:space-between; gap:20px;
+    font-family:'Cormorant Garamond',serif; font-size:22px; color:var(--navy);
+  }
+  .faq-q .plus{ font-family:'Jost',sans-serif; font-size:22px; color:var(--sage-deep); transition:transform .4s var(--ease); flex:none; }
+  .faq-item.open .faq-q .plus{ transform:rotate(135deg); }
+  .faq-a{ max-height:0; overflow:hidden; transition:max-height .5s var(--ease); }
+  .faq-a p{ margin:0 0 24px; font-size:15px; line-height:1.8; color:#454f41; max-width:640px; }
 
   /* ---------- rsvp ---------- */
   #rsvp{ background:var(--navy-deep); color:var(--cream); text-align:center; }
   .rsvp-form{ max-width:560px; margin:60px auto 0; display:grid; gap:22px; text-align:left; }
   .field{ position:relative; }
   .field input, .field select, .field textarea{
-    width:100%; background:transparent; border:none; border-bottom:1px solid rgba(250,247,240,.3); color:var(--cream);
+    width:100%; background:transparent; border:none; border-bottom:1px solid rgba(250,247,239,.3); color:var(--cream);
     font-family:'Jost',sans-serif; font-size:16px; padding:12px 2px; outline:none; transition:border-color .3s;
   }
   .field select option{ color:#111; }
   .field input:focus, .field select:focus, .field textarea:focus{ border-color:var(--gold); }
-  .field label{ position:absolute; left:2px; top:12px; font-size:14px; color:rgba(250,247,240,.55); pointer-events:none; transition:all .3s var(--ease); }
+  .field label{ position:absolute; left:2px; top:12px; font-size:14px; color:rgba(250,247,239,.55); pointer-events:none; transition:all .3s var(--ease); }
   .field input:focus + label, .field input:not(:placeholder-shown) + label,
   .field select:focus + label, .field.filled select + label,
   .field textarea:focus + label, .field textarea:not(:placeholder-shown) + label{
@@ -273,16 +383,17 @@
   .rsvp-btn::before{ content:''; position:absolute; inset:0; background:var(--gold); transform:scaleX(0); transform-origin:left; transition:transform .5s var(--ease); z-index:0; }
   .rsvp-btn:hover{ color:var(--navy-deep); }
   .rsvp-btn:hover::before{ transform:scaleX(1); }
-  .rsvp-note{ margin-top:26px; font-size:13px; color:rgba(250,247,240,.55); }
+  .rsvp-note{ margin-top:26px; font-size:13px; color:rgba(250,247,239,.55); }
   #rsvp-success{ display:none; margin-top:60px; font-family:'Cormorant Garamond',serif; font-size:28px; color:var(--gold); }
   #rsvp-success.show{ display:block; animation:fadeUp .8s var(--ease-soft); }
 
   /* ---------- footer ---------- */
-  footer{ background:var(--navy-deep); color:rgba(250,247,240,.5); text-align:center; padding:50px 20px 40px; font-size:12px; letter-spacing:.15em; }
-  footer .foot-mono{ font-family:'Cinzel',serif; color:var(--cream); font-size:15px; letter-spacing:.3em; margin-bottom:14px; }
-
-  a{ cursor:none; }
-  [data-hover]{ cursor:none; }
+  footer{ background:var(--navy-deep); color:rgba(250,247,239,.55); text-align:center; padding:60px 20px 40px; font-size:12px; letter-spacing:.1em; border-top:1px solid rgba(250,247,239,.1); }
+  footer .foot-mono{ font-family:'Cinzel',serif; color:var(--cream); font-size:16px; letter-spacing:.3em; margin-bottom:16px; }
+  footer .foot-links{ display:flex; justify-content:center; gap:26px; margin-top:20px; flex-wrap:wrap; }
+  footer .foot-links a{ color:rgba(250,247,239,.7); text-decoration:none; font-size:11px; letter-spacing:.15em; text-transform:uppercase; }
+  footer .foot-links a:hover{ color:var(--gold); }
+  footer .foot-fine{ margin-top:26px; font-size:10px; letter-spacing:.15em; color:rgba(250,247,239,.35); }
 </style>
 </head>
 <body>
@@ -298,11 +409,17 @@
 
 <nav id="nav">
   <a href="#hero" class="nav-mark">P &amp; D</a>
-  <ul class="nav-links">
+  <button id="navToggle" aria-label="Menu"><span></span><span></span><span></span></button>
+  <ul class="nav-links" id="navLinks">
     <li><a href="#story">Story</a></li>
-    <li><a href="#timeline">Day Of</a></li>
+    <li><a href="#weekend">Weekend</a></li>
     <li><a href="#venue">Venue</a></li>
+    <li><a href="#travel">Travel</a></li>
+    <li><a href="#attire">Attire</a></li>
     <li><a href="#party">Party</a></li>
+    <li><a href="#gallery">Gallery</a></li>
+    <li><a href="#registry">Registry</a></li>
+    <li><a href="#faq">FAQ</a></li>
     <li><a href="#rsvp">RSVP</a></li>
   </ul>
 </nav>
@@ -323,6 +440,11 @@
   <div class="scroll-cue"><div class="line"></div><span>Scroll</span></div>
 </section>
 
+<section id="welcome">
+  <p class="reveal">"We can't wait to say 'I do' surrounded by the people who mean the most to us. From our first date to this next chapter, thank you for being part of the story — we hope this weekend feels just like home."</p>
+  <div class="sign reveal">— Paul &amp; Delaney</div>
+</section>
+
 <section id="story" class="section-pad">
   <div class="monogram reveal-scale">P·D</div>
   <div class="kicker reveal">Our Story</div>
@@ -331,17 +453,54 @@
     "What started as a quiet conversation became the loudest, most certain thing we've ever known.
     We can't wait to marry each other, surrounded by the people who shaped us into who we are today."
   </p>
+  <div class="story-cols stagger">
+    <div class="story-card reveal" style="--i:0">
+      <span class="num">01 · How We Met</span>
+      <h3>A Placeholder Meet-Cute</h3>
+      <p>Replace with the real story — the coffee shop, the mutual friend, the group chat that changed everything. Two or three sentences that sound like the two of you.</p>
+    </div>
+    <div class="story-card reveal" style="--i:1">
+      <span class="num">02 · Falling In Love</span>
+      <h3>The In-Between Years</h3>
+      <p>A short story about the trip, the apartment, the dog, the inside jokes — whatever made it clear this was forever. Placeholder copy, swap freely.</p>
+    </div>
+    <div class="story-card reveal" style="--i:2">
+      <span class="num">03 · The Proposal</span>
+      <h3>Where He Asked</h3>
+      <p>Set the scene: the location, the surprise, the reaction. This is the section guests linger on longest — make it personal when the real details are ready.</p>
+    </div>
+  </div>
 </section>
 
-<section id="timeline" class="section-pad">
-  <div class="kicker reveal">Wedding Day</div>
-  <h2 class="section-title reveal">The Itinerary</h2>
-  <div class="tl">
-    <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">3:30 PM</span><h3 class="tl-title">Guests Arrive</h3><p class="tl-desc">Golf carts welcome guests into the gardens as the string lights begin to glow.</p></div>
-    <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">4:00 PM</span><h3 class="tl-title">Ceremony</h3><p class="tl-desc">Vows exchanged beneath the arbor, waterfall softly running in the background.</p></div>
-    <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">5:00 PM</span><h3 class="tl-title">Cocktail Hour</h3><p class="tl-desc">Sage &amp; navy toasts on the pavilion lawn while the light turns gold.</p></div>
-    <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">6:00 PM</span><h3 class="tl-title">Reception</h3><p class="tl-desc">Dinner and dancing inside the reception barn under warm bistro lighting.</p></div>
-    <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">10:00 PM</span><h3 class="tl-title">Send-Off</h3><p class="tl-desc">A starlit exit through the gardens to close out the night.</p></div>
+<section id="weekend" class="section-pad">
+  <div class="kicker reveal">Wedding Weekend</div>
+  <h2 class="section-title reveal">The Full Itinerary</h2>
+  <p class="section-intro reveal">A loose outline of the weekend — exact times and locations to be finalized. Placeholder events shown for now.</p>
+
+  <div class="day-group">
+    <div class="day-heading reveal"><h3>Friday</h3><div class="d-line"></div></div>
+    <div class="tl">
+      <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">6:00 PM</span><h3 class="tl-title">Welcome Party</h3><p class="tl-desc">Casual drinks and appetizers for out-of-town guests — location TBD.</p></div>
+      <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">8:00 PM</span><h3 class="tl-title">Rehearsal Dinner</h3><p class="tl-desc">Wedding party and immediate family gather for a toast-filled dinner.</p></div>
+    </div>
+  </div>
+
+  <div class="day-group">
+    <div class="day-heading reveal"><h3>Saturday — Wedding Day</h3><div class="d-line"></div></div>
+    <div class="tl">
+      <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">3:30 PM</span><h3 class="tl-title">Guests Arrive</h3><p class="tl-desc">Golf carts welcome guests into the gardens as the string lights begin to glow.</p></div>
+      <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">4:00 PM</span><h3 class="tl-title">Ceremony</h3><p class="tl-desc">Vows exchanged beneath the arbor, waterfall softly running in the background.</p></div>
+      <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">5:00 PM</span><h3 class="tl-title">Cocktail Hour</h3><p class="tl-desc">Sage &amp; navy toasts on the pavilion lawn while the light turns gold.</p></div>
+      <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">6:00 PM</span><h3 class="tl-title">Reception</h3><p class="tl-desc">Dinner and dancing inside the reception barn under warm bistro lighting.</p></div>
+      <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">10:00 PM</span><h3 class="tl-title">Send-Off</h3><p class="tl-desc">A starlit exit through the gardens to close out the night.</p></div>
+    </div>
+  </div>
+
+  <div class="day-group">
+    <div class="day-heading reveal"><h3>Sunday</h3><div class="d-line"></div></div>
+    <div class="tl" style="margin-bottom:20px;">
+      <div class="tl-item reveal"><span class="tl-dot"></span><span class="tl-time">10:00 AM</span><h3 class="tl-title">Farewell Brunch</h3><p class="tl-desc">A relaxed morning to say goodbye before everyone heads home — details coming soon.</p></div>
+    </div>
   </div>
 </section>
 
@@ -359,18 +518,18 @@
         </defs>
         <rect width="400" height="500" fill="url(#skyg)"/>
         <g opacity=".85">
-          <path d="M0 330 Q100 300 200 335 T400 330 V500 H0 Z" fill="#1b2a4a" opacity=".55"/>
-          <path d="M0 370 Q120 340 220 375 T400 365 V500 H0 Z" fill="#0f1930" opacity=".65"/>
+          <path d="M0 330 Q100 300 200 335 T400 330 V500 H0 Z" fill="#182a4d" opacity=".55"/>
+          <path d="M0 370 Q120 340 220 375 T400 365 V500 H0 Z" fill="#0a1424" opacity=".65"/>
         </g>
-        <g stroke="#faf7f0" stroke-width="1.4" opacity=".55">
+        <g stroke="#faf7ef" stroke-width="1.4" opacity=".55">
           <line x1="20" y1="60" x2="380" y2="90"/>
-          <circle cx="60" cy="63" r="2.4" fill="#faf7f0" stroke="none"/>
-          <circle cx="130" cy="70" r="2.4" fill="#faf7f0" stroke="none"/>
-          <circle cx="200" cy="75" r="2.4" fill="#faf7f0" stroke="none"/>
-          <circle cx="270" cy="80" r="2.4" fill="#faf7f0" stroke="none"/>
-          <circle cx="340" cy="86" r="2.4" fill="#faf7f0" stroke="none"/>
+          <circle cx="60" cy="63" r="2.4" fill="#faf7ef" stroke="none"/>
+          <circle cx="130" cy="70" r="2.4" fill="#faf7ef" stroke="none"/>
+          <circle cx="200" cy="75" r="2.4" fill="#faf7ef" stroke="none"/>
+          <circle cx="270" cy="80" r="2.4" fill="#faf7ef" stroke="none"/>
+          <circle cx="340" cy="86" r="2.4" fill="#faf7ef" stroke="none"/>
         </g>
-        <g fill="#c8a866" opacity=".9">
+        <g fill="#c3a468" opacity=".9">
           <rect x="185" y="360" width="6" height="90"/>
           <rect x="205" y="360" width="6" height="90"/>
           <path d="M180 360 L200 320 L220 360 Z"/>
@@ -393,7 +552,18 @@
         Visit thebackyardvenuedfw.com
         <svg width="16" height="10" viewBox="0 0 16 10" fill="none"><path d="M1 5H15M15 5L10.5 1M15 5L10.5 9" stroke="currentColor" stroke-width="1.2"/></svg>
       </a>
+      <div class="venue-address reveal">
+        <strong>Getting There</strong>
+        123 Placeholder Ranch Road, Aubrey, TX 76227 (address to be confirmed)<br>
+        Complimentary parking on site · Golf carts shuttle guests from the lot
+      </div>
     </div>
+  </div>
+  <div class="venue-strip stagger">
+    <div class="strip-tile reveal" style="--i:0"><div style="background:linear-gradient(160deg,#9caf8a,#66795a);" class="tile-bg"></div><span>Ceremony Lawn</span></div>
+    <div class="strip-tile reveal" style="--i:1"><div style="background:linear-gradient(160deg,#182a4d,#0a1424);" class="tile-bg"></div><span>Reception Barn</span></div>
+    <div class="strip-tile reveal" style="--i:2"><div style="background:linear-gradient(160deg,#c3a468,#9caf8a);" class="tile-bg"></div><span>Garden Waterfall</span></div>
+    <div class="strip-tile reveal" style="--i:3"><div style="background:linear-gradient(160deg,#66795a,#182a4d);" class="tile-bg"></div><span>Bridal Cottage</span></div>
   </div>
 </section>
 
@@ -411,25 +581,135 @@
   </div>
 </section>
 
-<section id="palette" class="section-pad">
+<section id="travel" class="section-pad">
+  <div class="kicker reveal">Getting Here</div>
+  <h2 class="section-title reveal">Travel &amp; Accommodations</h2>
+  <p class="section-intro reveal">A few placeholder options for out-of-town guests — final hotel blocks and booking codes coming soon.</p>
+  <div class="travel-grid stagger">
+    <div class="travel-card reveal" style="--i:0">
+      <div class="travel-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#66795a" stroke-width="1.4"><path d="M12 21s-7-6.5-7-11a7 7 0 1 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+      <h3>Nearby Hotel</h3>
+      <p>Placeholder Inn &amp; Suites</p>
+      <p>10 minutes from the venue · Block rate available</p>
+      <span class="tag">Group Code: PAULDEL26</span>
+    </div>
+    <div class="travel-card reveal" style="--i:1">
+      <div class="travel-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#66795a" stroke-width="1.4"><path d="M3 12h18M3 12l4-6M3 12l4 6M21 12l-4-6M21 12l-4 6"/></svg></div>
+      <h3>Airport</h3>
+      <p>Dallas–Fort Worth Intl. (DFW)</p>
+      <p>Approx. 35–45 minute drive to the venue</p>
+      <span class="tag">Rideshare Recommended</span>
+    </div>
+    <div class="travel-card reveal" style="--i:2">
+      <div class="travel-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#66795a" stroke-width="1.4"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg></div>
+      <h3>Shuttle Service</h3>
+      <p>Group shuttle to/from partner hotels</p>
+      <p>Pickup times to be shared closer to the date</p>
+      <span class="tag">Details Coming Soon</span>
+    </div>
+  </div>
+</section>
+
+<section id="attire" class="section-pad">
   <div class="kicker reveal">Design Notes</div>
   <h2 class="section-title reveal">Sage &amp; Navy</h2>
+  <p class="section-intro reveal">Our wedding palette — soft sage greens against deep navy blue, warmed by ivory and a touch of gold.</p>
   <div class="swatches reveal stagger">
-    <div class="swatch" style="--i:0"><div class="swatch-color" style="background:#1b2a4a"></div><div class="swatch-name">Navy</div><div class="swatch-hex">#1B2A4A</div></div>
-    <div class="swatch" style="--i:1"><div class="swatch-color" style="background:#8a9b7e"></div><div class="swatch-name">Sage</div><div class="swatch-hex">#8A9B7E</div></div>
-    <div class="swatch" style="--i:2"><div class="swatch-color" style="background:#c8a866"></div><div class="swatch-name">Gold Accent</div><div class="swatch-hex">#C8A866</div></div>
-    <div class="swatch" style="--i:3"><div class="swatch-color" style="background:#faf7f0"></div><div class="swatch-name">Cream</div><div class="swatch-hex">#FAF7F0</div></div>
+    <div class="swatch" style="--i:0"><div class="swatch-color" style="background:#182a4d"></div><div class="swatch-name">Navy Blue</div><div class="swatch-hex">#182A4D</div></div>
+    <div class="swatch" style="--i:1"><div class="swatch-color" style="background:#9caf8a"></div><div class="swatch-name">Sage Green</div><div class="swatch-hex">#9CAF8A</div></div>
+    <div class="swatch" style="--i:2"><div class="swatch-color" style="background:#c3a468"></div><div class="swatch-name">Gold Accent</div><div class="swatch-hex">#C3A468</div></div>
+    <div class="swatch" style="--i:3"><div class="swatch-color" style="background:#fffaf1;border:1px solid #e3ddc9"></div><div class="swatch-name">Ivory</div><div class="swatch-hex">#FFFAF1</div></div>
+  </div>
+  <div class="attire-notes">
+    <div class="reveal">
+      <h4>Suggested Attire</h4>
+      <p>Garden formal / cocktail attire. Think flowing fabrics in sage, navy, dusty blue, and neutral tones — outdoor ceremony, so consider block heels or flats on the lawn.</p>
+    </div>
+    <div class="reveal">
+      <h4>Please Avoid</h4>
+      <p>All-white or ivory (reserved for the bride) and bright florals that clash with the garden setting. When in doubt, sage, navy, and soft neutrals are always a safe choice.</p>
+    </div>
   </div>
 </section>
 
 <section id="party" class="section-pad">
   <div class="kicker reveal">Standing With Us</div>
   <h2 class="section-title reveal">The Wedding Party</h2>
-  <div class="party-grid reveal stagger">
-    <div class="party-card" style="--i:0"><div class="party-photo">P</div><h3 class="party-name">Paul</h3><div class="party-role">Groom</div></div>
-    <div class="party-card" style="--i:1"><div class="party-photo">D</div><h3 class="party-name">Delaney</h3><div class="party-role">Bride</div></div>
-    <div class="party-card" style="--i:2"><div class="party-photo">B</div><h3 class="party-name">Best Man</h3><div class="party-role">TBD</div></div>
-    <div class="party-card" style="--i:3"><div class="party-photo">M</div><h3 class="party-name">Maid of Honor</h3><div class="party-role">TBD</div></div>
+  <div class="party-grid stagger">
+    <div class="party-card reveal" style="--i:0"><div class="party-photo">P</div><h3 class="party-name">Paul</h3><div class="party-role">Groom</div><p class="party-bio">Placeholder bio — a line about Paul, his humor, and how he proposed.</p></div>
+    <div class="party-card reveal" style="--i:1"><div class="party-photo">D</div><h3 class="party-name">Delaney</h3><div class="party-role">Bride</div><p class="party-bio">Placeholder bio — a line about Delaney, her spark, and what she loves most.</p></div>
+  </div>
+  <div class="party-sub">Bridesmaids &amp; Groomsmen</div>
+  <div class="party-grid stagger">
+    <div class="party-card reveal" style="--i:0"><div class="party-photo">M</div><h3 class="party-name">Maid of Honor</h3><div class="party-role">TBD</div><p class="party-bio">Placeholder — name &amp; a short, sweet blurb about the friendship.</p></div>
+    <div class="party-card reveal" style="--i:1"><div class="party-photo">B</div><h3 class="party-name">Best Man</h3><div class="party-role">TBD</div><p class="party-bio">Placeholder — name &amp; a short, sweet blurb about the friendship.</p></div>
+    <div class="party-card reveal" style="--i:2"><div class="party-photo">B</div><h3 class="party-name">Bridesmaid</h3><div class="party-role">TBD</div><p class="party-bio">Placeholder bio text goes here.</p></div>
+    <div class="party-card reveal" style="--i:3"><div class="party-photo">G</div><h3 class="party-name">Groomsman</h3><div class="party-role">TBD</div><p class="party-bio">Placeholder bio text goes here.</p></div>
+  </div>
+</section>
+
+<section id="gallery" class="section-pad">
+  <div class="kicker reveal">A Few Favorites</div>
+  <h2 class="section-title reveal">Gallery</h2>
+  <p class="section-intro reveal">Placeholder tiles — swap in engagement photos, candids, and venue shots.</p>
+  <div class="gallery-grid stagger">
+    <div class="g-tile reveal g1" style="--i:0; background:linear-gradient(160deg,#9caf8a,#182a4d);"><span>Add Photo</span></div>
+    <div class="g-tile reveal g2" style="--i:1; background:linear-gradient(160deg,#c3a468,#66795a);"><span>Add Photo</span></div>
+    <div class="g-tile reveal" style="--i:2; background:linear-gradient(160deg,#182a4d,#66795a);"><span>Add Photo</span></div>
+    <div class="g-tile reveal" style="--i:3; background:linear-gradient(160deg,#66795a,#c3a468);"><span>Add Photo</span></div>
+    <div class="g-tile reveal g2" style="--i:4; background:linear-gradient(160deg,#9caf8a,#0a1424);"><span>Add Photo</span></div>
+    <div class="g-tile reveal" style="--i:5; background:linear-gradient(160deg,#0a1424,#9caf8a);"><span>Add Photo</span></div>
+    <div class="g-tile reveal" style="--i:6; background:linear-gradient(160deg,#182a4d,#c3a468);"><span>Add Photo</span></div>
+  </div>
+</section>
+
+<section id="registry" class="section-pad">
+  <div class="kicker reveal">With Gratitude</div>
+  <h2 class="section-title reveal">Registry</h2>
+  <p class="section-intro reveal">Your presence is the greatest gift. For those who wish to give more, a few placeholder options below.</p>
+  <div class="registry-grid stagger">
+    <div class="registry-card reveal" style="--i:0">
+      <h3>Honeymoon Fund</h3>
+      <p>Help send Paul &amp; Delaney on their first trip as a married couple.</p>
+      <a class="registry-btn" href="#" data-hover>Contribute</a>
+    </div>
+    <div class="registry-card reveal" style="--i:1">
+      <h3>Home Registry</h3>
+      <p>A curated list for building their first home together.</p>
+      <a class="registry-btn" href="#" data-hover>View Registry</a>
+    </div>
+    <div class="registry-card reveal" style="--i:2">
+      <h3>Cash Fund</h3>
+      <p>An easy way to give directly toward the future of your choosing.</p>
+      <a class="registry-btn" href="#" data-hover>Give a Gift</a>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="section-pad">
+  <div class="kicker reveal">Good To Know</div>
+  <h2 class="section-title reveal">Frequently Asked</h2>
+  <div class="faq-list reveal">
+    <div class="faq-item">
+      <button class="faq-q" data-hover>Is the wedding indoors or outdoors? <span class="plus">+</span></button>
+      <div class="faq-a"><p>The ceremony takes place outdoors on the garden lawn, with the reception moving into the covered timber barn — so plan for both sun and shade.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" data-hover>Are kids welcome? <span class="plus">+</span></button>
+      <div class="faq-a"><p>We love your little ones, but we've decided to keep our celebration adults-only so everyone can relax and enjoy the night. Placeholder — update if this changes.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" data-hover>What should I wear? <span class="plus">+</span></button>
+      <div class="faq-a"><p>Garden formal / cocktail attire in sage, navy, or neutral tones. See the Attire section above for more detail, and avoid white or ivory.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" data-hover>Is there parking on site? <span class="plus">+</span></button>
+      <div class="faq-a"><p>Yes — complimentary parking is available, with golf carts to shuttle guests between the lot and the garden.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" data-hover>By when should I RSVP? <span class="plus">+</span></button>
+      <div class="faq-a"><p>Please respond by May 1, 2026 using the RSVP section below so we can finalize seating and catering.</p></div>
+    </div>
   </div>
 </section>
 
@@ -458,6 +738,12 @@
 <footer>
   <div class="foot-mono">PAUL &amp; DELANEY</div>
   06 · 20 · 2026 — The Backyard Venue, Dallas–Fort Worth
+  <div class="foot-links">
+    <a href="#registry">Registry</a>
+    <a href="#faq">FAQ</a>
+    <a href="mailto:placeholder@email.com">Contact Us</a>
+  </div>
+  <div class="foot-fine">Made with love — details subject to change</div>
 </footer>
 
 <script>
@@ -467,7 +753,7 @@
   var loaderWord = "Paul & Delaney";
   loaderWord.split('').forEach(function(ch,i){
     var s = document.createElement('span');
-    s.textContent = ch === ' ' ? ' ' : ch;
+    s.textContent = ch === ' ' ? ' ' : ch;
     s.style.animationDelay = (i*45)+'ms';
     loaderEl.appendChild(s);
   });
@@ -476,8 +762,6 @@
     if(l) l.classList.add('hidden');
   }
   window.addEventListener('load', function(){ setTimeout(dismissLoader, 1400); });
-  // Fallback in case 'load' never fires (e.g. some in-app file previewers) —
-  // the loader always dismisses within ~3.5s no matter what.
   setTimeout(dismissLoader, 3500);
 
   // ---- hero name reveal ----
@@ -487,7 +771,7 @@
       wrap.style.display='inline-block';
       wrap.style.overflow='hidden';
       var inner = document.createElement('span');
-      inner.textContent = ch === ' ' ? ' ' : ch;
+      inner.textContent = ch === ' ' ? ' ' : ch;
       inner.style.display='inline-block';
       inner.style.transform='translateY(105%)';
       inner.style.animation='riseName .9s cubic-bezier(.22,1,.36,1) forwards';
@@ -504,10 +788,11 @@
   var mx=0,my=0, rx=0, ry=0;
   window.addEventListener('mousemove', function(e){ mx=e.clientX; my=e.clientY; dot.style.left=mx+'px'; dot.style.top=my+'px'; });
   (function loop(){ rx += (mx-rx)*0.16; ry += (my-ry)*0.16; ring.style.left=rx+'px'; ring.style.top=ry+'px'; requestAnimationFrame(loop); })();
-  document.querySelectorAll('a,button,[data-hover],input,select,textarea').forEach(function(el){
-    el.addEventListener('mouseenter', function(){ ring.style.width='64px'; ring.style.height='64px'; ring.style.borderColor='#c8a866'; dot.style.background='#c8a866'; });
-    el.addEventListener('mouseleave', function(){ ring.style.width='38px'; ring.style.height='38px'; ring.style.borderColor='#1b2a4a'; dot.style.background='#5f7156'; });
-  });
+  function bindCursor(el){
+    el.addEventListener('mouseenter', function(){ ring.style.width='64px'; ring.style.height='64px'; ring.style.borderColor='#c3a468'; dot.style.background='#c3a468'; });
+    el.addEventListener('mouseleave', function(){ ring.style.width='38px'; ring.style.height='38px'; ring.style.borderColor='#182a4d'; dot.style.background='#66795a'; });
+  }
+  document.querySelectorAll('a,button,[data-hover],input,select,textarea').forEach(bindCursor);
 
   // ---- nav shrink + scroll progress ----
   var nav = document.getElementById('nav'), progress = document.getElementById('progress');
@@ -518,10 +803,15 @@
     progress.style.width = pct + '%';
   }, {passive:true});
 
+  // ---- mobile nav toggle ----
+  var navToggle = document.getElementById('navToggle'), navLinks = document.getElementById('navLinks');
+  navToggle.addEventListener('click', function(){ navLinks.classList.toggle('open'); });
+  navLinks.querySelectorAll('a').forEach(function(a){ a.addEventListener('click', function(){ navLinks.classList.remove('open'); }); });
+
   // ---- scroll reveals ----
   var io = new IntersectionObserver(function(entries){
     entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
-  }, { threshold:0.18 });
+  }, { threshold:0.15 });
   document.querySelectorAll('.reveal,.reveal-scale').forEach(function(el){ io.observe(el); });
 
   var tlItems = document.querySelectorAll('.tl-item');
@@ -574,7 +864,7 @@
   for(var j=0;j<70;j++){ pts.push({x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.6+0.4, s:Math.random()*0.4+0.1}); }
   function draw(){
     ctx.clearRect(0,0,W,H);
-    ctx.fillStyle = 'rgba(250,247,240,.55)';
+    ctx.fillStyle = 'rgba(250,247,239,.55)';
     pts.forEach(function(p){
       p.y -= p.s;
       if(p.y < -5) p.y = H+5;
@@ -595,6 +885,23 @@
       heroInner.style.opacity = Math.max(0, 1 - y/500);
     }
   }, {passive:true});
+
+  // ---- faq accordion ----
+  document.querySelectorAll('.faq-item').forEach(function(item){
+    var btn = item.querySelector('.faq-q');
+    var ans = item.querySelector('.faq-a');
+    btn.addEventListener('click', function(){
+      var isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item.open').forEach(function(o){
+        o.classList.remove('open');
+        o.querySelector('.faq-a').style.maxHeight = null;
+      });
+      if(!isOpen){
+        item.classList.add('open');
+        ans.style.maxHeight = ans.scrollHeight + 'px';
+      }
+    });
+  });
 
   // ---- rsvp form ----
   document.getElementById('rsvpForm').addEventListener('submit', function(e){
