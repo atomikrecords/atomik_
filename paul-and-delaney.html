@@ -55,7 +55,9 @@
     position:fixed; inset:0; z-index:10000; background:var(--navy-deep);
     display:flex; align-items:center; justify-content:center; flex-direction:column; gap:18px;
     transition:opacity 1s var(--ease), visibility 1s;
+    animation:autoDismissLoader .1s linear 4.5s forwards;
   }
+  @keyframes autoDismissLoader{ to{ opacity:0; visibility:hidden; pointer-events:none; } }
   #loader.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
   .loader-mono{
     font-family:'Cormorant Garamond', serif; color:var(--cream); font-size:clamp(28px,5vw,44px);
@@ -469,9 +471,14 @@
     s.style.animationDelay = (i*45)+'ms';
     loaderEl.appendChild(s);
   });
-  window.addEventListener('load', function(){
-    setTimeout(function(){ document.getElementById('loader').classList.add('hidden'); }, 1400);
-  });
+  function dismissLoader(){
+    var l = document.getElementById('loader');
+    if(l) l.classList.add('hidden');
+  }
+  window.addEventListener('load', function(){ setTimeout(dismissLoader, 1400); });
+  // Fallback in case 'load' never fires (e.g. some in-app file previewers) —
+  // the loader always dismisses within ~3.5s no matter what.
+  setTimeout(dismissLoader, 3500);
 
   // ---- hero name reveal ----
   function buildName(el, text){
