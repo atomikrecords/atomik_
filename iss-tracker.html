@@ -239,13 +239,16 @@ select.selstyle{
 .tab .ic{font-size:17px; line-height:1;}
 .tab .lb{font-size:9.5px; font-weight:600; letter-spacing:.02em;}
 
-/* ---------- Icons ---------- */
-.icon{width:16px; height:16px; flex:none; display:inline-block; vertical-align:-3px;}
-.icon path,.icon line,.icon polyline,.icon polygon,.icon rect,.icon circle{
-  stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;
-  vector-effect:non-scaling-stroke;
+/* ---------- Icons ----------
+   Content pulled in via <use> lives in a generated instance tree that CSS
+   selectors from the main document can't reach — only *inherited*
+   properties cross that boundary. So fill/stroke must be set directly on
+   the .icon host (an inherited property), not via ".icon path" selectors. */
+.icon{
+  width:16px; height:16px; flex:none; display:inline-block; vertical-align:-3px;
+  fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;
 }
-.icon .filled{fill:currentColor; stroke:none;}
+.icon *{ vector-effect:non-scaling-stroke; }
 .card-label{display:inline-flex; align-items:center; gap:6px;}
 .card-label .icon{width:13px; height:13px; color:var(--accent); opacity:.85;}
 .tab .ic .icon{width:19px; height:19px;}
@@ -296,12 +299,12 @@ select.selstyle{
   <line x1="7.9" y1="7.9" x2="5.6" y2="5.6"/>
   <line x1="16.1" y1="16.1" x2="18.4" y2="18.4"/>
   <line x1="14.6" y1="9.4" x2="18" y2="6"/>
-  <circle class="filled" cx="18.6" cy="5.4" r="1"/>
+  <circle cx="18.6" cy="5.4" r="1" fill="currentColor" stroke="none"/>
 </symbol>
 <symbol id="icon-compass" viewBox="0 0 24 24">
   <circle cx="12" cy="12" r="9"/>
   <polygon points="15,8.7 13,13 8.7,15 10.7,10.7"/>
-  <circle class="filled" cx="12" cy="12" r="1"/>
+  <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>
 </symbol>
 <symbol id="icon-settings" viewBox="0 0 24 24">
   <circle cx="12" cy="12" r="3.1"/>
@@ -331,7 +334,7 @@ select.selstyle{
   <rect x="8" y="4" width="8" height="16" rx="1.6"/>
   <line x1="2" y1="9" x2="2" y2="15"/>
   <line x1="22" y1="9" x2="22" y2="15"/>
-  <circle class="filled" cx="12" cy="17" r="0.9"/>
+  <circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/>
 </symbol>
 <symbol id="icon-sun" viewBox="0 0 24 24">
   <circle cx="12" cy="12" r="3.8"/>
@@ -350,7 +353,7 @@ select.selstyle{
 <symbol id="icon-target" viewBox="0 0 24 24">
   <circle cx="12" cy="12" r="8.4"/>
   <circle cx="12" cy="12" r="4.9"/>
-  <circle class="filled" cx="12" cy="12" r="1.3"/>
+  <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/>
 </symbol>
 <symbol id="icon-monitor" viewBox="0 0 24 24">
   <rect x="3" y="4.5" width="18" height="12" rx="1.6"/>
@@ -367,9 +370,9 @@ select.selstyle{
   <line x1="8.4" y1="6" x2="21" y2="6"/>
   <line x1="8.4" y1="12" x2="21" y2="12"/>
   <line x1="8.4" y1="18" x2="21" y2="18"/>
-  <circle class="filled" cx="3.6" cy="6" r="1"/>
-  <circle class="filled" cx="3.6" cy="12" r="1"/>
-  <circle class="filled" cx="3.6" cy="18" r="1"/>
+  <circle cx="3.6" cy="6" r="1" fill="currentColor" stroke="none"/>
+  <circle cx="3.6" cy="12" r="1" fill="currentColor" stroke="none"/>
+  <circle cx="3.6" cy="18" r="1" fill="currentColor" stroke="none"/>
 </symbol>
 <symbol id="icon-clock" viewBox="0 0 24 24">
   <circle cx="12" cy="12" r="9"/>
