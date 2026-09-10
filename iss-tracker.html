@@ -36,8 +36,11 @@
   --warn:#ffd60a;
   --bad:#ff453a;
   --glow-accent: 0 8px 30px rgba(0,0,0,.35);
-  --glass-blur: blur(34px) saturate(190%);
-  --glass-blur-lite: blur(20px) saturate(170%);
+  /* Blur radius is the single biggest lever on backdrop-filter cost —
+     kept strong enough to still read as glass, cheap enough to animate
+     smoothly on a phone GPU. */
+  --glass-blur: blur(22px) saturate(170%);
+  --glass-blur-lite: blur(13px) saturate(150%);
   --glass-highlight: rgba(255,255,255,.55);
   --radius:26px;
   --radius-sm:18px;
@@ -130,10 +133,13 @@ body{
   max-height:62vh; overflow-y:auto; overscroll-behavior:contain;
   box-shadow:0 1px 1px rgba(255,255,255,.3) inset, 0 -10px 40px rgba(0,0,0,.4);
   scrollbar-width:none; -ms-overflow-style:none; /* Firefox / old Edge */
+  /* Collapse/expand animates transform only (GPU-composited) instead of
+     max-height/padding, which force a full layout reflow on every frame
+     and were the main source of visible jank opening/closing the panel. */
+  transform:translateY(0); transition:transform .42s cubic-bezier(.19,1,.22,1); will-change:transform;
 }
 .sheet::-webkit-scrollbar{width:0; height:0; display:none; background:transparent;} /* Safari/Chrome */
-.sheet{transition:max-height .35s cubic-bezier(.16,1,.3,1), padding .35s cubic-bezier(.16,1,.3,1);}
-.sheet.collapsed{max-height:46px; overflow:hidden; padding-top:14px; padding-bottom:calc(22px + var(--safe-b));}
+.sheet.collapsed{transform:translateY(var(--collapse-dy, 420px)); overflow:hidden;}
 .sheet.collapsed .view{opacity:0;}
 .grabber-zone{padding:2px 0 12px; margin:-14px -14px 0; cursor:grab; touch-action:none;}
 .grabber{width:36px; height:4px; border-radius:3px; background:rgba(255,255,255,.18); margin:0 auto; transition:background .2s;}
@@ -168,7 +174,7 @@ body{
 .chip:active{transform:scale(.9);}
 .switch{transition:background .25s ease;}
 .switch:active{transform:scale(.94);}
-.switch::after{transition:left .3s cubic-bezier(.34,1.56,.64,1);}
+.switch::after{transition:transform .3s cubic-bezier(.34,1.56,.64,1);}
 .tab{transition:background .25s ease, color .25s ease, transform .15s cubic-bezier(.34,1.56,.64,1);}
 .tab:active{transform:scale(.9);}
 .tab.active .ic{animation:tabPop .4s cubic-bezier(.34,1.56,.64,1);}
@@ -199,9 +205,13 @@ body{
 .share-btn[hidden]{display:none;}
 
 /* ---------- Cards / glass panels ---------- */
+/* Deliberately no backdrop-filter here: cards sit on the sheet's own
+   blur layer, and with up to 5 of them on screen at once, each doing
+   its own independent (and animated, during entrance/scroll) blur pass
+   was the single biggest source of frame drops. Translucency + border +
+   the top highlight line still reads as glass without the extra cost. */
 .card{
-  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-  backdrop-filter:var(--glass-blur-lite); -webkit-backdrop-filter:var(--glass-blur-lite);
+  background:rgba(255,255,255,.12); border:1px solid var(--line); border-radius:var(--radius);
   box-shadow:0 1px 1px rgba(255,255,255,.22) inset, 0 10px 28px rgba(0,0,0,.28);
   padding:14px; margin-bottom:10px; position:relative; overflow:hidden;
 }
@@ -225,9 +235,8 @@ body{
 .countdown-lbl{font-size:10px; color:var(--sub); text-transform:uppercase; letter-spacing:.1em;}
 .pass-meta{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;}
 .pill{
-  font-size:10.5px; font-family:var(--ff-mono); background:rgba(255,255,255,.08); border:1px solid var(--line);
+  font-size:10.5px; font-family:var(--ff-mono); background:rgba(255,255,255,.12); border:1px solid var(--line);
   padding:5px 10px; border-radius:999px; color:var(--sub);
-  backdrop-filter:var(--glass-blur-lite); -webkit-backdrop-filter:var(--glass-blur-lite);
   box-shadow:0 1px 1px rgba(255,255,255,.22) inset;
 }
 .pill b{color:var(--ink); font-weight:600;}
@@ -265,8 +274,7 @@ body.reduce-motion .sky-compass .dot::after{animation:none; display:none;}
 .setting-txt .t{font-size:13px; font-weight:600;}
 .setting-txt .d{font-size:11px; color:var(--sub2); margin-top:2px; max-width:230px;}
 .switch{
-  width:46px; height:27px; border-radius:999px; background:rgba(255,255,255,.16); border:1px solid var(--line);
-  backdrop-filter:var(--glass-blur-lite); -webkit-backdrop-filter:var(--glass-blur-lite);
+  width:46px; height:27px; border-radius:999px; background:rgba(255,255,255,.18); border:1px solid var(--line);
   position:relative; flex:none; cursor:pointer; transition:background .25s ease, border-color .25s ease;
   box-shadow:0 1px 1px rgba(255,255,255,.3) inset, 0 1px 3px rgba(0,0,0,.25) inset;
 }
@@ -274,10 +282,10 @@ body.reduce-motion .sky-compass .dot::after{animation:none; display:none;}
 .switch::after{
   content:""; position:absolute; width:23px; height:23px; border-radius:50%;
   background:radial-gradient(circle at 32% 28%, #fff, #eef2f5 75%);
-  top:1.5px; left:1.5px; transition:left .3s cubic-bezier(.34,1.56,.64,1);
+  top:1.5px; left:1.5px; transform:translateX(0); transition:transform .3s cubic-bezier(.34,1.56,.64,1);
   box-shadow:0 2px 5px rgba(0,0,0,.35), 0 0 0 .5px rgba(0,0,0,.05);
 }
-.switch.on::after{left:20.5px;}
+.switch.on::after{transform:translateX(19px);}
 
 .chip-row{display:flex; flex-wrap:wrap; gap:7px;}
 .chip{font-size:11.5px; font-family:var(--ff-mono); padding:7px 12px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:var(--sub); cursor:pointer; transition:.15s;}
@@ -318,8 +326,8 @@ select.selstyle{
   position:absolute; top:5px; bottom:5px; left:5px; width:66px; border-radius:16px;
   background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.3);
   box-shadow:0 1px 1px rgba(255,255,255,.35) inset, 0 2px 8px rgba(0,0,0,.2);
-  transition:left .4s cubic-bezier(.34,1.3,.4,1), width .4s cubic-bezier(.34,1.3,.4,1);
-  pointer-events:none; z-index:0;
+  transform:translateX(0); transition:transform .4s cubic-bezier(.34,1.3,.4,1);
+  pointer-events:none; z-index:0; will-change:transform;
 }
 .tab{
   position:relative; z-index:1;
@@ -2327,7 +2335,7 @@ function setupSettingsHandlers(){
   };
   document.getElementById('btnViewOnGlobe').onclick = ()=>{
     if (!settings.location){ toast('Set your location first'); return; }
-    document.getElementById('sheet').classList.add('collapsed');
+    setSheetCollapsed(true);
     focusCameraOnLocation();
   };
 }
@@ -2335,14 +2343,32 @@ function setupSettingsHandlers(){
 /* =========================================================================
    NAVIGATION
    ========================================================================= */
+const SHEET_PEEK_PX = 54;
+
+// Single source of truth for opening/closing the bottom sheet. Measures
+// the panel's natural (uncollapsed) height once per call and expresses
+// the collapse as a pixel translateY, so the animation itself is pure
+// transform — no layout reflow, whatever the content height happens to
+// be on the current tab.
+function setSheetCollapsed(collapsed){
+  const sheet = document.getElementById('sheet');
+  if (!sheet) return;
+  if (collapsed){
+    const wasCollapsed = sheet.classList.contains('collapsed');
+    if (wasCollapsed) sheet.classList.remove('collapsed');
+    const dy = Math.max(0, sheet.getBoundingClientRect().height - SHEET_PEEK_PX);
+    sheet.style.setProperty('--collapse-dy', dy + 'px');
+    sheet.classList.add('collapsed');
+  } else {
+    sheet.classList.remove('collapsed');
+    sheet.scrollTop = 0;
+  }
+}
+
 function setupSheetCollapse(){
   const sheet = document.getElementById('sheet');
   const zone = document.getElementById('grabberZone');
   let dragStartY = null, dragging = false, moved = false;
-  function setCollapsed(collapsed){
-    sheet.classList.toggle('collapsed', collapsed);
-    if (!collapsed) sheet.scrollTop = 0;
-  }
   zone.addEventListener('pointerdown', (e)=>{
     dragStartY = e.clientY; dragging = true; moved = false;
     zone.setPointerCapture(e.pointerId);
@@ -2358,11 +2384,11 @@ function setupSheetCollapse(){
     const dy = e.clientY - dragStartY;
     dragStartY = null;
     if (!moved){
-      setCollapsed(!sheet.classList.contains('collapsed'));
+      setSheetCollapsed(!sheet.classList.contains('collapsed'));
     } else if (dy > 30){
-      setCollapsed(true);
+      setSheetCollapsed(true);
     } else if (dy < -30){
-      setCollapsed(false);
+      setSheetCollapsed(false);
     }
   });
   zone.addEventListener('pointercancel', ()=>{ dragging=false; dragStartY=null; });
@@ -2379,8 +2405,9 @@ function restartCardAnimation(view){
 function moveTabIndicator(tab){
   const indicator = document.getElementById('tabIndicator');
   if (!indicator || !tab) return;
-  indicator.style.left = tab.offsetLeft + 'px';
-  indicator.style.width = tab.offsetWidth + 'px';
+  // translateX from a fixed base position, not left/width — keeps this
+  // animation on the compositor instead of triggering layout each frame.
+  indicator.style.transform = `translateX(${tab.offsetLeft - 5}px)`;
 }
 
 function setupNav(){
@@ -2395,7 +2422,7 @@ function setupNav(){
       if (tab.classList.contains('active')){
         // Tapping the already-active tab toggles the sheet open/closed,
         // same as the swipe gesture on the grabber.
-        document.getElementById('sheet').classList.toggle('collapsed');
+        setSheetCollapsed(!document.getElementById('sheet').classList.contains('collapsed'));
         return;
       }
       document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -2405,9 +2432,7 @@ function setupNav(){
       const view = document.getElementById('view-'+tab.dataset.view);
       view.classList.add('active');
       restartCardAnimation(view);
-      const sheet = document.getElementById('sheet');
-      sheet.classList.remove('collapsed');
-      sheet.scrollTop = 0;
+      setSheetCollapsed(false);
     };
   });
   const initialTab = document.querySelector('.tab.active') || document.querySelector('.tab');
