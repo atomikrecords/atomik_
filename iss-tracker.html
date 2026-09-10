@@ -933,7 +933,7 @@ function issSceneRadius(altKm){
   return EARTH_R + (altKm/6371)*EARTH_R*ALT_EXAG;
 }
 let renderer, scene, camera, earthMesh, cloudsMesh, atmoMesh, issGroup, issModel, issDot, starPoints;
-let orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine, flowDots, futurePathPoints3D;
+let orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine, flowDots, futurePathPoints3D, passHighlightLine;
 let sunLight, ambLight;
 const clock = new THREE.Clock();
 
@@ -1266,6 +1266,16 @@ async function initScene(){
     new THREE.LineBasicMaterial({color:0x9ef0ff, transparent:true, opacity:0.9}));
   [orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine].forEach(l=>scene.add(l));
 
+  // Highlights the ground track of whichever specific pass is currently
+  // shown in the "Next Visible Pass" card — even if it's hours away and
+  // well outside the short near-term path above, so it's obvious *why*
+  // that pass happens (this is the arc Earth's rotation carries under
+  // the station between now and then).
+  passHighlightLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0x39ffa0, transparent:true, opacity:0.95}));
+  passHighlightLine.visible = false;
+  scene.add(passHighlightLine);
+
   flowDots = [];
   for(let i=0;i<3;i++){
     const dot = makeGlowSprite();
@@ -1532,11 +1542,15 @@ function lookAnglesAt(date, observer){
     height: (observer.alt||0)/1000
   };
   const look = satellite.ecfToLookAngles(observerGd, posEcf);
+  const geo = satellite.eciToGeodetic(pv.position, gmst);
   return {
     azimuth: look.azimuth*DEG,
     elevation: look.elevation*DEG,
     rangeKm: look.rangeSat,
-    posEci: pv.position
+    posEci: pv.position,
+    lat: satellite.degreesLat(geo.latitude),
+    lon: satellite.degreesLong(geo.longitude),
+    altKm: geo.height
   };
 }
 
@@ -1563,7 +1577,7 @@ function computeUpcomingPasses(observer){
         current = {aosTime: refineCrossing(t-stepMs, t, observer, true), maxEl:-90, points:[]};
       }
       if (current){
-        current.points.push({t, az:la.azimuth, el:la.elevation});
+        current.points.push({t, az:la.azimuth, el:la.elevation, lat:la.lat, lon:la.lon, altKm:la.altKm});
         if (la.elevation > current.maxEl){ current.maxEl = la.elevation; current.maxElTime = t; current.maxElAz = la.azimuth; }
       }
       if (la.elevation <= 0 && prevEl !== null && prevEl > 0 && current){
@@ -1678,17 +1692,22 @@ function renderPassUI(){
     document.getElementById('countdownLbl').textContent = 'set location first';
     document.getElementById('passMeta').innerHTML='';
     document.getElementById('skyLegend').innerHTML = 'No location set.<br>Open Settings to enable pass tracking.';
+    window._targetPass = null;
+    updatePassHighlight(null);
     return;
   }
   if (!state.passes.length){
     listEl.innerHTML = '<div class="hint">No qualifying passes in the next 72 hours. Try lowering the minimum elevation in Settings.</div>';
     document.getElementById('nextPassBadge').textContent = 'NONE';
     document.getElementById('countdownVal').textContent = '--:--:--';
+    window._targetPass = null;
+    updatePassHighlight(null);
     return;
   }
   const visiblePasses = state.passes.filter(p=>p.visible);
   const target = visiblePasses[0] || state.passes[0];
   document.getElementById('nextPassBadge').textContent = target.visible ? 'VISIBLE' : 'DAYLIGHT';
+  const farOut = target.aosTime - Date.now() > TRACK_FUTURE_MIN*60000;
   document.getElementById('passMeta').innerHTML = `
     <span class="pill">AOS <b>${new Date(target.aosTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</b></span>
     <span class="pill">Duration <b>${Math.round(target.durationSec/60)} min</b></span>
@@ -1696,7 +1715,12 @@ function renderPassUI(){
     <span class="pill">Dir <b>${compassDir(target.aosAz)} → ${compassDir(target.losAz)}</b></span>
     <span class="pill ${target.visible?'vis-yes':'vis-no'}">${target.visible?'VISIBLE':'NOT VISIBLE'}</span>
   `;
+  if (farOut){
+    document.getElementById('passMeta').innerHTML +=
+      `<div class="hint" style="flex-basis:100%; margin-top:2px;">This pass is ${(( target.aosTime-Date.now())/3600000).toFixed(1)}h away — too far ahead to be on the short cyan path above (Earth rotates under each orbit). Its actual ground track is drawn on the globe in <b style="color:var(--good)">green</b>.</div>`;
+  }
   window._targetPass = target;
+  updatePassHighlight(target);
 
   listEl.innerHTML = state.passes.slice(0,6).map(p=>{
     const d = new Date(p.aosTime);
@@ -2101,6 +2125,11 @@ function animate(){
     flowDots.forEach(d=>{ d.visible = false; });
   }
 
+  if (passHighlightLine && passHighlightLine.visible){
+    const pulse = settings.reduceMotion ? 0.85 : 0.65 + 0.3*Math.sin(now.getTime()*0.0025);
+    passHighlightLine.material.opacity = pulse;
+  }
+
   if (now.getTime() - lastUiUpdate > 500){
     lastUiUpdate = now.getTime();
     if (ll) renderDashboardStats(ll);
@@ -2146,10 +2175,22 @@ function buildOrbitPath(){
   applyOrbitVisibility();
 }
 
+function updatePassHighlight(pass){
+  if (!passHighlightLine) return;
+  if (!pass || !pass.points || pass.points.length < 2 || typeof pass.points[0].lat !== 'number'){
+    passHighlightLine.visible = false;
+    return;
+  }
+  const pts = pass.points.map(p => latLonToVec3(p.lat, p.lon, EARTH_R*1.008));
+  setLineGeometry(passHighlightLine, pts);
+  passHighlightLine.visible = settings.showOrbitPath;
+}
+
 function applyOrbitVisibility(){
   const show = settings.showOrbitPath;
   [orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine].forEach(l=>{ if (l) l.visible = show; });
   if (flowDots) flowDots.forEach(d=>{ if (!show) d.visible = false; });
+  if (passHighlightLine) passHighlightLine.visible = show && !!window._targetPass;
 }
 
 /* =========================================================================
