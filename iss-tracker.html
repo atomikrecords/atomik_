@@ -758,6 +758,8 @@ body.reduce-motion .ar-status-pill.locked{animation:none;}
           </div>
           <div style="height:8px;"></div>
           <button class="btn secondary" id="btnManualSave">Save Manual Location</button>
+          <div style="height:8px;"></div>
+          <button class="btn secondary" id="btnViewOnGlobe"><svg class="icon"><use href="#icon-target"/></svg>View My Marker On Globe</button>
         </div>
 
         <div class="card">
@@ -805,7 +807,7 @@ body.reduce-motion .ar-status-pill.locked{animation:none;}
         <div class="card">
           <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-monitor"/></svg>Display</span></div>
           <div class="setting-row">
-            <div class="setting-txt"><svg class="icon"><use href="#icon-orbit"/></svg><div><div class="t">Orbit Path</div><div class="d">Show the future/past ground track and flow trail</div></div></div>
+            <div class="setting-txt"><svg class="icon"><use href="#icon-orbit"/></svg><div><div class="t">Orbit Path</div><div class="d">Ground track, flow trail, and your visibility radius circle</div></div></div>
             <div class="switch" id="swOrbitPath"></div>
           </div>
           <div class="setting-row">
@@ -1167,6 +1169,7 @@ function issSceneRadius(altKm){
 }
 let renderer, scene, camera, earthMesh, cloudsMesh, atmoMesh, issGroup, issModel, issDot, starPoints;
 let orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine, flowDots, futurePathPoints3D, passHighlightLine;
+let locationMarker, visibilityCircleLine, sightLine;
 let sunLight, ambLight;
 const clock = new THREE.Clock();
 
@@ -1518,6 +1521,35 @@ async function initScene(){
     flowDots.push(dot);
   }
 
+  // "You are here" ground marker + the visibility radius within which the
+  // ISS clears your minimum-elevation setting (the real satellite-coverage
+  // geometry, not a decorative circle — see computeVisibilityRadiusDeg).
+  locationMarker = new THREE.Group();
+  const markerGold = new THREE.MeshBasicMaterial({color:0xffc857});
+  const markerPin = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.05, 12), markerGold);
+  markerPin.position.y = 0.025;
+  locationMarker.add(markerPin);
+  const markerBase = new THREE.Mesh(new THREE.RingGeometry(0.018, 0.026, 24), new THREE.MeshBasicMaterial({color:0xffc857, transparent:true, opacity:0.8, side:THREE.DoubleSide}));
+  markerBase.rotation.x = -Math.PI/2;
+  markerBase.position.y = 0.001;
+  locationMarker.add(markerBase);
+  const markerGlow = makeGlowSprite('rgba(255,225,150,0.95)', 'rgba(255,200,87,0.5)');
+  markerGlow.scale.set(0.1,0.1,1);
+  locationMarker.add(markerGlow);
+  locationMarker.userData.glow = markerGlow;
+  locationMarker.visible = false;
+  scene.add(locationMarker);
+
+  visibilityCircleLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0xffc857, transparent:true, opacity:0.4}));
+  visibilityCircleLine.visible = false;
+  scene.add(visibilityCircleLine);
+
+  sightLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:0.6}));
+  sightLine.visible = false;
+  scene.add(sightLine);
+
   camera.position.set(0,1.1,5.6);
   camera.lookAt(0,0,0);
 
@@ -1634,14 +1666,14 @@ function orientIssModel(target, posVec, tangentVec){
   target.quaternion.setFromRotationMatrix(m);
 }
 
-function makeGlowSprite(){
+function makeGlowSprite(core, mid){
   const size=128;
   const c = document.createElement('canvas'); c.width=size; c.height=size;
   const ctx = c.getContext('2d');
   const g = ctx.createRadialGradient(size/2,size/2,0,size/2,size/2,size/2);
-  g.addColorStop(0,'rgba(120,220,255,0.9)');
-  g.addColorStop(0.4,'rgba(79,216,255,0.45)');
-  g.addColorStop(1,'rgba(79,216,255,0)');
+  g.addColorStop(0, core || 'rgba(120,220,255,0.9)');
+  g.addColorStop(0.4, mid || 'rgba(79,216,255,0.45)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle=g; ctx.fillRect(0,0,size,size);
   const tex = new THREE.CanvasTexture(c);
   const mat = new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending});
@@ -2015,6 +2047,17 @@ function handleOverheadAndNotifications(now){
   const observer = {lat:settings.location.lat, lon:settings.location.lon, alt:settings.location.alt||0};
   const la = lookAnglesAt(now, observer);
   updateSkyCompassLive(la);
+
+  // Live line of sight from your marker to the ISS's current 3D position,
+  // for as long as it's actually above your horizon.
+  if (sightLine){
+    if (la && la.elevation > 0 && locationMarker && locationMarker.visible && issGroup){
+      setLineGeometry(sightLine, [locationMarker.position.clone(), issGroup.position.clone()]);
+      sightLine.visible = true;
+    } else {
+      sightLine.visible = false;
+    }
+  }
   const subsolar = subsolarPoint(now);
   const obsSunEl = sunElevationAt(observer.lat, observer.lon, subsolar);
   const satLit = la ? !isSatEclipsed(la.posEci, sunPositionEci(now)) : false;
@@ -2165,7 +2208,7 @@ function setupSettingsHandlers(){
     saveSettings(); refreshSettingsUI();
     toast(settings.followIss ? 'Camera will follow the ISS' : 'Camera follow disabled');
   };
-  document.getElementById('selMinEl').onchange = (e)=>{ settings.minElevation = Number(e.target.value); saveSettings(); recomputePasses(); };
+  document.getElementById('selMinEl').onchange = (e)=>{ settings.minElevation = Number(e.target.value); saveSettings(); recomputePasses(); updateLocationMarker(); };
   document.getElementById('selUnits').onchange = (e)=>{ settings.units = e.target.value; saveSettings(); };
   document.querySelectorAll('#alertChips .chip').forEach(chip=>{
     chip.onclick = ()=>{
@@ -2180,7 +2223,7 @@ function setupSettingsHandlers(){
     toast('Requesting location…');
     navigator.geolocation.getCurrentPosition(pos=>{
       settings.location = {lat:pos.coords.latitude, lon:pos.coords.longitude, alt:pos.coords.altitude||0, label:'GPS'};
-      saveSettings(); refreshSettingsUI(); recomputePasses();
+      saveSettings(); refreshSettingsUI(); recomputePasses(); updateLocationMarker();
       toast('Location set from GPS');
     }, err=>{
       toast('Could not get location: '+err.message);
@@ -2194,8 +2237,13 @@ function setupSettingsHandlers(){
       return;
     }
     settings.location = {lat, lon, alt:0, label:'Manual'};
-    saveSettings(); refreshSettingsUI(); recomputePasses();
+    saveSettings(); refreshSettingsUI(); recomputePasses(); updateLocationMarker();
     toast('Location saved');
+  };
+  document.getElementById('btnViewOnGlobe').onclick = ()=>{
+    if (!settings.location){ toast('Set your location first'); return; }
+    document.getElementById('sheet').classList.add('collapsed');
+    focusCameraOnLocation();
   };
 }
 
@@ -2371,6 +2419,11 @@ function animate(){
     passHighlightLine.material.opacity = pulse;
   }
 
+  if (locationMarker && locationMarker.visible && locationMarker.userData.glow){
+    const breathe = settings.reduceMotion ? 1 : 0.9 + 0.25*Math.sin(now.getTime()*0.0018);
+    locationMarker.userData.glow.scale.set(0.1*breathe, 0.1*breathe, 1);
+  }
+
   if (now.getTime() - lastUiUpdate > 500){
     lastUiUpdate = now.getTime();
     if (ll) renderDashboardStats(ll);
@@ -2390,6 +2443,71 @@ const TRACK_PAST_MIN = 22, TRACK_FUTURE_MIN = 75;
 function setLineGeometry(line, points){
   line.geometry.dispose();
   line.geometry = points.length > 1 ? new THREE.BufferGeometry().setFromPoints(points) : new THREE.BufferGeometry();
+}
+
+/* ---- location marker + visibility-radius circle ----
+   The circle is real satellite-coverage geometry, not decoration: it's
+   the standard closed-form relationship between a satellite's altitude,
+   a minimum elevation angle, and the ground-central-angle within which
+   that elevation is achievable (used for satellite footprint/coverage
+   calculations). Anywhere the ISS's ground track crosses inside this
+   circle, it is above your Minimum Elevation setting right now. */
+function computeVisibilityRadiusDeg(altKm, minElDeg){
+  const Re = EARTH_R_KM, Rs = EARTH_R_KM + altKm;
+  const elRad = minElDeg*RAD;
+  const ratio = Math.max(-1, Math.min(1, (Re/Rs)*Math.cos(elRad)));
+  const gamma = Math.acos(ratio) - elRad;
+  return Math.max(0, gamma*DEG);
+}
+// Standard spherical "destination point given start, bearing, and
+// angular distance" formula (great-circle navigation).
+function destinationPoint(lat0, lon0, bearingDeg, angularDistDeg){
+  const phi1 = lat0*RAD, lambda1 = lon0*RAD, theta = bearingDeg*RAD, delta = angularDistDeg*RAD;
+  const sinPhi2 = Math.sin(phi1)*Math.cos(delta) + Math.cos(phi1)*Math.sin(delta)*Math.cos(theta);
+  const phi2 = Math.asin(Math.max(-1, Math.min(1, sinPhi2)));
+  const y = Math.sin(theta)*Math.sin(delta)*Math.cos(phi1);
+  const x = Math.cos(delta) - Math.sin(phi1)*sinPhi2;
+  const lambda2 = lambda1 + Math.atan2(y, x);
+  return {lat: phi2*DEG, lon: ((lambda2*DEG + 540) % 360) - 180};
+}
+function buildVisibilityCirclePoints(lat0, lon0, radiusDeg, radius3D){
+  const pts = [];
+  const steps = 72;
+  for(let i=0;i<=steps;i++){
+    const d = destinationPoint(lat0, lon0, (i/steps)*360, radiusDeg);
+    pts.push(latLonToVec3(d.lat, d.lon, radius3D));
+  }
+  return pts;
+}
+
+function updateLocationMarker(){
+  if (!locationMarker || !visibilityCircleLine) return;
+  if (!settings.location){
+    locationMarker.visible = false;
+    visibilityCircleLine.visible = false;
+    return;
+  }
+  const pos = latLonToVec3(settings.location.lat, settings.location.lon, EARTH_R*1.004);
+  locationMarker.position.copy(pos);
+  locationMarker.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), pos.clone().normalize());
+  locationMarker.visible = true;
+
+  const altKm = (state.currentLL && state.currentLL.altKm) || 408;
+  const radiusDeg = computeVisibilityRadiusDeg(altKm, settings.minElevation);
+  const pts = buildVisibilityCirclePoints(settings.location.lat, settings.location.lon, radiusDeg, EARTH_R*1.003);
+  setLineGeometry(visibilityCircleLine, pts);
+  visibilityCircleLine.visible = settings.showOrbitPath;
+}
+
+function focusCameraOnLocation(){
+  if (!settings.location) return;
+  const pos = latLonToVec3(settings.location.lat, settings.location.lon, 1);
+  camState.targetPhi = Math.acos(Math.max(-1, Math.min(1, pos.y)));
+  camState.targetTheta = nearestAngle(camState.theta, Math.atan2(pos.x, pos.z));
+  camState.targetRadius = Math.max(camState.minR, Math.min(camState.maxR, 3.6));
+  autoRotate = false;
+  clearTimeout(autoRotateTimer);
+  autoRotateTimer = setTimeout(()=>{ autoRotate = true; }, 6000);
 }
 
 function buildOrbitPath(){
@@ -2432,6 +2550,7 @@ function applyOrbitVisibility(){
   [orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine].forEach(l=>{ if (l) l.visible = show; });
   if (flowDots) flowDots.forEach(d=>{ if (!show) d.visible = false; });
   if (passHighlightLine) passHighlightLine.visible = show && !!window._targetPass;
+  if (visibilityCircleLine) visibilityCircleLine.visible = show && !!settings.location;
 }
 
 /* =========================================================================
@@ -2713,7 +2832,8 @@ async function init(){
   setStatus('syncing', 'SYNCING');
   await Promise.all([fetchTLE(), pollRealtimePosition()]);
   buildOrbitPath();
-  setInterval(buildOrbitPath, 60000);
+  updateLocationMarker();
+  setInterval(()=>{ buildOrbitPath(); updateLocationMarker(); }, 60000);
   setInterval(pollRealtimePosition, 15000);
   setInterval(fetchTLEFresh, 3*3600*1000);
 
