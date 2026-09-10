@@ -293,11 +293,11 @@ select.selstyle{
 }
 .tab{
   display:flex; flex-direction:column; align-items:center; gap:2px; justify-content:center;
-  width:74px; padding:8px 4px 7px; border-radius:14px; color:var(--sub2); cursor:pointer; transition:.2s;
+  width:66px; padding:8px 3px 7px; border-radius:14px; color:var(--sub2); cursor:pointer; transition:.2s;
 }
 .tab.active{background:rgba(79,216,255,.12); color:var(--accent);}
 .tab .ic{font-size:17px; line-height:1;}
-.tab .lb{font-size:9.5px; font-weight:600; letter-spacing:.02em;}
+.tab .lb{font-size:9px; font-weight:600; letter-spacing:.01em; white-space:nowrap;}
 
 /* ---------- Icons ----------
    Content pulled in via <use> lives in a generated instance tree that CSS
@@ -345,6 +345,140 @@ select.selstyle{
 body.reduce-motion .card{animation:none;}
 body.reduce-motion .tab.active .ic{animation:none;}
 body.reduce-motion .overhead-banner.show{animation:none;}
+
+/* ---------- AR Finder ---------- */
+.ar-overlay{
+  position:fixed; inset:0; z-index:15; display:none; background:#000;
+  overflow:hidden;
+}
+.ar-overlay.show{display:block;}
+#arVideo{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#000;}
+.ar-fallback-bg{
+  position:absolute; inset:0; display:none;
+  background:
+    radial-gradient(1.5px 1.5px at 20% 30%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 70% 60%, #fff, transparent),
+    radial-gradient(1px 1px at 40% 80%, #cde, transparent),
+    radial-gradient(1px 1px at 85% 20%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 55% 45%, #cde, transparent),
+    radial-gradient(1px 1px at 10% 65%, #fff, transparent),
+    radial-gradient(1px 1px at 90% 85%, #fff, transparent),
+    radial-gradient(ellipse at 50% 100%, #0a1830 0%, #03050a 70%);
+}
+.ar-fallback-bg.on{display:block;}
+.ar-vignette{position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 120px rgba(0,0,0,.65);}
+
+/* Permission gate */
+.ar-gate, .ar-calib{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:min(88vw,360px); background:rgba(10,14,24,.82); border:1px solid var(--line);
+  border-radius:var(--radius); padding:26px 22px; text-align:center;
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); z-index:2;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+}
+.ar-gate-icon{
+  width:64px; height:64px; border-radius:50%; margin:0 auto 14px;
+  background:radial-gradient(circle at 35% 30%, rgba(79,216,255,.35), rgba(79,216,255,.05));
+  border:1px solid rgba(79,216,255,.4); display:flex; align-items:center; justify-content:center;
+}
+.ar-gate-icon .icon{width:32px; height:32px; color:var(--accent);}
+.ar-gate-title{font-size:19px; font-weight:700; margin-bottom:8px;}
+.ar-gate-text{font-size:12.5px; color:var(--sub); line-height:1.6; margin-bottom:18px;}
+.ar-gate-hint{font-size:11px; color:var(--warn); margin-top:10px; line-height:1.5;}
+.ar-gate .btn{margin-bottom:10px;}
+
+/* HUD */
+.ar-hud{position:absolute; inset:0; z-index:1;}
+.ar-topbar{
+  position:absolute; top:0; left:0; right:0;
+  padding:calc(12px + var(--safe-t)) max(14px,var(--safe-r)) 0 max(14px,var(--safe-l));
+  display:flex; align-items:center; justify-content:space-between;
+}
+.ar-icon-btn{
+  width:38px; height:38px; border-radius:50%; background:rgba(10,14,24,.55); border:1px solid var(--line);
+  backdrop-filter:blur(10px); color:var(--ink); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:transform .15s cubic-bezier(.34,1.56,.64,1);
+}
+.ar-icon-btn:active{transform:scale(.9);}
+.ar-status-pill{
+  font-family:var(--ff-mono); font-size:11px; letter-spacing:.08em; color:var(--sub);
+  background:rgba(10,14,24,.55); border:1px solid var(--line); border-radius:999px; padding:7px 14px;
+  backdrop-filter:blur(10px); transition:color .3s, border-color .3s;
+}
+.ar-status-pill.tracking{color:var(--accent); border-color:rgba(79,216,255,.4);}
+.ar-status-pill.locked{color:var(--good); border-color:rgba(57,255,160,.5); animation:bannerGlow 1.6s ease-in-out infinite;}
+.ar-status-pill.dim{color:var(--sub2);}
+
+.ar-reticle{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:52px; height:52px; pointer-events:none;
+}
+.ar-reticle-ring{position:absolute; inset:0; border:1.5px solid rgba(255,255,255,.5); border-radius:50%;}
+.ar-reticle-cross{position:absolute; inset:0;}
+.ar-reticle-cross::before, .ar-reticle-cross::after{content:""; position:absolute; background:rgba(255,255,255,.5);}
+.ar-reticle-cross::before{left:50%; top:-8px; bottom:-8px; width:1.5px; transform:translateX(-50%);}
+.ar-reticle-cross::after{top:50%; left:-8px; right:-8px; height:1.5px; transform:translateY(-50%);}
+
+.ar-target-marker{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); opacity:0;
+  transition:left .18s linear, top .18s linear, opacity .3s ease;
+  display:flex; flex-direction:column; align-items:center; pointer-events:none; z-index:2;
+}
+.ar-target-marker.show{opacity:1;}
+.ar-target-glow{
+  position:absolute; width:70px; height:70px; border-radius:50%;
+  background:radial-gradient(circle, rgba(79,216,255,.5), transparent 70%);
+  animation:targetPulse 1.8s ease-in-out infinite;
+}
+.ar-target-marker.locked .ar-target-glow{background:radial-gradient(circle, rgba(57,255,160,.65), transparent 70%);}
+@keyframes targetPulse{0%,100%{transform:scale(.85); opacity:.7;} 50%{transform:scale(1.15); opacity:1;}}
+.ar-target-dot{
+  width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 0 16px var(--accent), 0 0 4px #fff;
+  border:2px solid var(--accent);
+}
+.ar-target-marker.locked .ar-target-dot{border-color:var(--good); box-shadow:0 0 20px var(--good), 0 0 4px #fff;}
+.ar-target-label{
+  margin-top:8px; font-family:var(--ff-mono); font-size:11px; font-weight:600; color:#fff;
+  background:rgba(10,14,24,.7); padding:3px 9px; border-radius:999px; white-space:nowrap;
+  border:1px solid rgba(79,216,255,.4);
+}
+.ar-target-marker.locked .ar-target-label{border-color:rgba(57,255,160,.5); color:var(--good);}
+
+.ar-edge-arrow{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); opacity:0;
+  display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none;
+  transition:opacity .25s ease; z-index:2;
+}
+.ar-edge-arrow.show{opacity:1;}
+.ar-edge-svg{width:36px; height:36px; color:var(--accent); filter:drop-shadow(0 0 8px rgba(79,216,255,.7));}
+.ar-edge-text{
+  font-family:var(--ff-mono); font-size:11px; font-weight:600; color:#fff;
+  background:rgba(10,14,24,.7); padding:4px 10px; border-radius:999px; white-space:nowrap;
+  border:1px solid rgba(79,216,255,.4);
+}
+
+.ar-below-horizon{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(80vw,300px);
+  text-align:center; background:rgba(10,14,24,.65); border:1px solid var(--line); border-radius:var(--radius-sm);
+  padding:20px; backdrop-filter:blur(14px); z-index:2;
+}
+.ar-below-horizon .icon{color:var(--sub); margin-bottom:8px;}
+.ar-below-horizon .t1{font-weight:700; font-size:14px; margin-bottom:4px;}
+.ar-below-horizon .t2{font-size:12px; color:var(--sub); font-family:var(--ff-mono);}
+
+.ar-readout{
+  position:absolute; left:max(14px,var(--safe-l)); bottom:calc(18px + var(--safe-b));
+  background:rgba(10,14,24,.6); border:1px solid var(--line); border-radius:12px; padding:9px 12px;
+  backdrop-filter:blur(10px); font-family:var(--ff-mono); font-size:10.5px; z-index:2;
+}
+.ar-readout-row{display:flex; justify-content:space-between; gap:14px; padding:2px 0; color:var(--sub);}
+.ar-readout-row b{color:var(--ink); font-weight:600;}
+
+.ar-calib-row{display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:16px;}
+.ar-calib-val{font-family:var(--ff-mono); font-size:22px; font-weight:700; color:var(--accent); min-width:56px;}
+
+body.reduce-motion .ar-target-glow{animation:none;}
+body.reduce-motion .ar-status-pill.locked{animation:none;}
 
 @media (min-width:760px){
   .sheet-wrap{max-width:420px; margin-left:auto; margin-right:14px;}
@@ -460,6 +594,27 @@ body.reduce-motion .overhead-banner.show{animation:none;}
   <circle cx="18" cy="18.5" r="2.3"/>
   <line x1="8" y1="10.8" x2="16" y2="7"/>
   <line x1="8" y1="13.2" x2="16" y2="17"/>
+</symbol>
+<symbol id="icon-viewfinder" viewBox="0 0 24 24">
+  <path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8"/>
+  <path d="M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8"/>
+  <path d="M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16"/>
+  <path d="M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/>
+  <circle cx="12" cy="12" r="3.4"/>
+  <circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="icon-x" viewBox="0 0 24 24">
+  <line x1="5" y1="5" x2="19" y2="19"/>
+  <line x1="19" y1="5" x2="5" y2="19"/>
+</symbol>
+<symbol id="icon-arrow-up" viewBox="0 0 24 24">
+  <line x1="12" y1="20" x2="12" y2="5"/>
+  <polyline points="6,11 12,5 18,11"/>
+</symbol>
+<symbol id="icon-gauge" viewBox="0 0 24 24">
+  <path d="M4 15a8 8 0 1 1 16 0"/>
+  <line x1="12" y1="15" x2="16" y2="9.5"/>
+  <circle cx="12" cy="15" r="1.2" fill="currentColor" stroke="none"/>
 </symbol>
 </defs>
 </svg>
@@ -663,6 +818,10 @@ body.reduce-motion .overhead-banner.show{animation:none;}
             <div class="switch" id="swFollowIss"></div>
           </div>
           <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-target"/></svg><div><div class="t">Real Altitude Scale</div><div class="d">Orbit ring at true 1:1 scale (~13x thinner — the ISS is genuinely that close to Earth)</div></div></div>
+            <div class="switch" id="swTrueScale"></div>
+          </div>
+          <div class="setting-row">
             <div class="setting-txt"><svg class="icon"><use href="#icon-monitor"/></svg><div><div class="t">Reduce Motion</div><div class="d">Slower camera drift, fewer particles</div></div></div>
             <div class="switch" id="swReduceMotion"></div>
           </div>
@@ -689,7 +848,76 @@ body.reduce-motion .overhead-banner.show{animation:none;}
   <div class="tabbar">
     <div class="tab active" data-view="dashboard"><div class="ic"><svg class="icon"><use href="#icon-satellite"/></svg></div><div class="lb">Dashboard</div></div>
     <div class="tab" data-view="sky"><div class="ic"><svg class="icon"><use href="#icon-compass"/></svg></div><div class="lb">Sky View</div></div>
+    <div class="tab" data-view="ar"><div class="ic"><svg class="icon"><use href="#icon-viewfinder"/></svg></div><div class="lb">AR Finder</div></div>
     <div class="tab" data-view="settings"><div class="ic"><svg class="icon"><use href="#icon-settings"/></svg></div><div class="lb">Settings</div></div>
+  </div>
+</div>
+
+<div class="ar-overlay" id="arOverlay">
+  <video id="arVideo" autoplay playsinline muted></video>
+  <div class="ar-fallback-bg" id="arFallbackBg"></div>
+  <div class="ar-vignette"></div>
+
+  <div class="ar-gate" id="arGate">
+    <div class="ar-gate-icon"><svg class="icon"><use href="#icon-viewfinder"/></svg></div>
+    <div class="ar-gate-title">AR Finder</div>
+    <div class="ar-gate-text">Point your phone at the sky. Using your camera and motion sensors, this points you straight at the ISS in real time — like a compass for space.</div>
+    <button class="btn" id="btnArEnable">Enable AR Finder</button>
+    <div class="ar-gate-hint" id="arGateHint"></div>
+    <button class="btn secondary" id="btnArCancel">Not Now</button>
+  </div>
+
+  <div class="ar-hud" id="arHud" hidden>
+    <div class="ar-topbar">
+      <button class="ar-icon-btn" id="btnArExit" aria-label="Exit"><svg class="icon"><use href="#icon-x"/></svg></button>
+      <div class="ar-status-pill" id="arStatusPill">SEARCHING…</div>
+      <button class="ar-icon-btn" id="btnArCalibrate" aria-label="Calibrate"><svg class="icon"><use href="#icon-gauge"/></svg></button>
+    </div>
+
+    <div class="ar-reticle" id="arReticle">
+      <div class="ar-reticle-ring"></div>
+      <div class="ar-reticle-cross"></div>
+    </div>
+
+    <div class="ar-target-marker" id="arTargetMarker">
+      <div class="ar-target-glow"></div>
+      <div class="ar-target-dot"></div>
+      <div class="ar-target-label" id="arTargetLabel">ISS · 0°</div>
+    </div>
+
+    <div class="ar-edge-arrow" id="arEdgeArrow">
+      <svg class="icon ar-edge-svg"><use href="#icon-arrow-up"/></svg>
+      <div class="ar-edge-text" id="arEdgeText"></div>
+    </div>
+
+    <div class="ar-below-horizon" id="arBelowHorizon" hidden>
+      <svg class="icon"><use href="#icon-moon"/></svg>
+      <div class="t1">ISS is below the horizon</div>
+      <div class="t2" id="arNextPassText">—</div>
+    </div>
+
+    <div class="ar-readout" id="arReadout">
+      <div class="ar-readout-row"><span>Device heading</span><b id="arDeviceHeading">—</b></div>
+      <div class="ar-readout-row"><span>ISS azimuth</span><b id="arTargetAz">—</b></div>
+      <div class="ar-readout-row"><span>ISS elevation</span><b id="arTargetEl">—</b></div>
+      <div class="ar-readout-row"><span>Pointing error</span><b id="arAngularSep">—</b></div>
+    </div>
+  </div>
+
+  <div class="ar-calib" id="arCalib" hidden>
+    <div class="ar-gate-title">Calibrate Compass</div>
+    <div class="ar-gate-text">Phone compasses can drift. If the arrow is consistently off by a fixed amount, nudge it here — or face true north and tap Sync.</div>
+    <div class="ar-calib-row">
+      <button class="btn small secondary" id="btnArNudgeMinus">−5°</button>
+      <div class="ar-calib-val" id="arOffsetVal">0°</div>
+      <button class="btn small secondary" id="btnArNudgePlus">+5°</button>
+    </div>
+    <button class="btn" id="btnArSyncNorth">I'm Facing North — Sync</button>
+    <div class="setting-row" style="border:none; padding:10px 2px;">
+      <div class="setting-txt"><svg class="icon"><use href="#icon-compass"/></svg><div><div class="t">Reverse Turn Direction</div><div class="d">Try if the arrow swings the wrong way as you turn</div></div></div>
+      <div class="switch" id="btnArMirror"></div>
+    </div>
+    <button class="btn secondary" id="btnArCalibClose">Done</button>
   </div>
 </div>
 
@@ -715,7 +943,10 @@ const DEFAULTS = {
   reduceMotion: false,
   units: 'km',
   showOrbitPath: true,
-  followIss: false
+  followIss: false,
+  trueScaleAltitude: false,
+  arHeadingOffset: 0,
+  arMirrorHeading: false
 };
 let settings = Object.assign({}, DEFAULTS);
 try{
@@ -930,7 +1161,14 @@ const EARTH_R = 2.0;
 // skimming/z-fighting against it.
 const ALT_EXAG = 2.4;
 function issSceneRadius(altKm){
-  return EARTH_R + (altKm/6371)*EARTH_R*ALT_EXAG;
+  // This exaggeration is purely a rendering choice for the 3D orbit ring —
+  // it never touches the real altitude number shown in the dashboard, nor
+  // any pass-prediction/look-angle math (those all use satellite.js's raw
+  // SGP4 propagation + real geodetic conversion, untouched by this).
+  // The ground track itself is also drawn at true surface level (see
+  // trackPastLine/trackFutureLine), not exaggerated.
+  const exag = settings.trueScaleAltitude ? 1 : ALT_EXAG;
+  return EARTH_R + (altKm/6371)*EARTH_R*exag;
 }
 let renderer, scene, camera, earthMesh, cloudsMesh, atmoMesh, issGroup, issModel, issDot, starPoints;
 let orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine, flowDots, futurePathPoints3D, passHighlightLine;
@@ -1888,6 +2126,7 @@ function refreshSettingsUI(){
   document.getElementById('swSound').classList.toggle('on', settings.sound);
   document.getElementById('swVibrate').classList.toggle('on', settings.vibrate);
   document.getElementById('swReduceMotion').classList.toggle('on', settings.reduceMotion);
+  document.getElementById('swTrueScale').classList.toggle('on', settings.trueScaleAltitude);
   document.getElementById('swOrbitPath').classList.toggle('on', settings.showOrbitPath);
   document.getElementById('swFollowIss').classList.toggle('on', settings.followIss);
   document.getElementById('selMinEl').value = String(settings.minElevation);
@@ -1922,6 +2161,11 @@ function setupSettingsHandlers(){
   document.getElementById('swReduceMotion').onclick = ()=>{
     settings.reduceMotion=!settings.reduceMotion; saveSettings(); refreshSettingsUI(); applyReduceMotionClass();
     toast(settings.reduceMotion ? 'Motion reduced' : 'Full motion restored');
+  };
+  document.getElementById('swTrueScale').onclick = ()=>{
+    settings.trueScaleAltitude = !settings.trueScaleAltitude;
+    saveSettings(); refreshSettingsUI(); buildOrbitPath();
+    toast(settings.trueScaleAltitude ? 'Showing true 1:1 orbit altitude' : 'Showing exaggerated orbit altitude');
   };
   document.getElementById('swOrbitPath').onclick = ()=>{ settings.showOrbitPath=!settings.showOrbitPath; saveSettings(); refreshSettingsUI(); applyOrbitVisibility(); };
   document.getElementById('swFollowIss').onclick = ()=>{
@@ -2010,6 +2254,11 @@ function restartCardAnimation(view){
 function setupNav(){
   document.querySelectorAll('.tab').forEach(tab=>{
     tab.onclick = ()=>{
+      if (tab.dataset.view === 'ar'){
+        document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t===tab));
+        openArView();
+        return;
+      }
       if (tab.classList.contains('active')){
         // Tapping the already-active tab just re-opens a collapsed sheet.
         document.getElementById('sheet').classList.remove('collapsed');
@@ -2194,6 +2443,266 @@ function applyOrbitVisibility(){
 }
 
 /* =========================================================================
+   AR FINDER — camera-passthrough compass pointer to the live ISS position
+   ========================================================================= */
+// Everything here derives the target direction from the exact same
+// lookAnglesAt() used by the dashboard/pass predictions — there is no
+// separate/approximate copy of the astronomy, so the *target* is always
+// as accurate as the rest of the app. The one thing that genuinely can't
+// be verified without a physical device is the phone's own compass
+// heading math below (device sensors can't be simulated in a sandbox),
+// so it leans on the same quaternion algorithm real-world AR libraries
+// use, plus on-device calibration controls as a safety net.
+const AR = {
+  active:false, started:false, hasCamera:false, stream:null,
+  heading:null, pitch:null, hasOrientation:false, headingAbsolute:true, locked:false,
+  rafId:null, orientationHandler:null, visHandler:null,
+  _quat:new THREE.Quaternion(), _euler:new THREE.Euler(), _zee:new THREE.Vector3(0,0,1),
+  _q1:new THREE.Quaternion(-Math.sqrt(0.5),0,0,Math.sqrt(0.5)),
+  _q2:new THREE.Quaternion(), _forward:new THREE.Vector3(),
+  // Approximate rear-camera half-FOV in portrait — used only to decide
+  // on-screen vs off-screen placement, not claimed to be lens-accurate.
+  fovH:34, fovV:44, lockDeg:3.5
+};
+
+function getScreenAngleDeg(){
+  if (screen.orientation && typeof screen.orientation.angle === 'number') return screen.orientation.angle;
+  if (typeof window.orientation === 'number') return window.orientation;
+  return 0;
+}
+
+// Standard device-orientation -> quaternion composition (the same
+// construction used across the AR/VR web ecosystem): rotate by the
+// device's alpha/beta/gamma, correct for the camera facing out of the
+// back of the phone rather than out of the top, then correct for the
+// current screen rotation (portrait/landscape).
+function arDeviceQuaternion(alpha, beta, gamma, screenAngleDeg){
+  const d2r = RAD;
+  AR._euler.set(beta*d2r, alpha*d2r, -gamma*d2r, 'YXZ');
+  AR._quat.setFromEuler(AR._euler);
+  AR._quat.multiply(AR._q1);
+  AR._quat.multiply(AR._q2.setFromAxisAngle(AR._zee, -screenAngleDeg*d2r));
+  return AR._quat;
+}
+
+function onArOrientation(event){
+  const beta = event.beta || 0, gamma = event.gamma || 0;
+  let effectiveAlpha;
+  if (typeof event.webkitCompassHeading === 'number' && !isNaN(event.webkitCompassHeading)){
+    effectiveAlpha = event.webkitCompassHeading; // iOS: tilt-compensated true/magnetic heading
+    AR.headingAbsolute = true;
+  } else if (typeof event.alpha === 'number'){
+    effectiveAlpha = event.alpha; // world-referenced only when event.absolute is true
+    AR.headingAbsolute = !!event.absolute;
+  } else {
+    return;
+  }
+  const q = arDeviceQuaternion(effectiveAlpha, beta, gamma, getScreenAngleDeg());
+  const fwd = AR._forward.set(0,0,-1).applyQuaternion(q);
+  let az = DEG*Math.atan2(fwd.x, -fwd.z);
+  if (settings.arMirrorHeading) az = -az;
+  az = ((az + settings.arHeadingOffset) % 360 + 360) % 360;
+  AR.heading = az;
+  AR.pitch = DEG*Math.asin(Math.max(-1, Math.min(1, fwd.y)));
+  AR.hasOrientation = true;
+}
+
+async function startArCamera(){
+  try{
+    AR.stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}, audio:false});
+    const video = document.getElementById('arVideo');
+    video.srcObject = AR.stream;
+    await video.play().catch(()=>{});
+    AR.hasCamera = true;
+    document.getElementById('arFallbackBg').classList.remove('on');
+  }catch(e){
+    AR.hasCamera = false;
+    document.getElementById('arFallbackBg').classList.add('on');
+  }
+}
+function stopArCamera(){
+  if (AR.stream){ AR.stream.getTracks().forEach(t=>t.stop()); AR.stream = null; }
+  const video = document.getElementById('arVideo');
+  if (video) video.srcObject = null;
+  AR.hasCamera = false;
+}
+
+function updateArFrame(){
+  const statusPill = document.getElementById('arStatusPill');
+  const marker = document.getElementById('arTargetMarker');
+  const edgeArrow = document.getElementById('arEdgeArrow');
+  const belowHorizon = document.getElementById('arBelowHorizon');
+
+  if (!settings.location || !state.satrec){
+    statusPill.textContent = !settings.location ? 'SET LOCATION IN SETTINGS' : 'WAITING FOR ORBIT DATA…';
+    statusPill.className = 'ar-status-pill dim';
+    marker.classList.remove('show'); edgeArrow.classList.remove('show'); belowHorizon.hidden = true;
+    return;
+  }
+
+  const observer = {lat:settings.location.lat, lon:settings.location.lon, alt:settings.location.alt||0};
+  const now = new Date();
+  const la = lookAnglesAt(now, observer);
+  if (!la) return;
+
+  document.getElementById('arTargetAz').textContent = la.azimuth.toFixed(1)+'°';
+  document.getElementById('arTargetEl').textContent = la.elevation.toFixed(1)+'°';
+  document.getElementById('arDeviceHeading').textContent = AR.hasOrientation ? AR.heading.toFixed(1)+'°' : '—';
+
+  if (la.elevation < 0){
+    belowHorizon.hidden = false;
+    marker.classList.remove('show'); edgeArrow.classList.remove('show');
+    statusPill.textContent = 'BELOW HORIZON'; statusPill.className = 'ar-status-pill dim';
+    const next = state.passes && state.passes[0];
+    document.getElementById('arNextPassText').textContent = next
+      ? 'Next pass in ' + fmtHMS((next.aosTime-now.getTime())/1000)
+      : 'No upcoming pass computed yet';
+    document.getElementById('arAngularSep').textContent = '—';
+    AR.locked = false;
+    return;
+  }
+  belowHorizon.hidden = true;
+
+  if (!AR.hasOrientation){
+    statusPill.textContent = 'CALIBRATING SENSORS…'; statusPill.className = 'ar-status-pill dim';
+    marker.classList.remove('show'); edgeArrow.classList.remove('show');
+    return;
+  }
+
+  const dAz = ((la.azimuth - AR.heading + 540) % 360) - 180;
+  const dEl = la.elevation - AR.pitch;
+  const sep = Math.sqrt(dAz*dAz + dEl*dEl);
+  document.getElementById('arAngularSep').textContent = sep.toFixed(1)+'°';
+
+  const locked = sep < AR.lockDeg;
+  if (locked && !AR.locked){
+    if (settings.sound) playTone();
+    if (settings.vibrate && navigator.vibrate) navigator.vibrate([90,40,90]);
+  }
+  AR.locked = locked;
+
+  const w = window.innerWidth, h = window.innerHeight;
+  const xFrac = dAz / AR.fovH, yFrac = -dEl / AR.fovV;
+  const within = Math.abs(xFrac) <= 1 && Math.abs(yFrac) <= 1;
+
+  if (within){
+    marker.style.left = (w/2 + xFrac*(w/2)) + 'px';
+    marker.style.top = (h/2 + yFrac*(h/2)) + 'px';
+    marker.classList.add('show');
+    marker.classList.toggle('locked', locked);
+    document.getElementById('arTargetLabel').textContent = locked ? 'LOCKED ON' : ('ISS · '+la.elevation.toFixed(0)+'°');
+    edgeArrow.classList.remove('show');
+    statusPill.textContent = locked ? 'LOCKED ON' : 'TRACKING';
+    statusPill.className = 'ar-status-pill ' + (locked ? 'locked' : 'tracking');
+  } else {
+    marker.classList.remove('show');
+    const rotDeg = DEG*Math.atan2(dAz, dEl);
+    const rad = rotDeg*RAD;
+    const R = Math.min(w,h)*0.36;
+    edgeArrow.style.left = (w/2 + Math.sin(rad)*R) + 'px';
+    edgeArrow.style.top = (h/2 - Math.cos(rad)*R) + 'px';
+    edgeArrow.querySelector('.ar-edge-svg').style.transform = `rotate(${rotDeg}deg)`;
+    edgeArrow.classList.add('show');
+    document.getElementById('arEdgeText').textContent =
+      `Turn ${dAz>=0?'right':'left'} ${Math.abs(dAz).toFixed(0)}° · look ${dEl>=0?'up':'down'} ${Math.abs(dEl).toFixed(0)}°`;
+    statusPill.textContent = 'TRACKING'; statusPill.className = 'ar-status-pill tracking';
+  }
+}
+
+function arLoop(){
+  if (!AR.active){ AR.rafId = null; return; }
+  AR.rafId = requestAnimationFrame(arLoop);
+  updateArFrame();
+}
+
+function refreshArCalibUI(){
+  document.getElementById('arOffsetVal').textContent = (settings.arHeadingOffset>0?'+':'')+settings.arHeadingOffset+'°';
+  document.getElementById('btnArMirror').classList.toggle('on', settings.arMirrorHeading);
+}
+
+async function openArView(){
+  document.getElementById('arOverlay').classList.add('show');
+  AR.active = true;
+  if (!AR.started){
+    document.getElementById('arGate').hidden = false;
+    document.getElementById('arHud').hidden = true;
+    document.getElementById('arGateHint').textContent = window.isSecureContext ? '' :
+      'Note: this page isn’t loaded over https — the browser may block camera/motion access from a local file.';
+  } else {
+    document.getElementById('arGate').hidden = true;
+    document.getElementById('arHud').hidden = false;
+    await startArCamera();
+    if (!AR.rafId) arLoop();
+  }
+}
+
+function closeArView(){
+  document.getElementById('arOverlay').classList.remove('show');
+  document.getElementById('arCalib').hidden = true;
+  AR.active = false;
+  stopArCamera();
+  if (AR.rafId){ cancelAnimationFrame(AR.rafId); AR.rafId = null; }
+}
+
+function setupArView(){
+  document.getElementById('btnArEnable').onclick = async ()=>{
+    const hint = document.getElementById('arGateHint');
+    hint.textContent = 'Requesting permissions…';
+    try{
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+        const res = await DeviceOrientationEvent.requestPermission();
+        if (res !== 'granted'){
+          hint.textContent = 'Motion & orientation access was denied. Enable it for this site in your browser settings, then try again.';
+          return;
+        }
+      }
+    }catch(e){
+      hint.textContent = 'Could not request sensor access on this device/browser.';
+      return;
+    }
+    AR.started = true;
+    AR.orientationHandler = onArOrientation;
+    window.addEventListener('deviceorientationabsolute', AR.orientationHandler);
+    window.addEventListener('deviceorientation', AR.orientationHandler);
+    await startArCamera();
+    document.getElementById('arGate').hidden = true;
+    document.getElementById('arHud').hidden = false;
+    arLoop();
+  };
+  document.getElementById('btnArCancel').onclick = ()=> exitArToTab('dashboard');
+  document.getElementById('btnArExit').onclick = ()=> exitArToTab('dashboard');
+  document.getElementById('btnArCalibrate').onclick = ()=>{ document.getElementById('arCalib').hidden = false; refreshArCalibUI(); };
+  document.getElementById('btnArCalibClose').onclick = ()=>{ document.getElementById('arCalib').hidden = true; };
+  document.getElementById('btnArNudgeMinus').onclick = ()=>{ settings.arHeadingOffset = ((settings.arHeadingOffset-5+540)%360)-180; saveSettings(); refreshArCalibUI(); };
+  document.getElementById('btnArNudgePlus').onclick = ()=>{ settings.arHeadingOffset = ((settings.arHeadingOffset+5+540)%360)-180; saveSettings(); refreshArCalibUI(); };
+  document.getElementById('btnArSyncNorth').onclick = ()=>{
+    if (AR.heading == null){ toast('No compass reading yet'); return; }
+    const raw = ((AR.heading - settings.arHeadingOffset) + 360) % 360;
+    settings.arHeadingOffset = (((0 - raw) + 540) % 360) - 180;
+    saveSettings(); refreshArCalibUI();
+    toast('Synced — current facing direction is now North');
+  };
+  document.getElementById('btnArMirror').onclick = ()=>{
+    settings.arMirrorHeading = !settings.arMirrorHeading;
+    saveSettings(); refreshArCalibUI();
+    toast(settings.arMirrorHeading ? 'Turn direction reversed' : 'Turn direction normal');
+  };
+
+  AR.visHandler = ()=>{
+    if (!AR.active) return;
+    if (document.hidden) stopArCamera();
+    else if (AR.started) startArCamera();
+  };
+  document.addEventListener('visibilitychange', AR.visHandler);
+}
+
+function exitArToTab(viewName){
+  closeArView();
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.view===viewName));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+viewName));
+}
+
+/* =========================================================================
    INIT
    ========================================================================= */
 async function init(){
@@ -2206,6 +2715,7 @@ async function init(){
   refreshSettingsUI();
   applyReduceMotionClass();
   setupShareButton();
+  setupArView();
 
   document.getElementById('loadingText').textContent = 'ACQUIRING ORBITAL DATA…';
   setStatus('syncing', 'SYNCING');
