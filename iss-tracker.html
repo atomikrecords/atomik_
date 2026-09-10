@@ -141,11 +141,6 @@ body{
 .card:nth-of-type(4){animation-delay:.2s;}
 .card:nth-of-type(5){animation-delay:.26s;}
 
-/* stat value "tick" flash when a live number updates */
-@keyframes statPulse{0%{background:rgba(79,216,255,.22); border-color:rgba(79,216,255,.45);} 100%{background:rgba(255,255,255,.02); border-color:var(--line-soft);}}
-.stat{transition:background .3s, border-color .3s;}
-.stat.pulse{animation:statPulse .7s ease;}
-
 /* skeleton loading shimmer, shown before first live data arrives */
 .skeleton{position:relative; color:transparent !important; text-shadow:none !important; border-radius:6px; overflow:hidden; background:rgba(255,255,255,.06); min-width:38px; display:inline-block;}
 .skeleton::after{
@@ -1884,19 +1879,13 @@ function fmtDist(km){
   return km.toFixed(0)+' <small>km</small>';
 }
 
-// Update a stat value only when it actually changed, with a brief accent
-// "tick" flash so live numbers feel alive rather than silently mutating.
+// Update a stat value only when it actually changed (avoids redundant
+// DOM writes), clearing the initial skeleton shimmer on first real data.
 function setStatHTML(id, html){
   const el = document.getElementById(id);
   if (el.dataset.skeleton){ delete el.dataset.skeleton; el.classList.remove('skeleton'); }
   if (el.innerHTML === html) return;
   el.innerHTML = html;
-  const box = el.closest('.stat');
-  if (box){
-    box.classList.remove('pulse');
-    void box.offsetWidth;
-    box.classList.add('pulse');
-  }
 }
 
 function renderDashboardStats(ll){
@@ -1938,6 +1927,7 @@ function renderPassUI(){
     listEl.innerHTML = '<div class="hint">No qualifying passes in the next 72 hours. Try lowering the minimum elevation in Settings.</div>';
     document.getElementById('nextPassBadge').textContent = 'NONE';
     document.getElementById('countdownVal').textContent = '--:--:--';
+    document.getElementById('skyLegend').innerHTML = 'No qualifying passes found.<br>Try lowering the minimum elevation in Settings.';
     window._targetPass = null;
     updatePassHighlight(null);
     return;
@@ -1959,6 +1949,8 @@ function renderPassUI(){
   }
   window._targetPass = target;
   updatePassHighlight(target);
+  document.getElementById('skyLegend').innerHTML =
+    `Rises <b>${compassDir(target.aosAz)}</b>, climbs to <b>${target.maxEl.toFixed(0)}°</b> above the horizon, sets <b>${compassDir(target.losAz)}</b>.<br>Dashed rings mark 30°/60° elevation.`;
 
   listEl.innerHTML = state.passes.slice(0,6).map(p=>{
     const d = new Date(p.aosTime);
