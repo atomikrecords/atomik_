@@ -239,6 +239,24 @@ select.selstyle{
 .tab .ic{font-size:17px; line-height:1;}
 .tab .lb{font-size:9.5px; font-weight:600; letter-spacing:.02em;}
 
+/* ---------- Icons ---------- */
+.icon{width:16px; height:16px; flex:none; display:inline-block; vertical-align:-3px;}
+.icon path,.icon line,.icon polyline,.icon polygon,.icon rect,.icon circle{
+  stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+}
+.icon .filled{fill:currentColor; stroke:none;}
+.card-label{display:inline-flex; align-items:center; gap:6px;}
+.card-label .icon{width:13px; height:13px; color:var(--accent); opacity:.85;}
+.tab .ic .icon{width:19px; height:19px;}
+.tab .ic{display:flex; align-items:center; justify-content:center; height:19px;}
+.overhead-banner .ic .icon{width:18px; height:18px; color:#0a2b1c;}
+.btn .icon{width:15px; height:15px;}
+.badge-ic{display:inline-flex; align-items:center; gap:4px;}
+.badge-ic .icon{width:11px; height:11px;}
+.setting-txt{display:flex; align-items:flex-start; gap:9px;}
+.setting-txt .icon{width:16px; height:16px; margin-top:1px; color:var(--sub); flex:none;}
+
 /* misc */
 .hint{font-size:11px; color:var(--sub2); line-height:1.6; margin-top:4px;}
 .divider{height:1px; background:var(--line-soft); margin:12px 0;}
@@ -269,6 +287,97 @@ select.selstyle{
 </head>
 <body>
 
+<svg style="position:absolute; width:0; height:0; overflow:hidden;" aria-hidden="true">
+<defs>
+<symbol id="icon-satellite" viewBox="0 0 24 24">
+  <rect x="1.6" y="2.6" width="5" height="3.2" rx="0.8" transform="rotate(-45 4.1 4.2)"/>
+  <rect x="17.4" y="18" width="5" height="3.2" rx="0.8" transform="rotate(-45 19.9 19.6)"/>
+  <rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1.1" transform="rotate(45 12 12)"/>
+  <line x1="7.9" y1="7.9" x2="5.6" y2="5.6"/>
+  <line x1="16.1" y1="16.1" x2="18.4" y2="18.4"/>
+  <line x1="14.6" y1="9.4" x2="18" y2="6"/>
+  <circle class="filled" cx="18.6" cy="5.4" r="1"/>
+</symbol>
+<symbol id="icon-compass" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="9"/>
+  <polygon points="15,8.7 13,13 8.7,15 10.7,10.7"/>
+  <circle class="filled" cx="12" cy="12" r="1"/>
+</symbol>
+<symbol id="icon-settings" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="3.1"/>
+  <line x1="12" y1="2.7" x2="12" y2="5.4"/>
+  <line x1="12" y1="18.6" x2="12" y2="21.3"/>
+  <line x1="2.7" y1="12" x2="5.4" y2="12"/>
+  <line x1="18.6" y1="12" x2="21.3" y2="12"/>
+  <line x1="5.3" y1="5.3" x2="7.2" y2="7.2"/>
+  <line x1="16.8" y1="16.8" x2="18.7" y2="18.7"/>
+  <line x1="18.7" y1="5.3" x2="16.8" y2="7.2"/>
+  <line x1="7.2" y1="16.8" x2="5.3" y2="18.7"/>
+</symbol>
+<symbol id="icon-pin" viewBox="0 0 24 24">
+  <path d="M12 21s-6.5-6.2-6.5-11A6.5 6.5 0 0 1 18.5 10c0 4.8-6.5 11-6.5 11z"/>
+  <circle cx="12" cy="10" r="2.1"/>
+</symbol>
+<symbol id="icon-bell" viewBox="0 0 24 24">
+  <path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 14 6 10z"/>
+  <path d="M10 19a2 2 0 0 0 4 0"/>
+</symbol>
+<symbol id="icon-volume" viewBox="0 0 24 24">
+  <path d="M4 9v6h4l5 4V5L8 9H4z"/>
+  <path d="M16.3 9.2a4.5 4.5 0 0 1 0 5.6"/>
+  <path d="M18.7 6.8a8 8 0 0 1 0 10.4"/>
+</symbol>
+<symbol id="icon-vibrate" viewBox="0 0 24 24">
+  <rect x="8" y="4" width="8" height="16" rx="1.6"/>
+  <line x1="2" y1="9" x2="2" y2="15"/>
+  <line x1="22" y1="9" x2="22" y2="15"/>
+  <circle class="filled" cx="12" cy="17" r="0.9"/>
+</symbol>
+<symbol id="icon-sun" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="3.8"/>
+  <line x1="12" y1="2.6" x2="12" y2="5"/>
+  <line x1="12" y1="19" x2="12" y2="21.4"/>
+  <line x1="2.6" y1="12" x2="5" y2="12"/>
+  <line x1="19" y1="12" x2="21.4" y2="12"/>
+  <line x1="5.2" y1="5.2" x2="6.8" y2="6.8"/>
+  <line x1="17.2" y1="17.2" x2="18.8" y2="18.8"/>
+  <line x1="18.8" y1="5.2" x2="17.2" y2="6.8"/>
+  <line x1="6.8" y1="17.2" x2="5.2" y2="18.8"/>
+</symbol>
+<symbol id="icon-moon" viewBox="0 0 24 24">
+  <path d="M20 14.3A8.4 8.4 0 1 1 9.7 4a6.6 6.6 0 1 0 10.3 10.3z"/>
+</symbol>
+<symbol id="icon-target" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="8.4"/>
+  <circle cx="12" cy="12" r="4.9"/>
+  <circle class="filled" cx="12" cy="12" r="1.3"/>
+</symbol>
+<symbol id="icon-monitor" viewBox="0 0 24 24">
+  <rect x="3" y="4.5" width="18" height="12" rx="1.6"/>
+  <line x1="8" y1="20" x2="16" y2="20"/>
+  <line x1="12" y1="16.5" x2="12" y2="20"/>
+</symbol>
+<symbol id="icon-signal" viewBox="0 0 24 24">
+  <line x1="4" y1="19" x2="4" y2="15"/>
+  <line x1="9.3" y1="19" x2="9.3" y2="11"/>
+  <line x1="14.6" y1="19" x2="14.6" y2="7"/>
+  <line x1="20" y1="19" x2="20" y2="3.5"/>
+</symbol>
+<symbol id="icon-list" viewBox="0 0 24 24">
+  <line x1="8.4" y1="6" x2="21" y2="6"/>
+  <line x1="8.4" y1="12" x2="21" y2="12"/>
+  <line x1="8.4" y1="18" x2="21" y2="18"/>
+  <circle class="filled" cx="3.6" cy="6" r="1"/>
+  <circle class="filled" cx="3.6" cy="12" r="1"/>
+  <circle class="filled" cx="3.6" cy="18" r="1"/>
+</symbol>
+<symbol id="icon-clock" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="9"/>
+  <polyline points="12,7 12,12 16,14"/>
+</symbol>
+</defs>
+</svg>
+
 <div id="gl"></div>
 
 <div class="loading-veil" id="loadingVeil">
@@ -292,7 +401,7 @@ select.selstyle{
   </div>
 
   <div class="overhead-banner" id="overheadBanner">
-    <div class="ic">🛰️</div>
+    <div class="ic"><svg class="icon"><use href="#icon-satellite"/></svg></div>
     <div class="txt">
       <div class="t1">ISS IS OVERHEAD</div>
       <div class="t2" id="overheadDetail">EL 0° · AZ 0°</div>
@@ -310,7 +419,7 @@ select.selstyle{
       <div class="view active" id="view-dashboard">
         <div class="card">
           <div class="card-head">
-            <span class="card-label">Current Position</span>
+            <span class="card-label"><svg class="icon"><use href="#icon-satellite"/></svg>Current Position</span>
             <span class="card-badge" id="illumBadge">—</span>
           </div>
           <div class="stat-grid">
@@ -325,7 +434,7 @@ select.selstyle{
 
         <div class="card">
           <div class="card-head">
-            <span class="card-label">Next Visible Pass</span>
+            <span class="card-label"><svg class="icon"><use href="#icon-clock"/></svg>Next Visible Pass</span>
             <span class="card-badge" id="nextPassBadge">—</span>
           </div>
           <div class="countdown-row">
@@ -353,7 +462,7 @@ select.selstyle{
 
         <div class="card">
           <div class="card-head">
-            <span class="card-label">Upcoming Passes</span>
+            <span class="card-label"><svg class="icon"><use href="#icon-list"/></svg>Upcoming Passes</span>
             <span class="card-badge" id="passCountBadge">0</span>
           </div>
           <div class="list-passes" id="passList">
@@ -367,7 +476,7 @@ select.selstyle{
       <!-- SKY VIEW -->
       <div class="view" id="view-sky">
         <div class="card">
-          <div class="card-head"><span class="card-label">Live Sky Position</span><span class="card-badge" id="liveVisBadge">—</span></div>
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-compass"/></svg>Live Sky Position</span><span class="card-badge" id="liveVisBadge">—</span></div>
           <div class="sky-wrap" style="flex-direction:column; align-items:center;">
             <div class="sky-compass" id="skyCompassBig" style="width:220px;height:220px;">
               <div class="ring"></div><div class="ring2"></div>
@@ -385,7 +494,7 @@ select.selstyle{
           </div>
         </div>
         <div class="card">
-          <div class="card-head"><span class="card-label">Sun / Twilight</span></div>
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-sun"/></svg>Sun / Twilight</span></div>
           <div class="stat-grid">
             <div class="stat"><div class="k">Your Sky</div><div class="v" id="obsDark">—</div></div>
             <div class="stat"><div class="k">ISS Sunlit</div><div class="v" id="issSun">—</div></div>
@@ -398,9 +507,9 @@ select.selstyle{
       <!-- SETTINGS -->
       <div class="view" id="view-settings">
         <div class="card">
-          <div class="card-head"><span class="card-label">Observer Location</span></div>
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-pin"/></svg>Observer Location</span></div>
           <div class="loc-current" id="locCurrent">No location set</div>
-          <button class="btn" id="btnGeo">📍 Use My Location</button>
+          <button class="btn" id="btnGeo"><svg class="icon"><use href="#icon-pin"/></svg>Use My Location</button>
           <div class="divider"></div>
           <div class="row2">
             <div class="field"><label>Latitude</label><input type="number" step="0.0001" id="inLat" placeholder="e.g. 40.7128"></div>
@@ -411,13 +520,13 @@ select.selstyle{
         </div>
 
         <div class="card">
-          <div class="card-head"><span class="card-label">Notifications</span></div>
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-bell"/></svg>Notifications</span></div>
           <div class="setting-row">
-            <div class="setting-txt"><div class="t">Pass Alerts</div><div class="d">Notify before the ISS becomes visible</div></div>
+            <div class="setting-txt"><svg class="icon"><use href="#icon-bell"/></svg><div><div class="t">Pass Alerts</div><div class="d">Notify before the ISS becomes visible</div></div></div>
             <div class="switch" id="swNotif"></div>
           </div>
           <div class="setting-row" style="display:block;">
-            <div class="setting-txt" style="margin-bottom:9px;"><div class="t">Alert Timing</div><div class="d">Minutes before acquisition</div></div>
+            <div class="setting-txt" style="margin-bottom:9px;"><svg class="icon"><use href="#icon-clock"/></svg><div><div class="t">Alert Timing</div><div class="d">Minutes before acquisition</div></div></div>
             <div class="chip-row" id="alertChips">
               <div class="chip" data-min="1">1 min</div>
               <div class="chip" data-min="5">5 min</div>
@@ -426,23 +535,23 @@ select.selstyle{
             </div>
           </div>
           <div class="setting-row">
-            <div class="setting-txt"><div class="t">Visible Passes Only</div><div class="d">Skip alerts for daylight/invisible passes</div></div>
+            <div class="setting-txt"><svg class="icon"><use href="#icon-sun"/></svg><div><div class="t">Visible Passes Only</div><div class="d">Skip alerts for daylight/invisible passes</div></div></div>
             <div class="switch" id="swVisOnly"></div>
           </div>
           <div class="setting-row">
-            <div class="setting-txt"><div class="t">Sound</div><div class="d">Play a tone on overhead alert</div></div>
+            <div class="setting-txt"><svg class="icon"><use href="#icon-volume"/></svg><div><div class="t">Sound</div><div class="d">Play a tone on overhead alert</div></div></div>
             <div class="switch" id="swSound"></div>
           </div>
           <div class="setting-row">
-            <div class="setting-txt"><div class="t">Vibration</div><div class="d">Haptic pulse on overhead alert</div></div>
+            <div class="setting-txt"><svg class="icon"><use href="#icon-vibrate"/></svg><div><div class="t">Vibration</div><div class="d">Haptic pulse on overhead alert</div></div></div>
             <div class="switch" id="swVibrate"></div>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-head"><span class="card-label">Pass Criteria</span></div>
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-target"/></svg>Pass Criteria</span></div>
           <div class="setting-row">
-            <div class="setting-txt"><div class="t">Minimum Elevation</div><div class="d">Only list passes above this peak</div></div>
+            <div class="setting-txt"><svg class="icon"><use href="#icon-target"/></svg><div><div class="t">Minimum Elevation</div><div class="d">Only list passes above this peak</div></div></div>
             <select class="selstyle" id="selMinEl">
               <option value="10">10°</option>
               <option value="30">30°</option>
@@ -453,13 +562,13 @@ select.selstyle{
         </div>
 
         <div class="card">
-          <div class="card-head"><span class="card-label">Display</span></div>
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-monitor"/></svg>Display</span></div>
           <div class="setting-row">
-            <div class="setting-txt"><div class="t">Reduce Motion</div><div class="d">Slower camera drift, fewer particles</div></div>
+            <div class="setting-txt"><svg class="icon"><use href="#icon-monitor"/></svg><div><div class="t">Reduce Motion</div><div class="d">Slower camera drift, fewer particles</div></div></div>
             <div class="switch" id="swReduceMotion"></div>
           </div>
           <div class="setting-row">
-            <div class="setting-txt"><div class="t">Units</div><div class="d">Distance / altitude / speed</div></div>
+            <div class="setting-txt"><svg class="icon"><use href="#icon-signal"/></svg><div><div class="t">Units</div><div class="d">Distance / altitude / speed</div></div></div>
             <select class="selstyle" id="selUnits">
               <option value="km">Metric (km)</option>
               <option value="mi">Imperial (mi)</option>
@@ -468,7 +577,7 @@ select.selstyle{
         </div>
 
         <div class="card">
-          <div class="card-head"><span class="card-label">Data Source</span></div>
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-signal"/></svg>Data Source</span></div>
           <div class="hint" id="dataSourceInfo">—</div>
         </div>
 
@@ -479,9 +588,9 @@ select.selstyle{
   </div>
 
   <div class="tabbar">
-    <div class="tab active" data-view="dashboard"><div class="ic">🛰️</div><div class="lb">Dashboard</div></div>
-    <div class="tab" data-view="sky"><div class="ic">🧭</div><div class="lb">Sky View</div></div>
-    <div class="tab" data-view="settings"><div class="ic">⚙️</div><div class="lb">Settings</div></div>
+    <div class="tab active" data-view="dashboard"><div class="ic"><svg class="icon"><use href="#icon-satellite"/></svg></div><div class="lb">Dashboard</div></div>
+    <div class="tab" data-view="sky"><div class="ic"><svg class="icon"><use href="#icon-compass"/></svg></div><div class="lb">Sky View</div></div>
+    <div class="tab" data-view="settings"><div class="ic"><svg class="icon"><use href="#icon-settings"/></svg></div><div class="lb">Settings</div></div>
   </div>
 </div>
 
@@ -526,7 +635,8 @@ const state = {
   subsolar: {lat:0, lon:0},
   passes: [],
   notifiedKeys: new Set(),
-  lastOverheadState: false
+  lastOverheadState: false,
+  textureSource: 'nasa'
 };
 
 /* =========================================================================
@@ -660,9 +770,12 @@ function applyTLE(line1, line2, fetchedAt){
   try{
     state.satrec = satellite.twoline2satrec(line1, line2);
     state.tleEpochText = new Date(fetchedAt).toUTCString();
+    const texNote = state.textureSource === 'nasa'
+      ? 'Earth imagery: NASA Blue Marble / Visible Earth (via three.js asset CDN).'
+      : 'Earth imagery: offline procedural fallback (live textures unreachable).';
     document.getElementById('dataSourceInfo').innerHTML =
       'Live position via wheretheiss.at · Orbit propagated with SGP4 from TLE fetched ' +
-      new Date(fetchedAt).toLocaleString() + '.';
+      new Date(fetchedAt).toLocaleString() + '.<br>' + texNote;
     recomputePasses();
   }catch(e){ console.warn('bad TLE', e); }
 }
@@ -703,7 +816,7 @@ async function pollRealtimePosition(){
    THREE.JS SCENE
    ========================================================================= */
 const EARTH_R = 2.0;
-let renderer, scene, camera, earthMesh, cloudsMesh, atmoMesh, issGroup, issDot, orbitLine, starPoints;
+let renderer, scene, camera, earthMesh, cloudsMesh, atmoMesh, issGroup, issModel, issDot, orbitLine, starPoints;
 let sunLight, ambLight;
 const clock = new THREE.Clock();
 
@@ -744,6 +857,36 @@ function fbm(noise, x, y, oct){
     amp *= 0.5; freq *= 2.15;
   }
   return val/sum;
+}
+
+/* ---- real Earth imagery (NASA-derived, bundled with three.js examples) ---- */
+const TEXTURE_BASE = 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/';
+function loadTextureAsync(loader, url){
+  return new Promise((resolve, reject)=>{
+    loader.load(url, resolve, undefined, reject);
+  });
+}
+async function loadRealPlanetTextures(){
+  const loader = new THREE.TextureLoader();
+  const [dayTex, nightTex, cloudTex, specTex] = await Promise.all([
+    loadTextureAsync(loader, TEXTURE_BASE+'earth_atmos_2048.jpg'),
+    loadTextureAsync(loader, TEXTURE_BASE+'earth_lights_2048.png'),
+    loadTextureAsync(loader, TEXTURE_BASE+'earth_clouds_1024.png'),
+    loadTextureAsync(loader, TEXTURE_BASE+'earth_specular_2048.jpg')
+  ]);
+  [dayTex, nightTex, cloudTex, specTex].forEach(t=>{ t.wrapS = THREE.RepeatWrapping; t.anisotropy = 4; });
+  return {dayTex, nightTex, cloudTex, specTex, isFallback:false};
+}
+async function loadPlanetTextures(){
+  try{
+    return await loadRealPlanetTextures();
+  }catch(e){
+    console.warn('Real Earth textures unavailable, using procedural fallback', e);
+    const t = generatePlanetTextures();
+    t.specTex = null;
+    t.isFallback = true;
+    return t;
+  }
 }
 
 function generatePlanetTextures(){
@@ -882,24 +1025,39 @@ function buildStarfield(){
 const EARTH_VERT = `
 varying vec3 vNormal;
 varying vec2 vUv;
+varying vec3 vViewDir;
 void main(){
   vNormal = normalize(normalMatrix * normal);
   vUv = uv;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+  vec4 mvPosition = modelViewMatrix * vec4(position,1.0);
+  vViewDir = normalize(-mvPosition.xyz);
+  gl_Position = projectionMatrix * mvPosition;
 }`;
 const EARTH_FRAG = `
 uniform sampler2D dayTex;
 uniform sampler2D nightTex;
+uniform sampler2D specTex;
+uniform bool hasSpec;
 uniform vec3 sunDir;
 varying vec3 vNormal;
 varying vec2 vUv;
+varying vec3 vViewDir;
 void main(){
-  float lambert = dot(normalize(vNormal), normalize(sunDir));
+  vec3 N = normalize(vNormal);
+  vec3 L = normalize(sunDir);
+  float lambert = dot(N, L);
   float dayMix = smoothstep(-0.18, 0.18, lambert);
   vec3 dayColor = texture2D(dayTex, vUv).rgb;
   vec3 nightColor = texture2D(nightTex, vUv).rgb;
-  vec3 color = mix(nightColor*0.9, dayColor, dayMix);
-  float rim = pow(1.0 - max(dot(normalize(vNormal), vec3(0.0,0.0,1.0)),0.0), 2.0);
+  float shade = max(lambert, 0.0) * 0.85 + 0.15;
+  vec3 color = mix(nightColor*1.1, dayColor*shade, dayMix);
+  if (hasSpec){
+    float oceanMask = texture2D(specTex, vUv).r;
+    vec3 R = reflect(-L, N);
+    float spec = pow(max(dot(R, normalize(vViewDir)), 0.0), 26.0) * oceanMask * dayMix;
+    color += vec3(0.75,0.88,1.0) * spec * 0.85;
+  }
+  float rim = pow(1.0 - max(dot(N, vec3(0.0,0.0,1.0)),0.0), 2.0);
   color += dayColor * rim * 0.03 * dayMix;
   gl_FragColor = vec4(color, 1.0);
 }`;
@@ -919,7 +1077,7 @@ void main(){
   gl_FragColor = vec4(glow, intensity*1.15);
 }`;
 
-function initScene(){
+async function initScene(){
   const container = document.getElementById('gl');
   renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, settings.reduceMotion?1.3:2));
@@ -939,22 +1097,30 @@ function initScene(){
   sunLight = new THREE.DirectionalLight(0xffffff, 1.1);
   scene.add(sunLight);
 
-  const {dayTex, nightTex, cloudTex} = generatePlanetTextures();
+  const {dayTex, nightTex, cloudTex, specTex, isFallback} = await loadPlanetTextures();
+  state.textureSource = isFallback ? 'procedural' : 'nasa';
 
-  const earthGeo = new THREE.SphereGeometry(EARTH_R, 64, 64);
+  const dummySpec = new THREE.DataTexture(new Uint8Array([0,0,0,255]), 1, 1);
+  dummySpec.needsUpdate = true;
+
+  const earthGeo = new THREE.SphereGeometry(EARTH_R, 96, 96);
   const earthMat = new THREE.ShaderMaterial({
-    uniforms:{ dayTex:{value:dayTex}, nightTex:{value:nightTex}, sunDir:{value:new THREE.Vector3(1,0,0)} },
+    uniforms:{
+      dayTex:{value:dayTex}, nightTex:{value:nightTex},
+      specTex:{value:specTex || dummySpec}, hasSpec:{value:!!specTex},
+      sunDir:{value:new THREE.Vector3(1,0,0)}
+    },
     vertexShader:EARTH_VERT, fragmentShader:EARTH_FRAG
   });
   earthMesh = new THREE.Mesh(earthGeo, earthMat);
   scene.add(earthMesh);
 
-  const cloudGeo = new THREE.SphereGeometry(EARTH_R*1.012, 48, 48);
-  const cloudMat = new THREE.MeshLambertMaterial({map:cloudTex, transparent:true, opacity:0.55, depthWrite:false});
+  const cloudGeo = new THREE.SphereGeometry(EARTH_R*1.012, 64, 64);
+  const cloudMat = new THREE.MeshLambertMaterial({map:cloudTex, transparent:true, opacity:0.62, depthWrite:false});
   cloudsMesh = new THREE.Mesh(cloudGeo, cloudMat);
   scene.add(cloudsMesh);
 
-  const atmoGeo = new THREE.SphereGeometry(EARTH_R*1.15, 48, 48);
+  const atmoGeo = new THREE.SphereGeometry(EARTH_R*1.15, 64, 64);
   const atmoMat = new THREE.ShaderMaterial({
     uniforms:{ sunDir:{value:new THREE.Vector3(1,0,0)} },
     vertexShader:ATMO_VERT, fragmentShader:ATMO_FRAG,
@@ -964,12 +1130,10 @@ function initScene(){
   scene.add(atmoMesh);
 
   issGroup = new THREE.Group();
-  const coreGeo = new THREE.SphereGeometry(0.028, 16, 16);
-  const coreMat = new THREE.MeshBasicMaterial({color:0xfff4d6});
-  const core = new THREE.Mesh(coreGeo, coreMat);
-  issGroup.add(core);
+  issModel = buildIssModel();
+  issGroup.add(issModel);
   const glowSprite = makeGlowSprite();
-  glowSprite.scale.set(0.22,0.22,1);
+  glowSprite.scale.set(0.13,0.13,1);
   issGroup.add(glowSprite);
   scene.add(issGroup);
   issDot = issGroup;
@@ -983,6 +1147,87 @@ function initScene(){
   camera.lookAt(0,0,0);
 
   window.addEventListener('resize', onResize);
+}
+
+/* ---- 3D ISS model (stylized, built from primitives — long truss + paired solar arrays) ---- */
+function buildSolarPanelTexture(){
+  const c = document.createElement('canvas'); c.width=48; c.height=192;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#0a1830'; ctx.fillRect(0,0,48,192);
+  ctx.strokeStyle = 'rgba(130,180,255,0.55)';
+  ctx.lineWidth = 1.2;
+  for(let y=6;y<192;y+=12){ ctx.beginPath(); ctx.moveTo(2,y); ctx.lineTo(46,y); ctx.stroke(); }
+  for(let x=6;x<48;x+=12){ ctx.beginPath(); ctx.moveTo(x,2); ctx.lineTo(x,190); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(190,220,255,0.85)';
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(1.5,1.5,45,189);
+  return new THREE.CanvasTexture(c);
+}
+
+function buildIssModel(){
+  const group = new THREE.Group();
+  const metal = new THREE.MeshPhongMaterial({color:0xe9edf2, shininess:75, specular:0x99aabb});
+  const metalDark = new THREE.MeshPhongMaterial({color:0xb7c0cb, shininess:55});
+  const moduleMat = new THREE.MeshPhongMaterial({color:0xf0ead6, shininess:35});
+  const panelTex = buildSolarPanelTexture();
+  const panelMat = new THREE.MeshPhongMaterial({map:panelTex, color:0x9cc0ee, shininess:95, specular:0x2a4a78, side:THREE.DoubleSide});
+
+  // main integrated truss (long axis = local X, aligned to velocity direction at render time)
+  const truss = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.010, 0.010), metal);
+  group.add(truss);
+  for(let i=-1;i<=1;i+=2){
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.012,0.016,0.016), metalDark);
+    cap.position.set(i*0.15, 0, 0);
+    group.add(cap);
+  }
+
+  // pressurized module cluster near the center
+  [
+    [-0.035, 0, 0.018, 0.085, 0.012],
+    [ 0.02,  0, 0.024, 0.075, 0.011],
+    [-0.01,  0,-0.02,  0.065, 0.010],
+    [ 0.055, 0.010, 0, 0.055, 0.009]
+  ].forEach(([x,y,z,len,rad])=>{
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,len,10), moduleMat);
+    m.rotation.z = Math.PI/2;
+    m.position.set(x,y,z);
+    group.add(m);
+  });
+
+  // radiator panels
+  [[-0.065,0.028,0.002],[0.095,0.028,-0.002]].forEach(([x,y,z])=>{
+    const r = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.0015,0.04), metalDark);
+    r.position.set(x,y,z);
+    group.add(r);
+  });
+
+  // paired solar array wings at two truss stations (4 stations x 2 sides = 8 wings)
+  [-0.145, -0.095, 0.10, 0.15].forEach((x)=>{
+    [1,-1].forEach((side)=>{
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.0025,0.0025,0.024,6), metal);
+      mast.rotation.x = Math.PI/2;
+      mast.position.set(x, 0, side*0.045);
+      group.add(mast);
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.038,0.15), panelMat);
+      panel.position.set(x, 0, side*0.125);
+      panel.rotation.x = Math.PI/2;
+      group.add(panel);
+    });
+  });
+
+  group.scale.set(1,1,1);
+  return group;
+}
+
+function orientIssModel(target, posVec, tangentVec){
+  const up = posVec.clone().normalize();
+  let fwd = tangentVec.clone();
+  fwd.sub(up.clone().multiplyScalar(fwd.dot(up)));
+  if (fwd.lengthSq() < 1e-9) fwd.set(1,0,0);
+  fwd.normalize();
+  const side = new THREE.Vector3().crossVectors(up, fwd).normalize();
+  const m = new THREE.Matrix4().makeBasis(fwd, up, side);
+  target.quaternion.setFromRotationMatrix(m);
 }
 
 function makeGlowSprite(){
@@ -1227,7 +1472,7 @@ function renderDashboardStats(ll){
   const lit = !isSatEclipsed(ll.posEci || {x:0,y:0,z:0}, state.sunEci);
   const badge = document.getElementById('illumBadge');
   if (ll.posEci){
-    badge.textContent = lit ? '☀ SUNLIT' : '🌑 SHADOW';
+    badge.innerHTML = '<span class="badge-ic"><svg class="icon"><use href="#icon-'+(lit?'sun':'moon')+'"/></svg>'+(lit?'SUNLIT':'SHADOW')+'</span>';
     badge.style.color = lit ? '#39ffa0' : '#8b96b8';
   }
 }
@@ -1556,11 +1801,16 @@ function animate(){
       state.currentLL = ll;
       const pos = latLonToVec3(ll.lat, ll.lon, EARTH_R + (ll.altKm/6371)*EARTH_R);
       issGroup.position.copy(pos);
-      issGroup.lookAt(0,0,0);
+      const future = propagateNow(new Date(now.getTime()+2000));
+      if (future){
+        const posFuture = latLonToVec3(future.lat, future.lon, EARTH_R + (future.altKm/6371)*EARTH_R);
+        orientIssModel(issGroup, pos, posFuture.clone().sub(pos));
+      }
     }
   } else {
     const pos = latLonToVec3(state.currentLL.lat, state.currentLL.lon, EARTH_R*1.19);
     issGroup.position.copy(pos);
+    issGroup.lookAt(0,0,0);
   }
 
   cloudsMesh.rotation.y += dt * (settings.reduceMotion?0.003:0.012);
@@ -1599,8 +1849,8 @@ function buildOrbitPath(){
    INIT
    ========================================================================= */
 async function init(){
-  document.getElementById('loadingText').textContent = 'BUILDING EARTH…';
-  initScene();
+  document.getElementById('loadingText').textContent = 'LOADING EARTH IMAGERY…';
+  await initScene();
   attachControls();
   setupNav();
   setupSheetCollapse();
