@@ -131,9 +131,66 @@ body{
 .peek-hint{text-align:center; font-size:10px; color:var(--sub2); font-family:var(--ff-mono); letter-spacing:.08em; margin-top:2px; opacity:0; transition:opacity .3s; pointer-events:none;}
 .sheet.collapsed .peek-hint{opacity:1;}
 
-.view{display:none; animation:fadeIn .25s ease;}
+.view{display:none;}
 .view.active{display:block;}
-@keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+@keyframes cardIn{from{opacity:0; transform:translateY(16px) scale(.97);} to{opacity:1; transform:translateY(0) scale(1);}}
+.card{animation:cardIn .5s cubic-bezier(.16,1,.3,1) both;}
+.card:nth-of-type(1){animation-delay:.02s;}
+.card:nth-of-type(2){animation-delay:.08s;}
+.card:nth-of-type(3){animation-delay:.14s;}
+.card:nth-of-type(4){animation-delay:.2s;}
+.card:nth-of-type(5){animation-delay:.26s;}
+
+/* stat value "tick" flash when a live number updates */
+@keyframes statPulse{0%{background:rgba(79,216,255,.22); border-color:rgba(79,216,255,.45);} 100%{background:rgba(255,255,255,.02); border-color:var(--line-soft);}}
+.stat{transition:background .3s, border-color .3s;}
+.stat.pulse{animation:statPulse .7s ease;}
+
+/* skeleton loading shimmer, shown before first live data arrives */
+.skeleton{position:relative; color:transparent !important; text-shadow:none !important; border-radius:6px; overflow:hidden; background:rgba(255,255,255,.06); min-width:38px; display:inline-block;}
+.skeleton::after{
+  content:""; position:absolute; inset:0; transform:translateX(-100%);
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent);
+  animation:shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer{100%{transform:translateX(100%);}}
+
+/* micro press-feedback everywhere it matters */
+.btn{transition:transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease, filter .2s ease;}
+.btn:active{transform:scale(.96); filter:brightness(.95);}
+.chip{transition:transform .15s cubic-bezier(.34,1.56,.64,1), background .2s, border-color .2s, color .2s, box-shadow .2s;}
+.chip:active{transform:scale(.9);}
+.switch{transition:background .25s ease;}
+.switch:active{transform:scale(.94);}
+.switch::after{transition:left .3s cubic-bezier(.34,1.56,.64,1);}
+.tab{transition:background .25s ease, color .25s ease, transform .15s cubic-bezier(.34,1.56,.64,1);}
+.tab:active{transform:scale(.9);}
+.tab.active .ic{animation:tabPop .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes tabPop{0%{transform:scale(.7);} 60%{transform:scale(1.18);} 100%{transform:scale(1);}}
+.pass-row{transition:transform .15s ease, background .2s ease, border-color .2s ease;}
+.pass-row:active{transform:scale(.97); background:rgba(79,216,255,.05);}
+.card-badge{transition:background .3s, border-color .3s, color .3s;}
+@media (hover:hover){
+  .btn:hover{filter:brightness(1.06);}
+  .pass-row:hover{border-color:rgba(79,216,255,.3); background:rgba(79,216,255,.04);}
+  .chip:hover{border-color:rgba(79,216,255,.4);}
+}
+
+/* countdown ring */
+.countdown-ring{flex:none; transform:rotate(-90deg); filter:drop-shadow(0 0 7px rgba(79,216,255,.55));}
+.countdown-ring .ring-bg{fill:none; stroke:rgba(255,255,255,.08); stroke-width:5;}
+.countdown-ring .ring-fg{fill:none; stroke:var(--accent); stroke-width:5; stroke-linecap:round; stroke-dasharray:157; stroke-dashoffset:157; transition:stroke-dashoffset .6s cubic-bezier(.16,1,.3,1), stroke .4s;}
+.countdown-ring.urgent .ring-fg{stroke:var(--good);}
+
+.share-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:5px;
+  background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--sub);
+  font-size:10.5px; font-family:var(--ff-mono); padding:5px 10px; border-radius:999px;
+  cursor:pointer; transition:transform .15s cubic-bezier(.34,1.56,.64,1), border-color .2s, color .2s;
+}
+.share-btn:active{transform:scale(.92);}
+.share-btn:hover{color:var(--accent); border-color:rgba(79,216,255,.4);}
+.share-btn[hidden]{display:none;}
 
 /* ---------- Cards / glass panels ---------- */
 .card{
@@ -155,7 +212,7 @@ body{
 .stat .v small{font-size:10px; color:var(--sub); font-weight:500;}
 .stat .v.accent{color:var(--accent); text-shadow:0 0 12px rgba(79,216,255,.4);}
 
-.countdown-row{display:flex; align-items:baseline; gap:14px; margin:4px 0 12px;}
+.countdown-row{display:flex; align-items:center; gap:14px; margin:4px 0 12px;}
 .countdown{font-family:var(--ff-mono); font-size:34px; font-weight:700; letter-spacing:.01em; background:linear-gradient(90deg,#fff,#bfe8ff); -webkit-background-clip:text; background-clip:text; color:transparent;}
 .countdown-lbl{font-size:10px; color:var(--sub); text-transform:uppercase; letter-spacing:.1em;}
 .pass-meta{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;}
@@ -173,7 +230,10 @@ body{
 .sky-compass .ring{position:absolute; inset:14px; border-radius:50%; border:1px dashed var(--line-soft);}
 .sky-compass .ring2{position:absolute; inset:38px; border-radius:50%; border:1px dashed var(--line-soft);}
 .sky-compass .dir{position:absolute; font-size:9px; color:var(--sub2); font-family:var(--ff-mono);}
-.sky-compass .dot{position:absolute; width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent); left:50%; top:50%; transform:translate(-50%,-50%); transition:left .5s ease, top .5s ease, opacity .3s;}
+.sky-compass .dot{position:absolute; width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent); left:50%; top:50%; transform:translate(-50%,-50%); transition:left .6s cubic-bezier(.16,1,.3,1), top .6s cubic-bezier(.16,1,.3,1), opacity .3s;}
+.sky-compass .dot::after{content:""; position:absolute; inset:-5px; border-radius:50%; border:1px solid rgba(79,216,255,.4); animation:dotPing 2s ease-out infinite;}
+@keyframes dotPing{0%{transform:scale(.6); opacity:.9;} 100%{transform:scale(1.8); opacity:0;}}
+body.reduce-motion .sky-compass .dot::after{animation:none; display:none;}
 .sky-compass .path{position:absolute; inset:0; pointer-events:none;}
 .sky-legend{flex:1; font-size:11px; color:var(--sub); line-height:1.9; font-family:var(--ff-mono);}
 .sky-legend b{color:var(--ink);}
@@ -282,6 +342,10 @@ select.selstyle{
 @keyframes spin{to{transform:rotate(360deg);}}
 .loading-veil .lt{font-family:var(--ff-mono); font-size:11.5px; color:var(--sub); letter-spacing:.08em;}
 
+body.reduce-motion .card{animation:none;}
+body.reduce-motion .tab.active .ic{animation:none;}
+body.reduce-motion .overhead-banner.show{animation:none;}
+
 @media (min-width:760px){
   .sheet-wrap{max-width:420px; margin-left:auto; margin-right:14px;}
   .sheet{border-radius:22px; margin-bottom:14px; border-bottom:1px solid var(--line);}
@@ -378,6 +442,25 @@ select.selstyle{
   <circle cx="12" cy="12" r="9"/>
   <polyline points="12,7 12,12 16,14"/>
 </symbol>
+<symbol id="icon-orbit" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="2.6"/>
+  <ellipse cx="12" cy="12" rx="9.5" ry="4" transform="rotate(-25 12 12)"/>
+  <circle cx="20.2" cy="8.5" r="1.1" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="icon-lock" viewBox="0 0 24 24">
+  <path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8"/>
+  <path d="M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8"/>
+  <path d="M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16"/>
+  <path d="M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/>
+  <circle cx="12" cy="12" r="2.4"/>
+</symbol>
+<symbol id="icon-share" viewBox="0 0 24 24">
+  <circle cx="18" cy="5.5" r="2.3"/>
+  <circle cx="6" cy="12" r="2.3"/>
+  <circle cx="18" cy="18.5" r="2.3"/>
+  <line x1="8" y1="10.8" x2="16" y2="7"/>
+  <line x1="8" y1="13.2" x2="16" y2="17"/>
+</symbol>
 </defs>
 </svg>
 
@@ -426,12 +509,12 @@ select.selstyle{
             <span class="card-badge" id="illumBadge">—</span>
           </div>
           <div class="stat-grid">
-            <div class="stat"><div class="k">Latitude</div><div class="v accent" id="statLat">—</div></div>
-            <div class="stat"><div class="k">Longitude</div><div class="v accent" id="statLon">—</div></div>
-            <div class="stat"><div class="k">Altitude</div><div class="v" id="statAlt">—</div></div>
-            <div class="stat"><div class="k">Velocity</div><div class="v" id="statVel">—</div></div>
-            <div class="stat"><div class="k">Distance From You</div><div class="v" id="statDist">—</div></div>
-            <div class="stat"><div class="k">Orbital Period</div><div class="v" id="statPeriod">—</div></div>
+            <div class="stat"><div class="k">Latitude</div><div class="v accent skeleton" id="statLat" data-skeleton="1">--.--°</div></div>
+            <div class="stat"><div class="k">Longitude</div><div class="v accent skeleton" id="statLon" data-skeleton="1">--.--°</div></div>
+            <div class="stat"><div class="k">Altitude</div><div class="v skeleton" id="statAlt" data-skeleton="1">---.- km</div></div>
+            <div class="stat"><div class="k">Velocity</div><div class="v skeleton" id="statVel" data-skeleton="1">----- km/h</div></div>
+            <div class="stat"><div class="k">Distance From You</div><div class="v skeleton" id="statDist" data-skeleton="1">----- km</div></div>
+            <div class="stat"><div class="k">Orbital Period</div><div class="v skeleton" id="statPeriod" data-skeleton="1">--.- min</div></div>
           </div>
         </div>
 
@@ -441,12 +524,17 @@ select.selstyle{
             <span class="card-badge" id="nextPassBadge">—</span>
           </div>
           <div class="countdown-row">
+            <svg class="countdown-ring" viewBox="0 0 60 60" width="56" height="56" id="countdownRing">
+              <circle class="ring-bg" cx="30" cy="30" r="25"/>
+              <circle class="ring-fg" id="countdownRingFg" cx="30" cy="30" r="25"/>
+            </svg>
             <div>
               <div class="countdown" id="countdownVal">--:--:--</div>
               <div class="countdown-lbl" id="countdownLbl">until acquisition</div>
             </div>
           </div>
           <div class="pass-meta" id="passMeta"></div>
+          <button class="share-btn" id="btnSharePass" hidden><svg class="icon"><use href="#icon-share"/></svg>Share this pass</button>
           <div class="sky-wrap">
             <div class="sky-compass" id="skyCompass">
               <div class="ring"></div><div class="ring2"></div>
@@ -567,6 +655,14 @@ select.selstyle{
         <div class="card">
           <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-monitor"/></svg>Display</span></div>
           <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-orbit"/></svg><div><div class="t">Orbit Path</div><div class="d">Show the future/past ground track and flow trail</div></div></div>
+            <div class="switch" id="swOrbitPath"></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-lock"/></svg><div><div class="t">Follow ISS</div><div class="d">Camera smoothly tracks the station</div></div></div>
+            <div class="switch" id="swFollowIss"></div>
+          </div>
+          <div class="setting-row">
             <div class="setting-txt"><svg class="icon"><use href="#icon-monitor"/></svg><div><div class="t">Reduce Motion</div><div class="d">Slower camera drift, fewer particles</div></div></div>
             <div class="switch" id="swReduceMotion"></div>
           </div>
@@ -617,7 +713,9 @@ const DEFAULTS = {
   vibrate: true,
   minElevation: 30,
   reduceMotion: false,
-  units: 'km'
+  units: 'km',
+  showOrbitPath: true,
+  followIss: false
 };
 let settings = Object.assign({}, DEFAULTS);
 try{
@@ -756,9 +854,17 @@ async function fetchTLE(){
   }catch(e){}
   return await fetchTLEFresh();
 }
+// Every network call gets a hard timeout — a slow/absent connection must
+// never leave the app stuck behind the loading veil.
+function fetchWithTimeout(url, ms){
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), ms);
+  return fetch(url, {cache:'no-store', signal:ctrl.signal}).finally(()=>clearTimeout(timer));
+}
+
 async function fetchTLEFresh(){
   try{
-    const res = await fetch(TLE_URL, {cache:'no-store'});
+    const res = await fetchWithTimeout(TLE_URL, 8000);
     if (!res.ok) throw new Error('tle http '+res.status);
     const data = await res.json();
     applyTLE(data.line1, data.line2, Date.now());
@@ -785,7 +891,7 @@ function applyTLE(line1, line2, fetchedAt){
 
 async function pollRealtimePosition(){
   try{
-    const res = await fetch(POS_URL, {cache:'no-store'});
+    const res = await fetchWithTimeout(POS_URL, 7000);
     if (!res.ok) throw new Error('http '+res.status);
     const d = await res.json();
     state.lastApiSync = Date.now();
@@ -799,7 +905,7 @@ async function pollRealtimePosition(){
     }
   }catch(e){
     try{
-      const res2 = await fetch(FALLBACK_POS_URL, {cache:'no-store'});
+      const res2 = await fetchWithTimeout(FALLBACK_POS_URL, 7000);
       const d2 = await res2.json();
       state.lastApiSync = Date.now();
       setStatus('live', 'LIVE (fallback)');
@@ -819,7 +925,15 @@ async function pollRealtimePosition(){
    THREE.JS SCENE
    ========================================================================= */
 const EARTH_R = 2.0;
-let renderer, scene, camera, earthMesh, cloudsMesh, atmoMesh, issGroup, issModel, issDot, orbitLine, starPoints;
+// Real LEO altitude (~408km) is only ~6% of Earth's radius — visually
+// exaggerate it so the ISS reads as clearly above the surface rather than
+// skimming/z-fighting against it.
+const ALT_EXAG = 2.4;
+function issSceneRadius(altKm){
+  return EARTH_R + (altKm/6371)*EARTH_R*ALT_EXAG;
+}
+let renderer, scene, camera, earthMesh, cloudsMesh, atmoMesh, issGroup, issModel, issDot, starPoints;
+let orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine, flowDots, futurePathPoints3D;
 let sunLight, ambLight;
 const clock = new THREE.Clock();
 
@@ -864,9 +978,10 @@ function fbm(noise, x, y, oct){
 
 /* ---- real Earth imagery (NASA-derived, bundled with three.js examples) ---- */
 const TEXTURE_BASE = 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/';
-function loadTextureAsync(loader, url){
+function loadTextureAsync(loader, url, timeoutMs){
   return new Promise((resolve, reject)=>{
-    loader.load(url, resolve, undefined, reject);
+    const timer = setTimeout(()=>reject(new Error('texture load timed out: '+url)), timeoutMs || 9000);
+    loader.load(url, tex=>{ clearTimeout(timer); resolve(tex); }, undefined, err=>{ clearTimeout(timer); reject(err); });
   });
 }
 async function loadRealPlanetTextures(){
@@ -1082,7 +1197,7 @@ void main(){
 
 async function initScene(){
   const container = document.getElementById('gl');
-  renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
+  renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance', logarithmicDepthBuffer:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, settings.reduceMotion?1.3:2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   container.appendChild(renderer.domElement);
@@ -1136,15 +1251,29 @@ async function initScene(){
   issModel = buildIssModel();
   issGroup.add(issModel);
   const glowSprite = makeGlowSprite();
-  glowSprite.scale.set(0.13,0.13,1);
+  glowSprite.scale.set(0.085,0.085,1);
   issGroup.add(glowSprite);
   scene.add(issGroup);
   issDot = issGroup;
 
-  const orbitGeo = new THREE.BufferGeometry();
-  const orbitMat = new THREE.LineBasicMaterial({color:0x4fd8ff, transparent:true, opacity:0.55});
-  orbitLine = new THREE.Line(orbitGeo, orbitMat);
-  scene.add(orbitLine);
+  orbitPastLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0x4fd8ff, transparent:true, opacity:0.16}));
+  orbitFutureLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0x7fe8ff, transparent:true, opacity:0.75}));
+  trackPastLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0x4fd8ff, transparent:true, opacity:0.22}));
+  trackFutureLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0x9ef0ff, transparent:true, opacity:0.9}));
+  [orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine].forEach(l=>scene.add(l));
+
+  flowDots = [];
+  for(let i=0;i<3;i++){
+    const dot = makeGlowSprite();
+    dot.scale.set(0.045,0.045,1);
+    dot.visible = false;
+    scene.add(dot);
+    flowDots.push(dot);
+  }
 
   camera.position.set(0,1.1,5.6);
   camera.lookAt(0,0,0);
@@ -1152,73 +1281,96 @@ async function initScene(){
   window.addEventListener('resize', onResize);
 }
 
-/* ---- 3D ISS model (stylized, built from primitives — long truss + paired solar arrays) ---- */
+/* ---- 3D ISS model (stylized, built from primitives — long truss + paired solar arrays) ----
+   Local axes: X = truss/velocity axis, Y = radial "up" (away from Earth),
+   Z = side. Every part is built with y >= 0 so nothing can dip below the
+   planet's surface regardless of how it's rotated around the radial axis. */
 function buildSolarPanelTexture(){
-  const c = document.createElement('canvas'); c.width=48; c.height=192;
+  const c = document.createElement('canvas'); c.width=32; c.height=128;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#0a1830'; ctx.fillRect(0,0,48,192);
-  ctx.strokeStyle = 'rgba(130,180,255,0.55)';
-  ctx.lineWidth = 1.2;
-  for(let y=6;y<192;y+=12){ ctx.beginPath(); ctx.moveTo(2,y); ctx.lineTo(46,y); ctx.stroke(); }
-  for(let x=6;x<48;x+=12){ ctx.beginPath(); ctx.moveTo(x,2); ctx.lineTo(x,190); ctx.stroke(); }
-  ctx.strokeStyle = 'rgba(190,220,255,0.85)';
-  ctx.lineWidth = 2.5;
-  ctx.strokeRect(1.5,1.5,45,189);
+  const g = ctx.createLinearGradient(0,0,32,0);
+  g.addColorStop(0,'#0c1c38'); g.addColorStop(0.5,'#122a52'); g.addColorStop(1,'#0c1c38');
+  ctx.fillStyle = g; ctx.fillRect(0,0,32,128);
+  ctx.strokeStyle = 'rgba(150,195,255,0.55)';
+  ctx.lineWidth = 1;
+  for(let y=5;y<128;y+=8){ ctx.beginPath(); ctx.moveTo(1,y); ctx.lineTo(31,y); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(16,1); ctx.lineTo(16,127); ctx.stroke();
+  ctx.strokeStyle = 'rgba(200,225,255,0.85)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1,1,30,126);
   return new THREE.CanvasTexture(c);
 }
 
 function buildIssModel(){
   const group = new THREE.Group();
-  const metal = new THREE.MeshPhongMaterial({color:0xe9edf2, shininess:75, specular:0x99aabb});
-  const metalDark = new THREE.MeshPhongMaterial({color:0xb7c0cb, shininess:55});
-  const moduleMat = new THREE.MeshPhongMaterial({color:0xf0ead6, shininess:35});
+  const metal = new THREE.MeshStandardMaterial({color:0xeef1f5, metalness:0.75, roughness:0.35});
+  const metalDark = new THREE.MeshStandardMaterial({color:0xaeb8c4, metalness:0.7, roughness:0.45});
+  const moduleMat = new THREE.MeshStandardMaterial({color:0xf2ecd9, metalness:0.25, roughness:0.55});
+  const cupolaMat = new THREE.MeshStandardMaterial({color:0x7fc8ff, metalness:0.1, roughness:0.1, emissive:0x1a4a66, emissiveIntensity:0.4});
   const panelTex = buildSolarPanelTexture();
-  const panelMat = new THREE.MeshPhongMaterial({map:panelTex, color:0x9cc0ee, shininess:95, specular:0x2a4a78, side:THREE.DoubleSide});
+  const panelMat = new THREE.MeshStandardMaterial({map:panelTex, color:0xbcd6f5, metalness:0.55, roughness:0.3, side:THREE.DoubleSide});
 
-  // main integrated truss (long axis = local X, aligned to velocity direction at render time)
-  const truss = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.010, 0.010), metal);
+  // scale: whole model kept well inside the exaggerated altitude gap so it
+  // never intersects the globe, at any zoom or rotation.
+  const S = 0.62;
+
+  // main integrated truss
+  const truss = new THREE.Mesh(new THREE.BoxGeometry(0.30*S, 0.009*S, 0.009*S), metal);
+  truss.position.y = 0.006*S;
   group.add(truss);
-  for(let i=-1;i<=1;i+=2){
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.012,0.016,0.016), metalDark);
-    cap.position.set(i*0.15, 0, 0);
+  [-1,1].forEach(i=>{
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.014*S,0.016*S,0.016*S), metalDark);
+    cap.position.set(i*0.15*S, 0.006*S, 0);
     group.add(cap);
-  }
+  });
 
   // pressurized module cluster near the center
   [
-    [-0.035, 0, 0.018, 0.085, 0.012],
-    [ 0.02,  0, 0.024, 0.075, 0.011],
-    [-0.01,  0,-0.02,  0.065, 0.010],
-    [ 0.055, 0.010, 0, 0.055, 0.009]
-  ].forEach(([x,y,z,len,rad])=>{
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,len,10), moduleMat);
+    [-0.035, 0.024, 0.085, 0.012],
+    [ 0.02,  0.030, 0.075, 0.011],
+    [-0.01,  0.010, 0.065, 0.010],
+    [ 0.055, 0.020, 0.050, 0.009]
+  ].forEach(([x,z,len,rad])=>{
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(rad*S,rad*S,len*S,12), moduleMat);
     m.rotation.z = Math.PI/2;
-    m.position.set(x,y,z);
+    m.position.set(x*S, 0.012*S, z*S);
     group.add(m);
   });
 
+  // cupola (small observation dome) — a nice recognizable detail
+  const cupola = new THREE.Mesh(new THREE.SphereGeometry(0.011*S, 12, 8, 0, Math.PI*2, 0, Math.PI/2), cupolaMat);
+  cupola.position.set(-0.05*S, 0.004*S, -0.028*S);
+  cupola.rotation.x = Math.PI;
+  group.add(cupola);
+
   // radiator panels
-  [[-0.065,0.028,0.002],[0.095,0.028,-0.002]].forEach(([x,y,z])=>{
-    const r = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.0015,0.04), metalDark);
-    r.position.set(x,y,z);
+  [[-0.065,0.028],[0.095,0.028]].forEach(([x,z])=>{
+    const r = new THREE.Mesh(new THREE.BoxGeometry(0.045*S,0.0012*S,0.035*S), metalDark);
+    r.position.set(x*S, 0.012*S, z*S);
     group.add(r);
   });
 
   // paired solar array wings at two truss stations (4 stations x 2 sides = 8 wings)
   [-0.145, -0.095, 0.10, 0.15].forEach((x)=>{
     [1,-1].forEach((side)=>{
-      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.0025,0.0025,0.024,6), metal);
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.0022*S,0.0022*S,0.022*S,6), metal);
       mast.rotation.x = Math.PI/2;
-      mast.position.set(x, 0, side*0.045);
+      mast.position.set(x*S, 0.006*S, side*0.042*S);
       group.add(mast);
-      const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.038,0.15), panelMat);
-      panel.position.set(x, 0, side*0.125);
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.032*S,0.13*S), panelMat);
+      panel.position.set(x*S, 0.006*S, side*0.11*S);
       panel.rotation.x = Math.PI/2;
       group.add(panel);
     });
   });
 
-  group.scale.set(1,1,1);
+  // blinking beacon light — tiny emissive point that pulses via userData, driven in animate()
+  const beaconMat = new THREE.MeshBasicMaterial({color:0xff4444});
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.006*S,6,6), beaconMat);
+  beacon.position.set(0.15*S, 0.014*S, 0);
+  group.add(beacon);
+  group.userData.beacon = beaconMat;
+
   return group;
 }
 
@@ -1226,7 +1378,13 @@ function orientIssModel(target, posVec, tangentVec){
   const up = posVec.clone().normalize();
   let fwd = tangentVec.clone();
   fwd.sub(up.clone().multiplyScalar(fwd.dot(up)));
-  if (fwd.lengthSq() < 1e-9) fwd.set(1,0,0);
+  if (fwd.lengthSq() < 1e-9){
+    // Degenerate tangent (e.g. before real data arrives) — fall back to a
+    // safe eastward direction so the model still orients without risking
+    // a radial (Y) component that could dip below the surface.
+    fwd = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), up);
+    if (fwd.lengthSq() < 1e-9) fwd.set(1,0,0);
+  }
   fwd.normalize();
   const side = new THREE.Vector3().crossVectors(up, fwd).normalize();
   const m = new THREE.Matrix4().makeBasis(fwd, up, side);
@@ -1315,13 +1473,27 @@ function attachControls(){
   }
 }
 
+function nearestAngle(current, target){
+  const diff = ((target - current + Math.PI) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI) - Math.PI;
+  return current + diff;
+}
+
 function updateCamera(dt){
-  if (autoRotate && !document.hidden){
+  const following = settings.followIss && issGroup && pointers.size === 0;
+  if (following){
+    const d = issGroup.position.clone().normalize();
+    const followTheta = Math.atan2(d.x, d.z);
+    const followPhi = Math.acos(Math.max(-1, Math.min(1, d.y)));
+    camState.targetTheta = nearestAngle(camState.theta, followTheta);
+    camState.targetPhi = followPhi;
+    camState.targetRadius = Math.max(camState.minR, Math.min(4.6, camState.targetRadius));
+  } else if (autoRotate && !document.hidden){
     camState.targetTheta += dt * (settings.reduceMotion? 0.008 : 0.02);
   }
-  camState.theta += (camState.targetTheta-camState.theta)*Math.min(1,dt*4);
-  camState.phi += (camState.targetPhi-camState.phi)*Math.min(1,dt*4);
-  camState.radius += (camState.targetRadius-camState.radius)*Math.min(1,dt*4);
+  const followRate = following ? 2.2 : 4;
+  camState.theta += (camState.targetTheta-camState.theta)*Math.min(1,dt*followRate);
+  camState.phi += (camState.targetPhi-camState.phi)*Math.min(1,dt*followRate);
+  camState.radius += (camState.targetRadius-camState.radius)*Math.min(1,dt*followRate);
   const r = camState.radius;
   camera.position.set(
     r*Math.sin(camState.phi)*Math.sin(camState.theta),
@@ -1460,17 +1632,32 @@ function fmtDist(km){
   return km.toFixed(0)+' <small>km</small>';
 }
 
+// Update a stat value only when it actually changed, with a brief accent
+// "tick" flash so live numbers feel alive rather than silently mutating.
+function setStatHTML(id, html){
+  const el = document.getElementById(id);
+  if (el.dataset.skeleton){ delete el.dataset.skeleton; el.classList.remove('skeleton'); }
+  if (el.innerHTML === html) return;
+  el.innerHTML = html;
+  const box = el.closest('.stat');
+  if (box){
+    box.classList.remove('pulse');
+    void box.offsetWidth;
+    box.classList.add('pulse');
+  }
+}
+
 function renderDashboardStats(ll){
-  document.getElementById('statLat').textContent = ll.lat.toFixed(2)+'°';
-  document.getElementById('statLon').textContent = ll.lon.toFixed(2)+'°';
-  document.getElementById('statAlt').innerHTML = fmtAlt(ll.altKm);
-  document.getElementById('statVel').innerHTML = fmtSpeed(ll.speedKmh);
-  document.getElementById('statPeriod').textContent = orbitalPeriodMinutes().toFixed(1)+' min';
+  setStatHTML('statLat', ll.lat.toFixed(2)+'°');
+  setStatHTML('statLon', ll.lon.toFixed(2)+'°');
+  setStatHTML('statAlt', fmtAlt(ll.altKm));
+  setStatHTML('statVel', fmtSpeed(ll.speedKmh));
+  setStatHTML('statPeriod', orbitalPeriodMinutes().toFixed(1)+' min');
   if (settings.location){
     const dist = slantRangeKm(settings.location, ll.lat, ll.lon, ll.altKm);
-    document.getElementById('statDist').innerHTML = fmtDist(dist);
+    setStatHTML('statDist', fmtDist(dist));
   } else {
-    document.getElementById('statDist').innerHTML = '<small>set location</small>';
+    setStatHTML('statDist', '<small>set location</small>');
   }
   const lit = !isSatEclipsed(ll.posEci || {x:0,y:0,z:0}, state.sunEci);
   const badge = document.getElementById('illumBadge');
@@ -1592,19 +1779,35 @@ function handleOverheadAndNotifications(now){
   }
   state.lastOverheadState = overhead;
 
-  // countdown to next target pass
+  // countdown to next target pass, plus a circular progress ring showing
+  // how far through the ~90-minute waiting window we are
+  const ringFg = document.getElementById('countdownRingFg');
+  const ringWrap = document.getElementById('countdownRing');
+  const RING_CIRC = 157;
+  const RING_WINDOW_MS = 90*60000;
+  document.getElementById('btnSharePass').hidden = !window._targetPass;
   if (window._targetPass){
     const msLeft = window._targetPass.aosTime - now.getTime();
     if (msLeft > 0){
       document.getElementById('countdownVal').textContent = fmtHMS(msLeft/1000);
       document.getElementById('countdownLbl').textContent = 'until acquisition (AOS)';
+      const frac = Math.max(0, Math.min(1, 1 - msLeft/RING_WINDOW_MS));
+      ringFg.style.strokeDashoffset = RING_CIRC*(1-frac);
+      ringWrap.classList.toggle('urgent', msLeft < 5*60000);
     } else if (now.getTime() < (window._targetPass.losTime||0)){
       document.getElementById('countdownVal').textContent = 'PASSING NOW';
       document.getElementById('countdownLbl').textContent = 'until loss of signal';
+      ringFg.style.strokeDashoffset = 0;
+      ringWrap.classList.add('urgent');
     } else {
       document.getElementById('countdownVal').textContent = '--:--:--';
+      ringFg.style.strokeDashoffset = RING_CIRC;
+      ringWrap.classList.remove('urgent');
     }
     drawSkyPath('skyPath', window._targetPass, 118);
+  } else {
+    ringFg.style.strokeDashoffset = RING_CIRC;
+    ringWrap.classList.remove('urgent');
   }
 
   checkAlerts(now);
@@ -1661,6 +1864,8 @@ function refreshSettingsUI(){
   document.getElementById('swSound').classList.toggle('on', settings.sound);
   document.getElementById('swVibrate').classList.toggle('on', settings.vibrate);
   document.getElementById('swReduceMotion').classList.toggle('on', settings.reduceMotion);
+  document.getElementById('swOrbitPath').classList.toggle('on', settings.showOrbitPath);
+  document.getElementById('swFollowIss').classList.toggle('on', settings.followIss);
   document.getElementById('selMinEl').value = String(settings.minElevation);
   document.getElementById('selUnits').value = settings.units;
   document.querySelectorAll('#alertChips .chip').forEach(chip=>{
@@ -1690,7 +1895,16 @@ function setupSettingsHandlers(){
   document.getElementById('swVisOnly').onclick = ()=>{ settings.visibleOnly=!settings.visibleOnly; saveSettings(); refreshSettingsUI(); recomputePasses(); };
   document.getElementById('swSound').onclick = ()=>{ settings.sound=!settings.sound; saveSettings(); refreshSettingsUI(); };
   document.getElementById('swVibrate').onclick = ()=>{ settings.vibrate=!settings.vibrate; saveSettings(); refreshSettingsUI(); };
-  document.getElementById('swReduceMotion').onclick = ()=>{ settings.reduceMotion=!settings.reduceMotion; saveSettings(); refreshSettingsUI(); toast('Restart app to fully apply motion setting'); };
+  document.getElementById('swReduceMotion').onclick = ()=>{
+    settings.reduceMotion=!settings.reduceMotion; saveSettings(); refreshSettingsUI(); applyReduceMotionClass();
+    toast(settings.reduceMotion ? 'Motion reduced' : 'Full motion restored');
+  };
+  document.getElementById('swOrbitPath').onclick = ()=>{ settings.showOrbitPath=!settings.showOrbitPath; saveSettings(); refreshSettingsUI(); applyOrbitVisibility(); };
+  document.getElementById('swFollowIss').onclick = ()=>{
+    settings.followIss = !settings.followIss;
+    saveSettings(); refreshSettingsUI();
+    toast(settings.followIss ? 'Camera will follow the ISS' : 'Camera follow disabled');
+  };
   document.getElementById('selMinEl').onchange = (e)=>{ settings.minElevation = Number(e.target.value); saveSettings(); recomputePasses(); };
   document.getElementById('selUnits').onchange = (e)=>{ settings.units = e.target.value; saveSettings(); };
   document.querySelectorAll('#alertChips .chip').forEach(chip=>{
@@ -1761,18 +1975,56 @@ function setupSheetCollapse(){
   zone.addEventListener('pointercancel', ()=>{ dragging=false; dragStartY=null; });
 }
 
+function restartCardAnimation(view){
+  view.querySelectorAll('.card').forEach(c=>{
+    c.style.animation = 'none';
+    void c.offsetWidth; // force reflow so the animation restarts
+    c.style.animation = '';
+  });
+}
+
 function setupNav(){
   document.querySelectorAll('.tab').forEach(tab=>{
     tab.onclick = ()=>{
+      if (tab.classList.contains('active')){
+        // Tapping the already-active tab just re-opens a collapsed sheet.
+        document.getElementById('sheet').classList.remove('collapsed');
+        return;
+      }
       document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
       tab.classList.add('active');
       document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-      document.getElementById('view-'+tab.dataset.view).classList.add('active');
+      const view = document.getElementById('view-'+tab.dataset.view);
+      view.classList.add('active');
+      restartCardAnimation(view);
       const sheet = document.getElementById('sheet');
       sheet.classList.remove('collapsed');
       sheet.scrollTop = 0;
     };
   });
+}
+
+function applyReduceMotionClass(){
+  document.body.classList.toggle('reduce-motion', !!settings.reduceMotion);
+}
+
+function setupShareButton(){
+  const btn = document.getElementById('btnSharePass');
+  btn.onclick = async ()=>{
+    const p = window._targetPass;
+    if (!p) return;
+    const d = new Date(p.aosTime);
+    const text = `🛰️ ISS pass on ${d.toLocaleDateString([], {weekday:'long', month:'short', day:'numeric'})} at ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} — peak ${p.maxEl.toFixed(0)}°, ${compassDir(p.aosAz)} to ${compassDir(p.losAz)}, ${p.visible ? 'visible to the naked eye' : 'daylight pass'}.`;
+    if (navigator.share){
+      try{ await navigator.share({title:'ISS Pass', text}); return; }catch(e){ /* user cancelled or unsupported — fall through */ }
+    }
+    try{
+      await navigator.clipboard.writeText(text);
+      toast('Pass details copied to clipboard');
+    }catch(e){
+      toast(text, 4200);
+    }
+  };
 }
 
 /* =========================================================================
@@ -1784,6 +2036,13 @@ function animate(){
   requestAnimationFrame(animate);
   const dt = Math.min(0.1, clock.getDelta());
   updateCamera(dt);
+
+  if (issGroup){
+    // Keep the ISS model legibly sized whether the camera is zoomed in on
+    // it or pulled back to see the whole globe.
+    const distScale = Math.max(0.75, Math.min(2.4, camState.radius/5.6));
+    issGroup.scale.setScalar(distScale);
+  }
 
   const now = new Date();
 
@@ -1802,21 +2061,45 @@ function animate(){
     ll = propagateNow(now);
     if (ll){
       state.currentLL = ll;
-      const pos = latLonToVec3(ll.lat, ll.lon, EARTH_R + (ll.altKm/6371)*EARTH_R);
+      const pos = latLonToVec3(ll.lat, ll.lon, issSceneRadius(ll.altKm));
       issGroup.position.copy(pos);
       const future = propagateNow(new Date(now.getTime()+2000));
       if (future){
-        const posFuture = latLonToVec3(future.lat, future.lon, EARTH_R + (future.altKm/6371)*EARTH_R);
+        const posFuture = latLonToVec3(future.lat, future.lon, issSceneRadius(future.altKm));
         orientIssModel(issGroup, pos, posFuture.clone().sub(pos));
       }
     }
   } else {
-    const pos = latLonToVec3(state.currentLL.lat, state.currentLL.lon, EARTH_R*1.19);
+    const pos = latLonToVec3(state.currentLL.lat, state.currentLL.lon, issSceneRadius(state.currentLL.alt||408));
     issGroup.position.copy(pos);
-    issGroup.lookAt(0,0,0);
+    orientIssModel(issGroup, pos, new THREE.Vector3(0,0,1));
   }
 
   cloudsMesh.rotation.y += dt * (settings.reduceMotion?0.003:0.012);
+
+  if (issModel && issModel.userData.beacon){
+    const blink = Math.sin(now.getTime()*0.006) > 0.7 ? 1 : 0.15;
+    issModel.userData.beacon.color.setRGB(blink, blink*0.25, blink*0.25);
+  }
+
+  // Traveling glow particles that race along the future ground track to
+  // give the path a sense of direction/motion, not just a static line.
+  if (flowDots && futurePathPoints3D && futurePathPoints3D.length > 1 && settings.showOrbitPath && !settings.reduceMotion){
+    const L = futurePathPoints3D.length;
+    const cycleSec = 7;
+    const tSec = now.getTime()/1000;
+    flowDots.forEach((dot, i)=>{
+      const frac = ((tSec/cycleSec + i/flowDots.length) % 1 + 1) % 1;
+      const idx = frac*(L-1);
+      const i0 = Math.floor(idx), i1 = Math.min(L-1, i0+1);
+      const p = futurePathPoints3D[i0].clone().lerp(futurePathPoints3D[i1], idx-i0);
+      dot.position.copy(p);
+      dot.visible = true;
+      dot.material.opacity = 0.55 * (1 - frac*0.4);
+    });
+  } else if (flowDots){
+    flowDots.forEach(d=>{ d.visible = false; });
+  }
 
   if (now.getTime() - lastUiUpdate > 500){
     lastUiUpdate = now.getTime();
@@ -1831,21 +2114,42 @@ function animate(){
   renderer.render(scene, camera);
 }
 
+// How far behind/ahead of "now" the visualized path extends.
+const TRACK_PAST_MIN = 22, TRACK_FUTURE_MIN = 75;
+
+function setLineGeometry(line, points){
+  line.geometry.dispose();
+  line.geometry = points.length > 1 ? new THREE.BufferGeometry().setFromPoints(points) : new THREE.BufferGeometry();
+}
+
 function buildOrbitPath(){
-  if (!state.satrec) return;
-  const period = orbitalPeriodMinutes();
-  const pts = [];
-  const steps = 140;
+  if (!state.satrec || !orbitFutureLine) return;
   const now = Date.now();
-  for(let i=0;i<=steps;i++){
-    const t = new Date(now + (i/steps)*period*60000);
-    const p = propagateNow(t);
-    if (p){
-      pts.push(latLonToVec3(p.lat, p.lon, EARTH_R + (p.altKm/6371)*EARTH_R));
-    }
+  const stepMs = 15000;
+  const pastN = Math.round(TRACK_PAST_MIN*60000/stepMs);
+  const futureN = Math.round(TRACK_FUTURE_MIN*60000/stepMs);
+
+  const orbitPast = [], orbitFuture = [], trackPast = [], trackFuture = [];
+  for(let i=-pastN; i<=futureN; i++){
+    const p = propagateNow(new Date(now + i*stepMs));
+    if (!p) continue;
+    const altPt = latLonToVec3(p.lat, p.lon, issSceneRadius(p.altKm));
+    const groundPt = latLonToVec3(p.lat, p.lon, EARTH_R*1.004);
+    if (i <= 0){ orbitPast.push(altPt); trackPast.push(groundPt); }
+    if (i >= 0){ orbitFuture.push(altPt); trackFuture.push(groundPt); }
   }
-  orbitLine.geometry.dispose();
-  orbitLine.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+  setLineGeometry(orbitPastLine, orbitPast);
+  setLineGeometry(orbitFutureLine, orbitFuture);
+  setLineGeometry(trackPastLine, trackPast);
+  setLineGeometry(trackFutureLine, trackFuture);
+  futurePathPoints3D = orbitFuture;
+  applyOrbitVisibility();
+}
+
+function applyOrbitVisibility(){
+  const show = settings.showOrbitPath;
+  [orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine].forEach(l=>{ if (l) l.visible = show; });
+  if (flowDots) flowDots.forEach(d=>{ if (!show) d.visible = false; });
 }
 
 /* =========================================================================
@@ -1859,18 +2163,21 @@ async function init(){
   setupSheetCollapse();
   setupSettingsHandlers();
   refreshSettingsUI();
+  applyReduceMotionClass();
+  setupShareButton();
 
   document.getElementById('loadingText').textContent = 'ACQUIRING ORBITAL DATA…';
   setStatus('syncing', 'SYNCING');
   await Promise.all([fetchTLE(), pollRealtimePosition()]);
   buildOrbitPath();
-  setInterval(buildOrbitPath, 5*60000);
+  setInterval(buildOrbitPath, 60000);
   setInterval(pollRealtimePosition, 15000);
   setInterval(fetchTLEFresh, 3*3600*1000);
 
   if (settings.location) recomputePasses();
 
   document.getElementById('loadingVeil').classList.add('hide');
+  restartCardAnimation(document.getElementById('view-dashboard'));
   setTimeout(()=>document.getElementById('loadingVeil').remove(), 700);
 
   animate();
