@@ -163,6 +163,7 @@ body{
 /* micro press-feedback everywhere it matters */
 .btn{transition:transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease, filter .2s ease;}
 .btn:active{transform:scale(.96); filter:brightness(.95);}
+.btn:disabled{opacity:.55; pointer-events:none;}
 .chip{transition:transform .15s cubic-bezier(.34,1.56,.64,1), background .2s, border-color .2s, color .2s, box-shadow .2s;}
 .chip:active{transform:scale(.9);}
 .switch{transition:background .25s ease;}
@@ -223,7 +224,12 @@ body{
 .countdown{font-family:var(--ff-mono); font-size:34px; font-weight:700; letter-spacing:.01em; background:linear-gradient(90deg,#fff,#bfe8ff); -webkit-background-clip:text; background-clip:text; color:transparent;}
 .countdown-lbl{font-size:10px; color:var(--sub); text-transform:uppercase; letter-spacing:.1em;}
 .pass-meta{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;}
-.pill{font-size:10.5px; font-family:var(--ff-mono); background:rgba(255,255,255,.04); border:1px solid var(--line); padding:5px 10px; border-radius:999px; color:var(--sub);}
+.pill{
+  font-size:10.5px; font-family:var(--ff-mono); background:rgba(255,255,255,.08); border:1px solid var(--line);
+  padding:5px 10px; border-radius:999px; color:var(--sub);
+  backdrop-filter:var(--glass-blur-lite); -webkit-backdrop-filter:var(--glass-blur-lite);
+  box-shadow:0 1px 1px rgba(255,255,255,.22) inset;
+}
 .pill b{color:var(--ink); font-weight:600;}
 .pill.vis-yes{border-color:rgba(57,255,160,.4); color:var(--good);}
 .pill.vis-no{border-color:rgba(255,92,122,.3); color:var(--bad);}
@@ -258,10 +264,20 @@ body.reduce-motion .sky-compass .dot::after{animation:none; display:none;}
 .setting-row:last-child{border-bottom:none;}
 .setting-txt .t{font-size:13px; font-weight:600;}
 .setting-txt .d{font-size:11px; color:var(--sub2); margin-top:2px; max-width:230px;}
-.switch{width:44px; height:26px; border-radius:999px; background:rgba(255,255,255,.14); border:1px solid var(--line); position:relative; flex:none; cursor:pointer; transition:background .2s; box-shadow:0 1px 1px rgba(255,255,255,.2) inset;}
-.switch.on{background:linear-gradient(90deg,var(--accent2),var(--accent)); border-color:transparent;}
-.switch::after{content:""; position:absolute; width:20px; height:20px; border-radius:50%; background:#fff; top:2px; left:2px; transition:left .2s; box-shadow:0 2px 4px rgba(0,0,0,.3);}
-.switch.on::after{left:20px;}
+.switch{
+  width:46px; height:27px; border-radius:999px; background:rgba(255,255,255,.16); border:1px solid var(--line);
+  backdrop-filter:var(--glass-blur-lite); -webkit-backdrop-filter:var(--glass-blur-lite);
+  position:relative; flex:none; cursor:pointer; transition:background .25s ease, border-color .25s ease;
+  box-shadow:0 1px 1px rgba(255,255,255,.3) inset, 0 1px 3px rgba(0,0,0,.25) inset;
+}
+.switch.on{background:linear-gradient(135deg,var(--accent2),var(--accent)); border-color:transparent; box-shadow:0 1px 1px rgba(255,255,255,.45) inset, 0 2px 8px rgba(63,210,255,.3);}
+.switch::after{
+  content:""; position:absolute; width:23px; height:23px; border-radius:50%;
+  background:radial-gradient(circle at 32% 28%, #fff, #eef2f5 75%);
+  top:1.5px; left:1.5px; transition:left .3s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 2px 5px rgba(0,0,0,.35), 0 0 0 .5px rgba(0,0,0,.05);
+}
+.switch.on::after{left:20.5px;}
 
 .chip-row{display:flex; flex-wrap:wrap; gap:7px;}
 .chip{font-size:11.5px; font-family:var(--ff-mono); padding:7px 12px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:var(--sub); cursor:pointer; transition:.15s;}
@@ -816,6 +832,8 @@ body.reduce-motion .ar-status-pill.locked{animation:none;}
             <div class="setting-txt"><svg class="icon"><use href="#icon-vibrate"/></svg><div><div class="t">Vibration</div><div class="d">Haptic pulse on overhead alert</div></div></div>
             <div class="switch" id="swVibrate"></div>
           </div>
+          <div style="height:4px;"></div>
+          <button class="btn secondary" id="btnTestNotif"><svg class="icon"><use href="#icon-bell"/></svg>Send Test Notification (10s)</button>
         </div>
 
         <div class="card">
@@ -1492,7 +1510,9 @@ async function initScene(){
       specTex:{value:specTex || dummySpec}, hasSpec:{value:!!specTex},
       sunDir:{value:new THREE.Vector3(1,0,0)}
     },
-    vertexShader:EARTH_VERT, fragmentShader:EARTH_FRAG
+    vertexShader:EARTH_VERT, fragmentShader:EARTH_FRAG,
+    transparent:false // the globe itself is always fully solid/opaque — only the
+                       // UI glass panels sitting on top of it are translucent
   });
   earthMesh = new THREE.Mesh(earthGeo, earthMat);
   scene.add(earthMesh);
@@ -2180,6 +2200,36 @@ function sendNotification(pass, minsBefore){
   if (settings.vibrate && navigator.vibrate) navigator.vibrate(80);
 }
 
+// Lets a user verify their actual notification/sound/vibration setup
+// works end-to-end, fired 10s out so there's time to background the app
+// or lock the phone and see it arrive like a real alert would.
+let testNotifTimer = null;
+function sendTestNotification(){
+  const btn = document.getElementById('btnTestNotif');
+  if (testNotifTimer) return;
+  let secsLeft = 10;
+  btn.disabled = true;
+  btn.textContent = `Sending in ${secsLeft}s… (lock your phone now)`;
+  testNotifTimer = setInterval(()=>{
+    secsLeft--;
+    if (secsLeft <= 0){
+      clearInterval(testNotifTimer);
+      testNotifTimer = null;
+      btn.disabled = false;
+      btn.innerHTML = '<svg class="icon"><use href="#icon-bell"/></svg>Send Test Notification (10s)';
+      if (window.Notification && Notification.permission === 'granted'){
+        try{ new Notification('🛰️ ISS Tracker — Test', {body:'This is what a real pass alert looks like. Sound/vibration follow your Settings.', tag:'iss-test-'+Date.now()}); }catch(e){}
+      } else {
+        toast('Test notification fired (system banner needs permission — enable Pass Alerts first)');
+      }
+      if (settings.sound) playTone();
+      if (settings.vibrate && navigator.vibrate) navigator.vibrate([90,40,90]);
+    } else {
+      btn.textContent = `Sending in ${secsLeft}s… (lock your phone now)`;
+    }
+  }, 1000);
+}
+
 /* =========================================================================
    SETTINGS UI WIRING
    ========================================================================= */
@@ -2217,6 +2267,13 @@ function setupSettingsHandlers(){
       });
     }
     saveSettings(); refreshSettingsUI();
+  };
+  document.getElementById('btnTestNotif').onclick = ()=>{
+    if (window.Notification && Notification.permission==='default'){
+      Notification.requestPermission().then(()=> sendTestNotification());
+    } else {
+      sendTestNotification();
+    }
   };
   document.getElementById('swVisOnly').onclick = ()=>{ settings.visibleOnly=!settings.visibleOnly; saveSettings(); refreshSettingsUI(); recomputePasses(); };
   document.getElementById('swSound').onclick = ()=>{ settings.sound=!settings.sound; saveSettings(); refreshSettingsUI(); };
@@ -2336,8 +2393,9 @@ function setupNav(){
         return;
       }
       if (tab.classList.contains('active')){
-        // Tapping the already-active tab just re-opens a collapsed sheet.
-        document.getElementById('sheet').classList.remove('collapsed');
+        // Tapping the already-active tab toggles the sheet open/closed,
+        // same as the swipe gesture on the grabber.
+        document.getElementById('sheet').classList.toggle('collapsed');
         return;
       }
       document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
