@@ -129,6 +129,14 @@ body{
 .sheet-wrap{
   margin-top:auto; position:relative; z-index:3;
   padding:0 max(10px,var(--safe-l)) 0 max(10px,var(--safe-r));
+  /* The wrap's own box always reserves the sheet's full expanded height
+     in layout, even when collapsed — transform (used for the collapse
+     animation) moves the sheet visually but doesn't shrink the space
+     its ancestor's box occupies. Left auto here, that reserved region
+     silently ate touches meant for the globe across most of the lower
+     screen regardless of collapsed state. Only the sheet's own box —
+     which does move with the transform — should capture pointer events. */
+  pointer-events:none;
 }
 .sheet{
   background:rgba(255,255,255,.07);
@@ -143,6 +151,7 @@ body{
      max-height/padding, which force a full layout reflow on every frame
      and were the main source of visible jank opening/closing the panel. */
   transform:translateY(0); transition:transform .42s cubic-bezier(.19,1,.22,1); will-change:transform;
+  pointer-events:auto; /* re-enable — .sheet-wrap opts out so it doesn't block the globe */
 }
 .sheet::-webkit-scrollbar{width:0; height:0; display:none; background:transparent;} /* Safari/Chrome */
 .sheet.collapsed{transform:translateY(var(--collapse-dy, 420px)); overflow:hidden;}
