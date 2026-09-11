@@ -401,6 +401,23 @@ body.reduce-motion .card{animation:none;}
 body.reduce-motion .tab.active .ic{animation:none;}
 body.reduce-motion .overhead-banner.show{animation:none;}
 
+/* ---------- ISS tap-to-inspect popup ---------- */
+.iss-popup-backdrop{
+  position:fixed; inset:0; z-index:11; background:rgba(0,0,0,.4);
+  opacity:0; pointer-events:none; transition:opacity .3s ease;
+}
+.iss-popup-backdrop.show{opacity:1; pointer-events:auto;}
+.iss-popup{
+  position:fixed; left:50%; top:50%; transform:translate(-50%,-50%) scale(.94); z-index:12;
+  width:min(92vw,380px);
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:18px; box-shadow:0 1px 1px rgba(255,255,255,.22) inset, 0 24px 60px rgba(0,0,0,.5);
+  opacity:0; pointer-events:none; transition:opacity .28s ease, transform .32s cubic-bezier(.34,1.4,.4,1);
+}
+.iss-popup.show{opacity:1; transform:translate(-50%,-50%) scale(1); pointer-events:auto;}
+body.reduce-motion .iss-popup{transition:opacity .2s ease;}
+body.reduce-motion .iss-popup.show{transform:translate(-50%,-50%) scale(1);}
+
 /* ---------- AR Finder ---------- */
 .ar-overlay{
   position:fixed; inset:0; z-index:15; display:none; background:#000;
@@ -982,6 +999,23 @@ body.reduce-motion .ar-status-pill.locked{animation:none;}
   </div>
 </div>
 
+<div class="iss-popup-backdrop" id="issPopupBackdrop"></div>
+<div class="iss-popup" id="issPopup">
+  <div class="card-head">
+    <span class="card-label"><svg class="icon"><use href="#icon-satellite"/></svg>Current Position</span>
+    <span class="card-badge" id="issPopupIllum">—</span>
+  </div>
+  <div class="stat-grid">
+    <div class="stat"><div class="k">Latitude</div><div class="v accent" id="issPopupLat">—</div></div>
+    <div class="stat"><div class="k">Longitude</div><div class="v accent" id="issPopupLon">—</div></div>
+    <div class="stat"><div class="k">Altitude</div><div class="v" id="issPopupAlt">—</div></div>
+    <div class="stat"><div class="k">Velocity</div><div class="v" id="issPopupVel">—</div></div>
+    <div class="stat"><div class="k">Distance From You</div><div class="v" id="issPopupDist">—</div></div>
+    <div class="stat"><div class="k">Orbital Period</div><div class="v" id="issPopupPeriod">—</div></div>
+  </div>
+  <button class="btn secondary" id="btnIssPopupClose" style="margin-top:14px;">Close</button>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1226,7 +1260,8 @@ function issSceneRadius(altKm){
 }
 let renderer, scene, camera, earthMesh, cloudsMesh, atmoMesh, issGroup, issModel, issDot, starPoints;
 let orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine, flowDots, futurePathPoints3D, passHighlightLine;
-let locationMarker, visibilityCircleLine, sightLine;
+let locationMarker, visibilityCircleLine, sightLine, issHitSphere;
+let issPopupOpen = false;
 let sunLight, ambLight;
 const clock = new THREE.Clock();
 
@@ -1547,6 +1582,14 @@ async function initScene(){
   const glowSprite = makeGlowSprite();
   glowSprite.scale.set(0.085,0.085,1);
   issGroup.add(glowSprite);
+  // Invisible, generously-sized sphere just for tap/raycast hit-testing —
+  // the real model's thin truss geometry would be nearly impossible to
+  // tap precisely on a phone screen.
+  issHitSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(0.17, 8, 8),
+    new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false})
+  );
+  issGroup.add(issHitSphere);
   scene.add(issGroup);
   issDot = issGroup;
 
@@ -1751,6 +1794,7 @@ let lastPinchDist = null;
 let dragLast = null;
 let autoRotate = true;
 let autoRotateTimer = null;
+let tapCandidate = null, tapMoved = false;
 
 function attachControls(){
   const el = document.getElementById('gl');
@@ -1759,12 +1803,21 @@ function attachControls(){
     pointers.set(e.pointerId, {x:e.clientX,y:e.clientY});
     autoRotate = false;
     clearTimeout(autoRotateTimer);
-    if (pointers.size===1) dragLast = {x:e.clientX,y:e.clientY};
+    if (pointers.size===1){
+      dragLast = {x:e.clientX,y:e.clientY};
+      tapCandidate = {x:e.clientX,y:e.clientY,pointerId:e.pointerId};
+      tapMoved = false;
+    } else {
+      tapCandidate = null; // more than one finger down — this is a pinch, not a tap
+    }
     if (pointers.size===2) lastPinchDist = pinchDistance();
   });
   el.addEventListener('pointermove', (e)=>{
     if (!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId, {x:e.clientX,y:e.clientY});
+    if (tapCandidate && e.pointerId===tapCandidate.pointerId){
+      if (Math.hypot(e.clientX-tapCandidate.x, e.clientY-tapCandidate.y) > 8) tapMoved = true;
+    }
     if (pointers.size===1 && dragLast){
       const dx = e.clientX-dragLast.x, dy = e.clientY-dragLast.y;
       camState.targetTheta -= dx*0.0055;
@@ -1784,11 +1837,24 @@ function attachControls(){
   function endPointer(e){
     pointers.delete(e.pointerId);
     if (pointers.size<2) lastPinchDist=null;
+    if (pointers.size===1){
+      // Lifting one finger out of a pinch leaves exactly one pointer still
+      // down. dragLast was never touched during the 2-finger phase, so
+      // without this it's stale (or null) and the very next move computes
+      // a huge delta from that old reference — the camera visibly jumps
+      // toward whichever finger is still touching. Re-anchor to where
+      // that finger actually is right now instead.
+      dragLast = Array.from(pointers.values())[0];
+    }
     if (pointers.size===0){
       dragLast=null;
       clearTimeout(autoRotateTimer);
       autoRotateTimer = setTimeout(()=>{ autoRotate=true; }, 4000);
     }
+    if (e.type==='pointerup' && tapCandidate && e.pointerId===tapCandidate.pointerId && !tapMoved){
+      handleSceneTap(tapCandidate.x, tapCandidate.y);
+    }
+    if (pointers.size===0) tapCandidate = null;
   }
   el.addEventListener('pointerup', endPointer);
   el.addEventListener('pointercancel', endPointer);
@@ -1804,6 +1870,46 @@ function attachControls(){
     if (pts.length<2) return null;
     return Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
   }
+}
+
+/* ---- tap-to-inspect the ISS model ---- */
+const tapRaycaster = new THREE.Raycaster();
+const tapNDC = new THREE.Vector2();
+function handleSceneTap(clientX, clientY){
+  if (!issHitSphere || !camera || !renderer) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  tapNDC.x = ((clientX-rect.left)/rect.width)*2 - 1;
+  tapNDC.y = -((clientY-rect.top)/rect.height)*2 + 1;
+  tapRaycaster.setFromCamera(tapNDC, camera);
+  const hits = tapRaycaster.intersectObject(issHitSphere, false);
+  if (hits.length){
+    toggleIssPopup();
+  }
+}
+function openIssPopup(){
+  issPopupOpen = true;
+  document.getElementById('issPopup').classList.add('show');
+  document.getElementById('issPopupBackdrop').classList.add('show');
+  if (settings.vibrate && navigator.vibrate) navigator.vibrate(30);
+  // state.currentLL starts life as the wheretheiss.at REST shape ({lat,lon,alt,velKmh})
+  // before SGP4 propagation replaces it with the full {altKm,speedKmh,posEci,...} shape
+  // (see line ~2698) — only pre-populate from the latter; the sub-second animate() loop
+  // fills the popup in either case once real data is available.
+  if (state.currentLL && state.currentLL.altKm !== undefined){
+    updateIssPopupStats(state.currentLL, !isSatEclipsed(state.currentLL.posEci || {x:0,y:0,z:0}, state.sunEci));
+  }
+}
+function closeIssPopup(){
+  issPopupOpen = false;
+  document.getElementById('issPopup').classList.remove('show');
+  document.getElementById('issPopupBackdrop').classList.remove('show');
+}
+function toggleIssPopup(){
+  if (issPopupOpen) closeIssPopup(); else openIssPopup();
+}
+function setupIssPopup(){
+  document.getElementById('btnIssPopupClose').onclick = closeIssPopup;
+  document.getElementById('issPopupBackdrop').onclick = closeIssPopup;
 }
 
 function nearestAngle(current, target){
@@ -1993,6 +2099,27 @@ function renderDashboardStats(ll){
   const lit = !isSatEclipsed(ll.posEci || {x:0,y:0,z:0}, state.sunEci);
   const badge = document.getElementById('illumBadge');
   if (ll.posEci){
+    badge.innerHTML = '<span class="badge-ic"><svg class="icon"><use href="#icon-'+(lit?'sun':'moon')+'"/></svg>'+(lit?'SUNLIT':'SHADOW')+'</span>';
+    badge.style.color = lit ? '#32d74b' : 'rgba(255,255,255,.6)';
+  }
+  if (issPopupOpen) updateIssPopupStats(ll, lit);
+}
+
+// The tap-to-inspect popup mirrors the Dashboard's Current Position card
+// exactly, just reachable straight from tapping the 3D model on any tab.
+function updateIssPopupStats(ll, lit){
+  setStatHTML('issPopupLat', ll.lat.toFixed(2)+'°');
+  setStatHTML('issPopupLon', ll.lon.toFixed(2)+'°');
+  setStatHTML('issPopupAlt', fmtAlt(ll.altKm));
+  setStatHTML('issPopupVel', fmtSpeed(ll.speedKmh));
+  setStatHTML('issPopupPeriod', orbitalPeriodMinutes().toFixed(1)+' min');
+  if (settings.location){
+    setStatHTML('issPopupDist', fmtDist(slantRangeKm(settings.location, ll.lat, ll.lon, ll.altKm)));
+  } else {
+    setStatHTML('issPopupDist', '<small>set location</small>');
+  }
+  const badge = document.getElementById('issPopupIllum');
+  if (badge && ll.posEci){
     badge.innerHTML = '<span class="badge-ic"><svg class="icon"><use href="#icon-'+(lit?'sun':'moon')+'"/></svg>'+(lit?'SUNLIT':'SHADOW')+'</span>';
     badge.style.color = lit ? '#32d74b' : 'rgba(255,255,255,.6)';
   }
@@ -2352,13 +2479,28 @@ const SHEET_PEEK_PX = 54;
 // the collapse as a pixel translateY, so the animation itself is pure
 // transform — no layout reflow, whatever the content height happens to
 // be on the current tab.
+// The sheet's natural bottom edge sits flush with the viewport bottom (by
+// design, so scroll padding lines up), which means a peek height measured
+// from the sheet's own bottom edge always lands the peek strip right on
+// top of the fixed tab bar. Instead, anchor the peek strip's position to
+// the tab bar's live position so there's always a clear gap above it.
+function computeCollapseDy(sheet){
+  const wasCollapsed = sheet.classList.contains('collapsed');
+  if (wasCollapsed) sheet.classList.remove('collapsed');
+  const rect = sheet.getBoundingClientRect();
+  if (wasCollapsed) sheet.classList.add('collapsed');
+  const tabbar = document.querySelector('.tabbar');
+  const tabbarTop = tabbar ? tabbar.getBoundingClientRect().top : window.innerHeight - 70;
+  const GAP = 10;
+  const targetTop = tabbarTop - GAP - SHEET_PEEK_PX;
+  return Math.max(0, targetTop - rect.top);
+}
+
 function setSheetCollapsed(collapsed){
   const sheet = document.getElementById('sheet');
   if (!sheet) return;
   if (collapsed){
-    const wasCollapsed = sheet.classList.contains('collapsed');
-    if (wasCollapsed) sheet.classList.remove('collapsed');
-    const dy = Math.max(0, sheet.getBoundingClientRect().height - SHEET_PEEK_PX);
+    const dy = computeCollapseDy(sheet);
     sheet.style.setProperty('--collapse-dy', dy + 'px');
     sheet.classList.add('collapsed');
   } else {
@@ -2367,33 +2509,94 @@ function setSheetCollapsed(collapsed){
   }
 }
 
+// Swiping to open/close works from anywhere on the panel, not just the
+// grabber — with a live finger-follow drag (like a native iOS sheet) —
+// while still leaving normal list scrolling alone. The rule: a downward
+// drag only starts a "pull to close" once the list is already scrolled
+// to its top; anything else (mid-list, dragging up while expanded) is
+// left for the browser's native scroll to handle.
 function setupSheetCollapse(){
   const sheet = document.getElementById('sheet');
   const zone = document.getElementById('grabberZone');
-  let dragStartY = null, dragging = false, moved = false;
-  zone.addEventListener('pointerdown', (e)=>{
-    dragStartY = e.clientY; dragging = true; moved = false;
-    zone.setPointerCapture(e.pointerId);
-  });
-  zone.addEventListener('pointermove', (e)=>{
-    if (!dragging || dragStartY===null) return;
-    const dy = e.clientY - dragStartY;
-    if (Math.abs(dy) > 8) moved = true;
-  });
-  zone.addEventListener('pointerup', (e)=>{
-    if (!dragging) return;
-    dragging = false;
-    const dy = e.clientY - dragStartY;
-    dragStartY = null;
-    if (!moved){
-      setSheetCollapsed(!sheet.classList.contains('collapsed'));
-    } else if (dy > 30){
-      setSheetCollapsed(true);
-    } else if (dy < -30){
-      setSheetCollapsed(false);
+  const drag = {active:false, pointerId:null, startY:0, startScrollTop:0, moved:false, mode:null, fromGrabber:false, baseDy:0};
+
+  function currentDy(){
+    const m = getComputedStyle(sheet).transform;
+    if (!m || m === 'none') return 0;
+    const match = /matrix\(([^)]+)\)/.exec(m);
+    if (!match) return 0;
+    const parts = match[1].split(',').map(parseFloat);
+    return parts[5] || 0;
+  }
+
+  function onDown(e){
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    drag.active = true; drag.pointerId = e.pointerId;
+    drag.startY = e.clientY; drag.startScrollTop = sheet.scrollTop;
+    drag.moved = false; drag.mode = null;
+    drag.fromGrabber = !!e.target.closest('#grabberZone');
+    drag.baseDy = currentDy();
+  }
+  function onMove(e){
+    if (!drag.active || e.pointerId !== drag.pointerId) return;
+    const dy = e.clientY - drag.startY;
+    if (!drag.moved && Math.abs(dy) > 6) drag.moved = true;
+    const collapsed = sheet.classList.contains('collapsed');
+
+    if (drag.mode === null){
+      if (collapsed && dy < -6){
+        drag.mode = 'expand';
+        try{ sheet.setPointerCapture(drag.pointerId); }catch(err){}
+      } else if (!collapsed && dy > 6 && drag.startScrollTop <= 0){
+        drag.mode = 'collapse';
+        drag.maxDy = computeCollapseDy(sheet);
+        try{ sheet.setPointerCapture(drag.pointerId); }catch(err){}
+      } else if (!collapsed && drag.startScrollTop > 0){
+        drag.active = false; // let native scrolling handle it
+        return;
+      } else {
+        return; // not enough signal yet either way
+      }
     }
-  });
-  zone.addEventListener('pointercancel', ()=>{ dragging=false; dragStartY=null; });
+
+    if (drag.mode === 'collapse'){
+      e.preventDefault();
+      const maxDy = drag.maxDy;
+      const offset = Math.max(0, Math.min(maxDy, dy));
+      sheet.style.transition = 'none';
+      sheet.style.transform = `translateY(${offset}px)`;
+    } else if (drag.mode === 'expand'){
+      e.preventDefault();
+      const offset = Math.max(0, drag.baseDy + dy);
+      sheet.style.transition = 'none';
+      sheet.style.transform = `translateY(${offset}px)`;
+    }
+  }
+  function onUp(e){
+    if (!drag.active || e.pointerId !== drag.pointerId){ drag.active = false; return; }
+    drag.active = false;
+    sheet.style.transition = '';
+    sheet.style.transform = '';
+    const dy = e.clientY - drag.startY;
+
+    if (!drag.moved){
+      if (drag.fromGrabber) setSheetCollapsed(!sheet.classList.contains('collapsed'));
+      drag.mode = null;
+      return;
+    }
+    if (drag.mode === 'collapse'){
+      setSheetCollapsed(dy > 60);
+    } else if (drag.mode === 'expand'){
+      setSheetCollapsed(dy > -40);
+    }
+    drag.mode = null;
+  }
+
+  sheet.addEventListener('pointerdown', onDown);
+  sheet.addEventListener('pointermove', onMove, {passive:false});
+  sheet.addEventListener('pointerup', onUp);
+  sheet.addEventListener('pointercancel', onUp);
+  zone.style.touchAction = 'none';
 }
 
 function restartCardAnimation(view){
@@ -2857,6 +3060,7 @@ function refreshArCalibUI(){
 }
 
 async function openArView(){
+  closeIssPopup();
   document.getElementById('arOverlay').classList.add('show');
   AR.active = true;
   if (!AR.started){
@@ -2953,6 +3157,7 @@ async function init(){
   applyReduceMotionClass();
   setupShareButton();
   setupArView();
+  setupIssPopup();
 
   document.getElementById('loadingText').textContent = 'ACQUIRING ORBITAL DATA…';
   setStatus('syncing', 'SYNCING');
