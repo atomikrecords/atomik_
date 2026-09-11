@@ -2478,22 +2478,20 @@ const SHEET_PEEK_PX = 54;
 // the panel's natural (uncollapsed) height once per call and expresses
 // the collapse as a pixel translateY, so the animation itself is pure
 // transform — no layout reflow, whatever the content height happens to
-// be on the current tab.
-// The sheet's natural bottom edge sits flush with the viewport bottom (by
-// design, so scroll padding lines up), which means a peek height measured
-// from the sheet's own bottom edge always lands the peek strip right on
-// top of the fixed tab bar. Instead, anchor the peek strip's position to
-// the tab bar's live position so there's always a clear gap above it.
+// be on the current tab. Collapsing only hides the sheet's cards
+// (opacity:0) and translates the whole box down — it does NOT shrink the
+// box's own height — so the translate distance must leave exactly
+// SHEET_PEEK_PX of the box inside the viewport, anchored at the viewport's
+// own bottom edge (where the box naturally sits already). Anchoring the
+// peek to the tab bar's position instead (rather than the box's own
+// height) leaves most of the box's still-full-height, now-blank glass
+// panel sitting on screen — a large empty slab, not a tight peek strip.
 function computeCollapseDy(sheet){
   const wasCollapsed = sheet.classList.contains('collapsed');
   if (wasCollapsed) sheet.classList.remove('collapsed');
-  const rect = sheet.getBoundingClientRect();
+  const height = sheet.getBoundingClientRect().height;
   if (wasCollapsed) sheet.classList.add('collapsed');
-  const tabbar = document.querySelector('.tabbar');
-  const tabbarTop = tabbar ? tabbar.getBoundingClientRect().top : window.innerHeight - 70;
-  const GAP = 10;
-  const targetTop = tabbarTop - GAP - SHEET_PEEK_PX;
-  return Math.max(0, targetTop - rect.top);
+  return Math.max(0, height - SHEET_PEEK_PX);
 }
 
 function setSheetCollapsed(collapsed){
