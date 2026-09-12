@@ -203,11 +203,22 @@ const FUEL_MAX = 100;
 const FUEL_RATE = 7;                 // per booster active, per second
 const ROCKET_W = 26, ROCKET_H = 62;
 const MAX_TILT = Math.PI * 0.62;     // ~112 deg -> flip crash
-const LAND_TILT_OK = 0.4;            // ~23 deg
-const LAND_SPEED_OK = 130;           // px/s
-const LAND_ANGVEL_OK = 1.3;
+// Landing tolerances are part of the curriculum too: forgiving while the AI
+// is still learning the basics, tightening to a genuinely strict landing as
+// it proves itself. Early wins are what give it something to learn FROM.
+const TILT_EASY = 0.65, TILT_HARD = 0.35;      // rad (~37 deg -> ~20 deg)
+const SPEED_EASY = 210, SPEED_HARD = 105;      // px/s
+const ANGVEL_EASY = 2.2, ANGVEL_HARD = 1.0;
+let LAND_TILT_OK = TILT_EASY, LAND_SPEED_OK = SPEED_EASY, LAND_ANGVEL_OK = ANGVEL_EASY;
 const MAX_STEPS = 900;               // episode cap (~15s at 60 physics-steps/s)
 const DT = 1/60;
+// The policy picks an action every ACTION_REPEAT physics steps and holds it.
+// Physics still runs at 60Hz (motion stays smooth), but the decision horizon
+// shrinks 3x, which makes credit assignment dramatically easier - the reward
+// for landing is only ~60 decisions away from the start of a flight instead
+// of ~180. It also cuts network cost per physics step by 3x and produces
+// visibly smoother, less jittery thruster use.
+const ACTION_REPEAT = 3;
 
 /* =========================================================================
    NEURAL NET: a small 2-hidden-layer actor-critic, trained with a
@@ -220,20 +231,24 @@ const DT = 1/60;
 //   lateral group -> {none, left, right}   (steers toward the pad)
 // State also includes the last action taken (short-term memory), which
 // helps the policy reason about momentum/lag rather than react blindly.
-const IN = 12, H1 = 32, H2 = 24, GROUPN = 3, OUT = GROUPN*2;
-const LR = 0.012;
-const GAMMA = 0.98;
+const IN = 12, H1 = 48, H2 = 32, GROUPN = 3, OUT = GROUPN*2;
+const GAMMA = 0.99;                  // per DECISION (not per physics step)
 const LAMBDA = 0.95;                 // GAE smoothing between 1-step TD and full Monte-Carlo
-const ENTROPY_COEF = 0.015;
-const GRAD_CLIP_NORM = 6;
+const LR0 = 0.0025;                  // Adam step size, annealed downward over training
+const LR_MIN_FRAC = 0.15, LR_ANNEAL_UPDATES = 1500;
+const ADAM_B1 = 0.9, ADAM_B2 = 0.999, ADAM_EPS = 1e-8;
+const ENT_START = 0.03, ENT_END = 0.004, ENT_ANNEAL_UPDATES = 1200;
+const GRAD_CLIP_NORM = 0.5;          // applied to the MEAN gradient, the standard PPO value
 const RETURN_SCALE = 60;             // compresses raw rewards into a ~unit range for the critic
-const CRITIC_COEF = 1.0;
+const CRITIC_COEF = 0.5;
 const CLIP_EPS = 0.2;                // PPO trust-region: block updates once a policy has drifted too far
-const PPO_EPOCHS = 2;                // re-use each batch of experience this many times
-const BATCH_MIN_STEPS = 1500;        // collect roughly this many steps before each PPO update
+const PPO_EPOCHS = 3;                // re-use each batch of experience this many times
+const MINIBATCHES = 4;               // gradient steps per epoch (12 total per batch, vs 2 before)
+const BATCH_MIN_DECISIONS = 768;     // decisions collected before each PPO update
 const SUCCESS_BUFFER_SIZE = 12;      // replay memory of rare successful landings
 const REPLAY_PER_BATCH = 2;          // how many stored successes get replayed into each update
-const NUM_WORKERS = 4;               // simultaneous simulated rockets (only worker 0 is drawn)
+const NUM_WORKERS = 6;               // simultaneous simulated rockets (only worker 0 is drawn)
+const UPDATE_TICKS_PER_MINIBATCH = 16; // spreads each update's work across frames (no hitching)
 
 function randn(){ // Box-Muller
   let u=0,v=0; while(u===0)u=Math.random(); while(v===0)v=Math.random();
@@ -246,47 +261,111 @@ function freshNet(){
   return {
     W1: makeMat(IN, H1, 1/Math.sqrt(IN)), b1: makeVec(H1),
     W2: makeMat(H1, H2, 1/Math.sqrt(H1)), b2: makeVec(H2),
-    W3: makeMat(H2, OUT, 1/Math.sqrt(H2)), b3: makeVec(OUT),
+    // Policy head starts near zero so the initial policy is almost exactly
+    // uniform. A confident-by-accident starting policy is what lets a network
+    // lock onto a wrong behaviour before it has any real evidence.
+    W3: makeMat(H2, OUT, 0.01), b3: makeVec(OUT),
+    Wv: makeVec(H2), bv: 0
+  };
+}
+function zerosLikeNet(){
+  return {
+    W1: makeMat(IN,H1,0), b1: makeVec(H1),
+    W2: makeMat(H1,H2,0), b2: makeVec(H2),
+    W3: makeMat(H2,OUT,0), b3: makeVec(OUT),
     Wv: makeVec(H2), bv: 0
   };
 }
 
 let net = freshNet();
-let gen = 0; // generation counter (network resets)
+let gen = 0;          // generation counter (network resets)
+let updateCount = 0;  // PPO updates applied so far (drives LR / entropy annealing)
+let adamM = zerosLikeNet(), adamV = zerosLikeNet(), adamT = 0;
 
-function softmax3(z, off){
+/* -------------------------------------------------------------------------
+   OBSERVATION NORMALIZATION
+   Hand-picked scaling constants leave some inputs nearly flat (tiny signal)
+   and others saturated. A running mean/std normalizer keeps every input at
+   a comparable, well-conditioned scale, which is one of the largest practical
+   wins in any PPO implementation.
+
+   Two dimensions get special handling so that normalizing and mirroring
+   commute (see mirrorRecord): dims that flip sign under a left-right mirror
+   are forced to zero mean, and the left/right "last action" pair shares one
+   set of statistics.
+   ------------------------------------------------------------------------- */
+const ANTISYM_DIMS = [0,2,4,6];  // dx, vx, sin(angle), angVel
+let obsCount = 1e-4;
+const obsSum = new Float64Array(IN), obsSumSq = new Float64Array(IN);
+let obsMean = new Float64Array(IN), obsInvStd = new Float64Array(IN).fill(1);
+
+function refreshObsNorm(){
+  for(let i=0;i<IN;i++){
+    const mean = obsSum[i]/obsCount;
+    const second = obsSumSq[i]/obsCount;
+    if(ANTISYM_DIMS.indexOf(i)>=0){
+      obsMean[i] = 0;                                  // true mean is 0 by symmetry
+      obsInvStd[i] = 1/Math.sqrt(Math.max(1e-6, second));
+    } else {
+      obsMean[i] = mean;
+      obsInvStd[i] = 1/Math.sqrt(Math.max(1e-6, second - mean*mean));
+    }
+  }
+  // the left/right last-action pair must share stats so a mirror is exact
+  const m = (obsMean[10]+obsMean[11])/2, s = (obsInvStd[10]+obsInvStd[11])/2;
+  obsMean[10]=obsMean[11]=m; obsInvStd[10]=obsInvStd[11]=s;
+}
+
+function observe(raw){
+  obsCount++;
+  for(let i=0;i<IN;i++){ obsSum[i]+=raw[i]; obsSumSq[i]+=raw[i]*raw[i]; }
+  refreshObsNorm();
+  const out = new Float64Array(IN);
+  for(let i=0;i<IN;i++){
+    let v = (raw[i]-obsMean[i])*obsInvStd[i];
+    out[i] = v>5?5:(v<-5?-5:v);
+  }
+  return out;
+}
+
+// Scratch buffers reused by every forward/backward pass. The update loop runs
+// thousands of passes per second, so allocating fresh arrays per sample was
+// generating enough garbage to dominate the frame budget.
+const _h1 = new Float64Array(H1), _h2 = new Float64Array(H2);
+const _z = new Float64Array(OUT), _p = new Float64Array(OUT);
+const _dh1 = new Float64Array(H1), _dh2 = new Float64Array(H2);
+
+function softmax3Into(z, off, out){
   const m = Math.max(z[off],z[off+1],z[off+2]);
   const e0=Math.exp(z[off]-m), e1=Math.exp(z[off+1]-m), e2=Math.exp(z[off+2]-m);
   const s=e0+e1+e2;
-  return [e0/s, e1/s, e2/s];
+  out[off]=e0/s; out[off+1]=e1/s; out[off+2]=e2/s;
 }
 
 // forward pass; returns {h1,h2 (post-tanh activations), p (6 probs), v (state value)}
 function forward(x){
-  const h1 = new Float64Array(H1);
   for(let j=0;j<H1;j++){
     let s = net.b1[j];
-    for(let i=0;i<IN;i++) s += x[i]*net.W1[i][j];
-    h1[j] = Math.tanh(s);
+    const W = net.W1;
+    for(let i=0;i<IN;i++) s += x[i]*W[i][j];
+    _h1[j] = Math.tanh(s);
   }
-  const h2 = new Float64Array(H2);
   for(let j=0;j<H2;j++){
     let s = net.b2[j];
-    for(let i=0;i<H1;i++) s += h1[i]*net.W2[i][j];
-    h2[j] = Math.tanh(s);
+    const W = net.W2;
+    for(let i=0;i<H1;i++) s += _h1[i]*W[i][j];
+    _h2[j] = Math.tanh(s);
   }
-  const z = new Float64Array(OUT);
   for(let k=0;k<OUT;k++){
     let s = net.b3[k];
-    for(let j=0;j<H2;j++) s += h2[j]*net.W3[j][k];
-    z[k]=s;
+    for(let j=0;j<H2;j++) s += _h2[j]*net.W3[j][k];
+    _z[k]=s;
   }
-  const pAxial = softmax3(z,0);
-  const pLateral = softmax3(z,GROUPN);
-  const p = Float64Array.from([...pAxial, ...pLateral]);
+  softmax3Into(_z, 0, _p);
+  softmax3Into(_z, GROUPN, _p);
   let v = net.bv;
-  for(let j=0;j<H2;j++) v += net.Wv[j]*h2[j];
-  return {h1,h2,p,v};
+  for(let j=0;j<H2;j++) v += net.Wv[j]*_h2[j];
+  return {h1:_h1, h2:_h2, p:_p, v};
 }
 
 function sampleCategorical(p3){
@@ -306,14 +385,7 @@ function sampleActions(p){
   return { choice:[axial,lateral], booster };
 }
 
-function zeroGrads(){
-  return {
-    W1: makeMat(IN,H1,0), b1: makeVec(H1),
-    W2: makeMat(H1,H2,0), b2: makeVec(H2),
-    W3: makeMat(H2,OUT,0), b3: makeVec(OUT),
-    Wv: makeVec(H2), bv: 0
-  };
-}
+function zeroGrads(){ return zerosLikeNet(); }
 
 // backprop a single sample's policy+value gradient (dz: dLoss/dPolicyLogits,
 // dv: dLoss/dValueOutput) into the shared gradient accumulator
@@ -323,47 +395,88 @@ function accumGrad(g, x, h1, h2, dz, dv){
   for(let j=0;j<H2;j++) g.Wv[j] += h2[j]*dv;
   g.bv += dv;
 
-  const dh2 = new Float64Array(H2);
   for(let j=0;j<H2;j++){
     let s=0;
     for(let k=0;k<OUT;k++) s += net.W3[j][k]*dz[k];
     s += net.Wv[j]*dv;
-    dh2[j] = s*(1-h2[j]*h2[j]);
+    _dh2[j] = s*(1-h2[j]*h2[j]);
   }
-  for(let i=0;i<H1;i++) for(let j=0;j<H2;j++) g.W2[i][j] += h1[i]*dh2[j];
-  for(let j=0;j<H2;j++) g.b2[j] += dh2[j];
+  for(let i=0;i<H1;i++){
+    const gi = g.W2[i], hi = h1[i];
+    for(let j=0;j<H2;j++) gi[j] += hi*_dh2[j];
+  }
+  for(let j=0;j<H2;j++) g.b2[j] += _dh2[j];
 
-  const dh1 = new Float64Array(H1);
   for(let i=0;i<H1;i++){
     let s=0;
-    for(let j=0;j<H2;j++) s += net.W2[i][j]*dh2[j];
-    dh1[i] = s*(1-h1[i]*h1[i]);
+    const W = net.W2[i];
+    for(let j=0;j<H2;j++) s += W[j]*_dh2[j];
+    _dh1[i] = s*(1-h1[i]*h1[i]);
   }
-  for(let i=0;i<IN;i++) for(let j=0;j<H1;j++) g.W1[i][j] += x[i]*dh1[j];
-  for(let j=0;j<H1;j++) g.b1[j] += dh1[j];
+  for(let i=0;i<IN;i++){
+    const gi = g.W1[i], xi = x[i];
+    for(let j=0;j<H1;j++) gi[j] += xi*_dh1[j];
+  }
+  for(let j=0;j<H1;j++) g.b1[j] += _dh1[j];
 }
 
-function applyGrads(g){
-  let gnorm2 = 0;
-  for(let i=0;i<IN;i++) for(let j=0;j<H1;j++) gnorm2 += g.W1[i][j]*g.W1[i][j];
-  for(let j=0;j<H1;j++) gnorm2 += g.b1[j]*g.b1[j];
-  for(let i=0;i<H1;i++) for(let j=0;j<H2;j++) gnorm2 += g.W2[i][j]*g.W2[i][j];
-  for(let j=0;j<H2;j++) gnorm2 += g.b2[j]*g.b2[j];
-  for(let j=0;j<H2;j++) for(let k=0;k<OUT;k++) gnorm2 += g.W3[j][k]*g.W3[j][k];
-  for(let k=0;k<OUT;k++) gnorm2 += g.b3[k]*g.b3[k];
-  for(let j=0;j<H2;j++) gnorm2 += g.Wv[j]*g.Wv[j];
-  gnorm2 += g.bv*g.bv;
-  const gnorm = Math.sqrt(gnorm2);
-  const scale = LR * (gnorm > GRAD_CLIP_NORM ? GRAD_CLIP_NORM/gnorm : 1);
+function currentLR(){
+  const frac = Math.max(LR_MIN_FRAC, 1 - updateCount/LR_ANNEAL_UPDATES);
+  return LR0*frac;
+}
+function currentEntropyCoef(){
+  const t = Math.min(1, updateCount/ENT_ANNEAL_UPDATES);
+  return ENT_START + (ENT_END-ENT_START)*t;
+}
 
-  for(let i=0;i<IN;i++) for(let j=0;j<H1;j++) net.W1[i][j] -= scale*g.W1[i][j];
-  for(let j=0;j<H1;j++) net.b1[j] -= scale*g.b1[j];
-  for(let i=0;i<H1;i++) for(let j=0;j<H2;j++) net.W2[i][j] -= scale*g.W2[i][j];
-  for(let j=0;j<H2;j++) net.b2[j] -= scale*g.b2[j];
-  for(let j=0;j<H2;j++) for(let k=0;k<OUT;k++) net.W3[j][k] -= scale*g.W3[j][k];
-  for(let k=0;k<OUT;k++) net.b3[k] -= scale*g.b3[k];
-  for(let j=0;j<H2;j++) net.Wv[j] -= scale*g.Wv[j];
-  net.bv -= scale*g.bv;
+// Adam. Plain SGD gives every weight the same step size even though the value
+// head, policy head and input layer all see wildly different gradient scales;
+// Adam adapts per-parameter and is what essentially every real PPO
+// implementation uses. This is the single biggest training-speed upgrade here.
+function adamApply(g, invCount){
+  // scale to a MEAN gradient, then clip the global norm (standard PPO ordering)
+  let gnorm2 = 0;
+  const eachMat = (G, fn) => { for(let i=0;i<G.length;i++) for(let j=0;j<G[i].length;j++) fn(G,i,j); };
+
+  eachMat(g.W1, (G,i,j)=>{ G[i][j]*=invCount; gnorm2 += G[i][j]*G[i][j]; });
+  for(let j=0;j<H1;j++){ g.b1[j]*=invCount; gnorm2 += g.b1[j]*g.b1[j]; }
+  eachMat(g.W2, (G,i,j)=>{ G[i][j]*=invCount; gnorm2 += G[i][j]*G[i][j]; });
+  for(let j=0;j<H2;j++){ g.b2[j]*=invCount; gnorm2 += g.b2[j]*g.b2[j]; }
+  eachMat(g.W3, (G,i,j)=>{ G[i][j]*=invCount; gnorm2 += G[i][j]*G[i][j]; });
+  for(let k=0;k<OUT;k++){ g.b3[k]*=invCount; gnorm2 += g.b3[k]*g.b3[k]; }
+  for(let j=0;j<H2;j++){ g.Wv[j]*=invCount; gnorm2 += g.Wv[j]*g.Wv[j]; }
+  g.bv *= invCount; gnorm2 += g.bv*g.bv;
+
+  const gnorm = Math.sqrt(gnorm2);
+  const clip = gnorm > GRAD_CLIP_NORM ? GRAD_CLIP_NORM/gnorm : 1;
+
+  adamT++;
+  const lr = currentLR();
+  const bc1 = 1 - Math.pow(ADAM_B1, adamT);
+  const bc2 = 1 - Math.pow(ADAM_B2, adamT);
+
+  function stepVec(W, G, M, V){
+    for(let i=0;i<W.length;i++){
+      const gg = G[i]*clip;
+      M[i] = ADAM_B1*M[i] + (1-ADAM_B1)*gg;
+      V[i] = ADAM_B2*V[i] + (1-ADAM_B2)*gg*gg;
+      W[i] -= lr*(M[i]/bc1)/(Math.sqrt(V[i]/bc2)+ADAM_EPS);
+    }
+  }
+  function stepMat(W, G, M, V){
+    for(let i=0;i<W.length;i++) stepVec(W[i], G[i], M[i], V[i]);
+  }
+
+  stepMat(net.W1, g.W1, adamM.W1, adamV.W1);  stepVec(net.b1, g.b1, adamM.b1, adamV.b1);
+  stepMat(net.W2, g.W2, adamM.W2, adamV.W2);  stepVec(net.b2, g.b2, adamM.b2, adamV.b2);
+  stepMat(net.W3, g.W3, adamM.W3, adamV.W3);  stepVec(net.b3, g.b3, adamM.b3, adamV.b3);
+  stepVec(net.Wv, g.Wv, adamM.Wv, adamV.Wv);
+  {
+    const gg = g.bv*clip;
+    adamM.bv = ADAM_B1*adamM.bv + (1-ADAM_B1)*gg;
+    adamV.bv = ADAM_B2*adamV.bv + (1-ADAM_B2)*gg*gg;
+    net.bv -= lr*(adamM.bv/bc1)/(Math.sqrt(adamV.bv/bc2)+ADAM_EPS);
+  }
 }
 
 // Generalized Advantage Estimation for one completed episode's trajectory.
@@ -396,59 +509,116 @@ function pushSuccessBuffer(record){
   if(successBuffer.length > SUCCESS_BUFFER_SIZE) successBuffer.shift();
 }
 
-// Simplified PPO update: clipped surrogate policy objective + value
-// regression + entropy bonus, run for a few epochs over the same batch
-// (each pass reuses the collected experience instead of throwing it away
-// after a single gradient step, which is a big sample-efficiency win),
-// with a couple of replayed past successes folded in each time so rare
-// wins get reinforced more than once.
-function runPpoUpdate(){
+// PPO update, run as a JOB spread across many frames rather than all at once.
+// Each batch is flattened into individual transitions, shuffled, and walked
+// through in minibatches - 4 epochs x 4 minibatches = 16 gradient steps per
+// batch, versus 2 before. More gradient steps per unit of experience is a
+// large part of what makes real PPO implementations learn fast, and chunking
+// the work keeps any single frame cheap so the animation never hitches.
+let updateJob = null;
+let updateTickCounter = 0;
+
+function beginUpdate(){
   const episodes = pendingBatch.slice();
   for(let i=0;i<REPLAY_PER_BATCH && successBuffer.length>0;i++){
     episodes.push(successBuffer[Math.floor(Math.random()*successBuffer.length)]);
   }
+  pendingBatch = []; pendingBatchSteps = 0;
 
-  let allAdv = [];
-  episodes.forEach(e=>{ for(let t=0;t<e.adv.length;t++) allAdv.push(e.adv[t]); });
-  let mean=0; allAdv.forEach(v=>mean+=v); mean/=allAdv.length;
-  let varr=0; allAdv.forEach(v=>varr+=(v-mean)*(v-mean)); varr/=allAdv.length;
-  const std = Math.sqrt(varr)+1e-6;
-  episodes.forEach(e=>{ e.advNorm = e.adv.map(v=>(v-mean)/std); });
-
-  for(let epoch=0; epoch<PPO_EPOCHS; epoch++){
-    const g = zeroGrads();
-    for(const e of episodes){
-      for(let t=0;t<e.x.length;t++){
-        const x=e.x[t], choice=e.choice[t], pOld=e.pOld[t], A=e.advNorm[t], ret=e.ret[t];
-        const {h1,h2,p:pNew,v:vNew} = forward(x);
-
-        const oldLogP = Math.log(pOld[choice[0]]+1e-8) + Math.log(pOld[GROUPN+choice[1]]+1e-8);
-        const newLogP = Math.log(pNew[choice[0]]+1e-8) + Math.log(pNew[GROUPN+choice[1]]+1e-8);
-        const ratio = Math.exp(newLogP-oldLogP);
-
-        // PPO clip: once the policy has moved far enough that the ratio
-        // leaves the trust region in the direction the advantage favors,
-        // the gradient is cut to zero - this is what stops one lucky/unlucky
-        // batch from destructively overwriting everything learned so far.
-        let scale;
-        if(A>=0) scale = (ratio > 1+CLIP_EPS) ? 0 : A*ratio;
-        else scale = (ratio < 1-CLIP_EPS) ? 0 : A*ratio;
-
-        const dz = new Float64Array(OUT);
-        for(let k=0;k<GROUPN;k++){
-          const oh = (k===choice[0])?1:0;
-          dz[k] = scale*(pNew[k]-oh) - ENTROPY_COEF*(1/GROUPN - pNew[k]);
-        }
-        for(let k=0;k<GROUPN;k++){
-          const oh = (k===choice[1])?1:0;
-          dz[GROUPN+k] = scale*(pNew[GROUPN+k]-oh) - ENTROPY_COEF*(1/GROUPN - pNew[GROUPN+k]);
-        }
-        const dv = (vNew-ret)*CRITIC_COEF;
-        accumGrad(g, x, h1, h2, dz, dv);
-      }
+  // flatten every episode into a single transition list
+  const xs=[], chs=[], pOlds=[], advs=[], rets=[];
+  for(const e of episodes){
+    for(let t=0;t<e.x.length;t++){
+      xs.push(e.x[t]); chs.push(e.choice[t]); pOlds.push(e.pOld[t]);
+      advs.push(e.adv[t]); rets.push(e.ret[t]);
     }
-    applyGrads(g);
   }
+  const n = xs.length;
+  if(n < MINIBATCHES*2) return; // too small to be worth an update
+
+  // normalize advantages across the whole batch
+  let mean=0; for(let i=0;i<n;i++) mean+=advs[i]; mean/=n;
+  let varr=0; for(let i=0;i<n;i++) varr+=(advs[i]-mean)*(advs[i]-mean); varr/=n;
+  const std = Math.sqrt(varr)+1e-6;
+  const advN = new Float64Array(n);
+  for(let i=0;i<n;i++) advN[i] = (advs[i]-mean)/std;
+
+  const order = new Int32Array(n);
+  for(let i=0;i<n;i++) order[i]=i;
+
+  updateJob = { xs, chs, pOlds, advN, rets, n, order, epoch:0, mb:0 };
+  shuffleOrder(updateJob);
+}
+
+function shuffleOrder(job){
+  const o = job.order;
+  for(let i=o.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    const tmp=o[i]; o[i]=o[j]; o[j]=tmp;
+  }
+}
+
+// process exactly one minibatch gradient step; returns true when the whole
+// update (all epochs) has finished
+function stepUpdate(){
+  const job = updateJob;
+  if(!job) return true;
+  const entCoef = currentEntropyCoef();
+  const mbSize = Math.ceil(job.n/MINIBATCHES);
+  const start = job.mb*mbSize;
+  const end = Math.min(job.n, start+mbSize);
+
+  const g = zeroGrads();
+  const dz = new Float64Array(OUT);
+  let count = 0;
+  for(let idx=start; idx<end; idx++){
+    const i = job.order[idx];
+    const x=job.xs[i], choice=job.chs[i], pOld=job.pOlds[i], A=job.advN[i], ret=job.rets[i];
+    const {h1,h2,p:pNew,v:vNew} = forward(x);
+
+    const oldLogP = Math.log(pOld[choice[0]]+1e-8) + Math.log(pOld[GROUPN+choice[1]]+1e-8);
+    const newLogP = Math.log(pNew[choice[0]]+1e-8) + Math.log(pNew[GROUPN+choice[1]]+1e-8);
+    const ratio = Math.exp(newLogP-oldLogP);
+
+    // PPO clip: once the policy has moved far enough that the ratio leaves
+    // the trust region in the direction the advantage favors, the gradient
+    // is cut to zero - this stops one lucky/unlucky batch from destructively
+    // overwriting everything learned so far.
+    let scale;
+    if(A>=0) scale = (ratio > 1+CLIP_EPS) ? 0 : A*ratio;
+    else scale = (ratio < 1-CLIP_EPS) ? 0 : A*ratio;
+
+    for(let k=0;k<GROUPN;k++){
+      const oh = (k===choice[0])?1:0;
+      dz[k] = scale*(pNew[k]-oh) - entCoef*(1/GROUPN - pNew[k]);
+    }
+    for(let k=0;k<GROUPN;k++){
+      const oh = (k===choice[1])?1:0;
+      dz[GROUPN+k] = scale*(pNew[GROUPN+k]-oh) - entCoef*(1/GROUPN - pNew[GROUPN+k]);
+    }
+    const dv = (vNew-ret)*CRITIC_COEF;
+    accumGrad(g, x, h1, h2, dz, dv);
+    count++;
+  }
+  if(count>0) adamApply(g, 1/count);
+
+  job.mb++;
+  if(job.mb >= MINIBATCHES){
+    job.mb = 0; job.epoch++;
+    shuffleOrder(job);
+    if(job.epoch >= PPO_EPOCHS){
+      updateJob = null;
+      updateCount++;
+      return true;
+    }
+  }
+  return false;
+}
+
+function finishUpdateNow(){ // drain any in-flight update (used before a new batch starts)
+  let guard = PPO_EPOCHS*MINIBATCHES + 2;
+  while(updateJob && guard-- > 0) stepUpdate();
+  updateJob = null;
 }
 
 /* =========================================================================
@@ -457,11 +627,19 @@ function runPpoUpdate(){
 let difficulty = 0;
 let curriculumWindow = [];
 
-function recomputePad(){
+// The curriculum drives BOTH how far away the pad sits and how strict a
+// touchdown has to be to count. Starting forgiving on both axes means early
+// wins actually happen, and wins are the only thing the AI can learn a
+// successful landing FROM - shaping rewards alone can only get it close.
+function recomputeDifficulty(){
   const offset = PAD_OFFSET_MIN + difficulty*(PAD_OFFSET_MAX-PAD_OFFSET_MIN);
   const cx = START.x + offset;
   PAD.x1 = cx - PAD_WIDTH/2;
   PAD.x2 = cx + PAD_WIDTH/2;
+
+  LAND_TILT_OK   = TILT_EASY   + (TILT_HARD-TILT_EASY)*difficulty;
+  LAND_SPEED_OK  = SPEED_EASY  + (SPEED_HARD-SPEED_EASY)*difficulty;
+  LAND_ANGVEL_OK = ANGVEL_EASY + (ANGVEL_HARD-ANGVEL_EASY)*difficulty;
 }
 
 function updateCurriculum(success){
@@ -472,11 +650,11 @@ function updateCurriculum(success){
     if(rate>=0.35 && difficulty<1){
       difficulty = Math.min(1, difficulty+0.05);
       curriculumWindow = [];
-      recomputePad();
+      recomputeDifficulty();
     } else if(rate<0.04 && difficulty>0){
       difficulty = Math.max(0, difficulty-0.02);
       curriculumWindow = [];
-      recomputePad();
+      recomputeDifficulty();
     }
   }
 }
@@ -484,7 +662,7 @@ function updateCurriculum(success){
 /* =========================================================================
    PERSISTENCE
    ========================================================================= */
-const LS_KEY = "rocketLandingAI_v2"; // v2: bigger net + curriculum - incompatible with v1 saves
+const LS_KEY = "rocketLandingAI_v3"; // v3: larger net, Adam, normalized observations
 
 function matToArr(m){ return m.map(row=>Array.from(row)); }
 function arrToMat(a){ return a.map(row=>Float64Array.from(row)); }
@@ -502,7 +680,9 @@ function saveAll(force){
         W3: matToArr(net.W3), b3: Array.from(net.b3),
         Wv: Array.from(net.Wv), bv: net.bv
       },
-      gen, attempts, successes, rewardHistory: rewardHistory.slice(-300), best, speed, difficulty
+      obs: { count: obsCount, sum: Array.from(obsSum), sumSq: Array.from(obsSumSq) },
+      gen, attempts, successes, updateCount,
+      rewardHistory: rewardHistory.slice(-300), best, speed, difficulty
     };
     localStorage.setItem(LS_KEY, JSON.stringify(payload));
   }catch(e){ /* storage full or unavailable - ignore */ }
@@ -518,9 +698,15 @@ function loadAll(){
       W3: arrToMat(p.net.W3), b3: Float64Array.from(p.net.b3),
       Wv: Float64Array.from(p.net.Wv), bv: p.net.bv||0
     };
+    if(p.obs && p.obs.sum && p.obs.sum.length===IN){
+      obsCount = p.obs.count||1e-4;
+      obsSum.set(p.obs.sum); obsSumSq.set(p.obs.sumSq);
+      refreshObsNorm();
+    }
     gen = p.gen||0;
     attempts = p.attempts||0;
     successes = p.successes||0;
+    updateCount = p.updateCount||0;
     rewardHistory = p.rewardHistory||[];
     best = p.best||-Infinity;
     difficulty = p.difficulty||0;
@@ -533,11 +719,14 @@ function loadAll(){
    ENVIRONMENT / PHYSICS
    ========================================================================= */
 function newRocket(){
+  // varied starting conditions so the policy learns to actually fly rather
+  // than memorise one exact trajectory from one exact spot
   return {
-    x: START.x, y: START.y,
-    vx: (Math.random()-0.5)*20, vy: 0,
-    angle: (Math.random()-0.5)*0.2,
-    angVel: 0,
+    x: START.x + (Math.random()-0.5)*90,
+    y: START.y + (Math.random()-0.5)*110,
+    vx: (Math.random()-0.5)*50, vy: (Math.random()-0.5)*25,
+    angle: (Math.random()-0.5)*0.35,
+    angVel: (Math.random()-0.5)*0.4,
     fuel: FUEL_MAX,
     boosters: {bottom:0, top:0, left:0, right:0},
     lastAction: [0,0,0,0],
@@ -703,6 +892,8 @@ function newWorker(){
     prevHDist: null,
     prevVDist: null,
     approachSteps: 0,
+    repeatLeft: 0,          // physics steps remaining on the currently-held action
+    curX: null, curP: null, curV: 0, curAction: null, pendingReward: 0,
     traj: { x:[], choice:[], pOld:[], v:[], r:[] }
   };
 }
@@ -719,8 +910,10 @@ function resetLearning(){
   net = freshNet();
   gen++;
   attempts=0; successes=0; best=-Infinity; rewardHistory=[];
-  difficulty=0; curriculumWindow=[]; recomputePad();
-  pendingBatch=[]; pendingBatchSteps=0; successBuffer=[];
+  difficulty=0; curriculumWindow=[]; recomputeDifficulty();
+  adamM = zerosLikeNet(); adamV = zerosLikeNet(); adamT = 0; updateCount = 0;
+  obsCount = 1e-4; obsSum.fill(0); obsSumSq.fill(0); refreshObsNorm();
+  pendingBatch=[]; pendingBatchSteps=0; successBuffer=[]; updateJob=null;
   workers = []; for(let i=0;i<NUM_WORKERS;i++) workers.push(newWorker());
   trail = [];
   saveAll(true);
@@ -730,6 +923,7 @@ function resetLearning(){
 function resetWorker(w){
   w.rocket = newRocket();
   w.stepCount=0; w.episodeReward=0; w.prevHDist=null; w.prevVDist=null; w.approachSteps=0;
+  w.repeatLeft=0; w.curX=null; w.curP=null; w.curV=0; w.curAction=null; w.pendingReward=0;
   w.traj = { x:[], choice:[], pOld:[], v:[], r:[] };
 }
 
@@ -775,9 +969,9 @@ function finishWorkerEpisode(w, stepResult, isHero){
 
   updateCurriculum(stepResult.success);
 
-  if(pendingBatchSteps >= BATCH_MIN_STEPS){
-    runPpoUpdate();
-    pendingBatch = []; pendingBatchSteps = 0;
+  if(pendingBatchSteps >= BATCH_MIN_DECISIONS){
+    finishUpdateNow();   // drain any still-running update before starting the next
+    beginUpdate();       // (the work itself is then spread across upcoming ticks)
     saveAll();
   }
 
@@ -791,11 +985,23 @@ function finishWorkerEpisode(w, stepResult, isHero){
    ========================================================================= */
 function tickWorker(w, isHero){
   if(!w.rocket.alive) return;
-  const x = getState(w.rocket);
-  const {p, v} = forward(x);
-  const a = sampleActions(p);
-  let res = physicsStep(w.rocket, a.booster);
+
+  // a new decision is only made every ACTION_REPEAT physics steps; in between
+  // the chosen action is simply held
+  if(w.repeatLeft<=0){
+    w.curX = observe(getState(w.rocket));
+    const {p, v} = forward(w.curX);
+    w.curP = Float64Array.from(p);   // forward returns shared scratch - copy it
+    w.curV = v;
+    w.curAction = sampleActions(p);
+    w.pendingReward = 0;
+    w.repeatLeft = ACTION_REPEAT;
+    if(isHero) heroLastP = w.curP;
+  }
+
+  let res = physicsStep(w.rocket, w.curAction.booster);
   w.stepCount++;
+  w.repeatLeft--;
   // fold the timeout into the same step's reward instead of ending the
   // episode with a synthetic result computeReward never actually sees -
   // otherwise a timed-out episode gets no terminal penalty at all
@@ -804,12 +1010,22 @@ function tickWorker(w, isHero){
   }
   const r = computeReward(w, res);
   w.episodeReward += r;
-  w.traj.x.push(x); w.traj.choice.push(a.choice); w.traj.pOld.push(p); w.traj.v.push(v); w.traj.r.push(r);
+  w.pendingReward += r;
 
   if(isHero){
-    heroLastP = p;
     trail.push({x:w.rocket.x, y:w.rocket.y});
     if(trail.length>220) trail.shift();
+  }
+
+  // commit one trajectory entry per DECISION (carrying the summed reward of
+  // all the physics steps that action was held for)
+  if(res.done || w.repeatLeft<=0){
+    w.traj.x.push(w.curX);
+    w.traj.choice.push(w.curAction.choice);
+    w.traj.pOld.push(w.curP);
+    w.traj.v.push(w.curV);
+    w.traj.r.push(w.pendingReward);
+    w.repeatLeft = 0;
   }
 
   if(res.done){
@@ -820,6 +1036,8 @@ function tickWorker(w, isHero){
 
 function tickAll(){
   for(let i=0;i<workers.length;i++) tickWorker(workers[i], i===0);
+  // spread PPO update work across ticks so no single frame does it all
+  if(updateJob && (++updateTickCounter % UPDATE_TICKS_PER_MINIBATCH === 0)) stepUpdate();
 }
 
 /* =========================================================================
@@ -1216,7 +1434,7 @@ document.getElementById('optInfiniteFuel').addEventListener('change', e=>{
 const hadSave = loadAll();
 loadSettings();
 applySettingsToUI();
-recomputePad();
+recomputeDifficulty();
 resize();
 refreshHUD();
 document.querySelectorAll('.speedgrp button').forEach(b=>{
