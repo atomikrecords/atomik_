@@ -501,6 +501,8 @@ body.reduce-motion .iss-popup.show{transform:translate(-50%,-50%) scale(1);}
 .ar-reticle-cross::before{left:50%; top:-8px; bottom:-8px; width:1.5px; transform:translateX(-50%);}
 .ar-reticle-cross::after{top:50%; left:-8px; right:-8px; height:1.5px; transform:translateY(-50%);}
 
+.ar-path-svg{position:absolute; inset:0; width:100%; height:100%; z-index:1; pointer-events:none; overflow:visible;}
+
 .ar-target-marker{
   position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); opacity:0;
   transition:left .18s linear, top .18s linear, opacity .3s ease;
@@ -508,17 +510,24 @@ body.reduce-motion .iss-popup.show{transform:translate(-50%,-50%) scale(1);}
 }
 .ar-target-marker.show{opacity:1;}
 .ar-target-glow{
-  position:absolute; width:70px; height:70px; border-radius:50%;
-  background:radial-gradient(circle, rgba(79,216,255,.5), transparent 70%);
+  position:absolute; width:84px; height:84px; border-radius:50%;
+  background:radial-gradient(circle, rgba(79,216,255,.55), transparent 70%);
   animation:targetPulse 1.8s ease-in-out infinite;
 }
-.ar-target-marker.locked .ar-target-glow{background:radial-gradient(circle, rgba(57,255,160,.65), transparent 70%);}
+.ar-target-marker.locked .ar-target-glow{background:radial-gradient(circle, rgba(57,255,160,.7), transparent 70%);}
 @keyframes targetPulse{0%,100%{transform:scale(.85); opacity:.7;} 50%{transform:scale(1.15); opacity:1;}}
-.ar-target-dot{
-  width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 0 16px var(--accent), 0 0 4px #fff;
-  border:2px solid var(--accent);
+.ar-target-glyph{
+  width:34px; height:34px; color:#fff; stroke-width:1.4;
+  filter:drop-shadow(0 0 10px var(--accent)) drop-shadow(0 2px 6px rgba(0,0,0,.6));
 }
-.ar-target-marker.locked .ar-target-dot{border-color:var(--good); box-shadow:0 0 20px var(--good), 0 0 4px #fff;}
+.ar-target-marker.locked .ar-target-glyph{color:#eafff5; filter:drop-shadow(0 0 12px var(--good)) drop-shadow(0 2px 6px rgba(0,0,0,.6));}
+/* Below the horizon the target still tracks (matches how other sky-AR
+   apps behave — you can't see through the ground, but the direction is
+   still shown so you know exactly where to look the moment it rises)
+   but is visually pulled back so it reads as "not actually visible now". */
+.ar-target-marker.below-horizon{opacity:.55;}
+.ar-target-marker.below-horizon .ar-target-glyph{color:var(--sub); filter:none;}
+.ar-target-marker.below-horizon .ar-target-glow{animation:none; background:radial-gradient(circle, rgba(255,255,255,.18), transparent 70%);}
 .ar-target-label{
   margin-top:8px; font-family:var(--ff-mono); font-size:11px; font-weight:600; color:#fff;
   background:rgba(255,255,255,.14); backdrop-filter:var(--glass-blur-lite); -webkit-backdrop-filter:var(--glass-blur-lite);
@@ -526,6 +535,7 @@ body.reduce-motion .iss-popup.show{transform:translate(-50%,-50%) scale(1);}
   border:1px solid rgba(63,210,255,.4);
 }
 .ar-target-marker.locked .ar-target-label{border-color:rgba(50,215,75,.5); color:var(--good);}
+.ar-target-marker.below-horizon .ar-target-label{border-color:var(--line); color:var(--sub);}
 
 .ar-edge-arrow{
   position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); opacity:0;
@@ -534,22 +544,13 @@ body.reduce-motion .iss-popup.show{transform:translate(-50%,-50%) scale(1);}
 }
 .ar-edge-arrow.show{opacity:1;}
 .ar-edge-svg{width:36px; height:36px; color:var(--accent); filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));}
+.ar-edge-arrow.below-horizon .ar-edge-svg{color:var(--sub);}
 .ar-edge-text{
   font-family:var(--ff-mono); font-size:11px; font-weight:600; color:#fff;
   background:rgba(255,255,255,.14); backdrop-filter:var(--glass-blur-lite); -webkit-backdrop-filter:var(--glass-blur-lite);
   padding:4px 10px; border-radius:999px; white-space:nowrap;
   border:1px solid rgba(63,210,255,.4);
 }
-
-.ar-below-horizon{
-  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(80vw,300px);
-  text-align:center; background:rgba(255,255,255,.10); border:1px solid var(--line); border-radius:var(--radius-sm);
-  padding:20px; backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); z-index:2;
-  box-shadow:0 1px 1px rgba(255,255,255,.3) inset, 0 10px 30px rgba(0,0,0,.4);
-}
-.ar-below-horizon .icon{color:var(--sub); margin-bottom:8px;}
-.ar-below-horizon .t1{font-weight:700; font-size:14px; margin-bottom:4px;}
-.ar-below-horizon .t2{font-size:12px; color:var(--sub); font-family:var(--ff-mono);}
 
 .ar-readout{
   position:absolute; left:max(14px,var(--safe-l)); bottom:calc(18px + var(--safe-b));
@@ -963,7 +964,7 @@ body.reduce-motion .ar-status-pill.locked{animation:none;}
   <div class="ar-gate" id="arGate">
     <div class="ar-gate-icon"><svg class="icon"><use href="#icon-viewfinder"/></svg></div>
     <div class="ar-gate-title">AR Finder</div>
-    <div class="ar-gate-text">Point your phone at the sky. Using your camera and motion sensors, this points you straight at the ISS in real time — like a compass for space.</div>
+    <div class="ar-gate-text">Point your phone at the sky. Using your camera and motion sensors, this points you straight at the ISS in real time — true north is corrected automatically, and it keeps tracking even before the station rises above your horizon.</div>
     <button class="btn" id="btnArEnable">Enable AR Finder</button>
     <div class="ar-gate-hint" id="arGateHint"></div>
     <button class="btn secondary" id="btnArCancel">Not Now</button>
@@ -981,9 +982,11 @@ body.reduce-motion .ar-status-pill.locked{animation:none;}
       <div class="ar-reticle-cross"></div>
     </div>
 
+    <svg class="ar-path-svg" id="arPathSvg"></svg>
+
     <div class="ar-target-marker" id="arTargetMarker">
       <div class="ar-target-glow"></div>
-      <div class="ar-target-dot"></div>
+      <svg class="icon ar-target-glyph"><use href="#icon-satellite"/></svg>
       <div class="ar-target-label" id="arTargetLabel">ISS · 0°</div>
     </div>
 
@@ -992,23 +995,18 @@ body.reduce-motion .ar-status-pill.locked{animation:none;}
       <div class="ar-edge-text" id="arEdgeText"></div>
     </div>
 
-    <div class="ar-below-horizon" id="arBelowHorizon" hidden>
-      <svg class="icon"><use href="#icon-moon"/></svg>
-      <div class="t1">ISS is below the horizon</div>
-      <div class="t2" id="arNextPassText">—</div>
-    </div>
-
     <div class="ar-readout" id="arReadout">
       <div class="ar-readout-row"><span>Device heading</span><b id="arDeviceHeading">—</b></div>
       <div class="ar-readout-row"><span>ISS azimuth</span><b id="arTargetAz">—</b></div>
       <div class="ar-readout-row"><span>ISS elevation</span><b id="arTargetEl">—</b></div>
       <div class="ar-readout-row"><span>Pointing error</span><b id="arAngularSep">—</b></div>
+      <div class="ar-readout-row" id="arNextPassRow" hidden><span>Next visible pass</span><b id="arNextPassText">—</b></div>
     </div>
   </div>
 
   <div class="ar-calib" id="arCalib" hidden>
     <div class="ar-gate-title">Calibrate Compass</div>
-    <div class="ar-gate-text">Phone compasses can drift. If the arrow is consistently off by a fixed amount, nudge it here — or face true north and tap Sync.</div>
+    <div class="ar-gate-text">True north is already corrected for your location. If your phone's compass still drifts a bit, nudge it here — or face true north and tap Sync.</div>
     <div class="ar-calib-row">
       <button class="btn small secondary" id="btnArNudgeMinus">−5°</button>
       <div class="ar-calib-val" id="arOffsetVal">0°</div>
@@ -1287,7 +1285,7 @@ let renderer, scene, camera, earthMesh, cloudsMesh, atmoMesh, issGroup, issModel
 let orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine, flowDots, futurePathPoints3D, passHighlightLine;
 let locationMarker, visibilityCircleLine, sightLine, issHitSphere;
 let issPopupOpen = false;
-let sunLight, ambLight;
+let sunLight, ambLight, issFillLight;
 const clock = new THREE.Clock();
 
 function latLonToVec3(lat, lon, radius){
@@ -1567,6 +1565,12 @@ async function initScene(){
   scene.add(ambLight);
   sunLight = new THREE.DirectionalLight(0xffffff, 1.1);
   scene.add(sunLight);
+  // Dedicated fill light that always travels with the ISS model, so it
+  // reads clearly even on the night side of the planet where the real
+  // sun-driven directional light leaves it almost unlit. This is purely
+  // a legibility choice for the model's own shading — it never touches
+  // the real satLit/eclipse math used for pass visibility elsewhere.
+  issFillLight = new THREE.PointLight(0xbfe6ff, 1.4, 4, 2);
 
   const {dayTex, nightTex, cloudTex, specTex} = await loadPlanetTextures();
 
@@ -1604,8 +1608,14 @@ async function initScene(){
   issGroup = new THREE.Group();
   issModel = buildIssModel();
   issGroup.add(issModel);
-  const glowSprite = makeGlowSprite();
-  glowSprite.scale.set(0.085,0.085,1);
+  issFillLight.position.set(0, 0.3, 0.4);
+  issGroup.add(issFillLight);
+  // Bright halo behind the model — a billboarded sprite reads at a
+  // consistent size/brightness from any zoom or lighting angle, which is
+  // what actually makes a millimeter-scale model findable against the
+  // globe or a starfield, before you even resolve its geometry.
+  const glowSprite = makeGlowSprite('rgba(255,255,255,0.98)', 'rgba(140,225,255,0.6)');
+  glowSprite.scale.set(0.17,0.17,1);
   issGroup.add(glowSprite);
   // Invisible, generously-sized sphere just for tap/raycast hit-testing —
   // the real model's thin truss geometry would be nearly impossible to
@@ -1704,12 +1714,16 @@ function buildSolarPanelTexture(){
 
 function buildIssModel(){
   const group = new THREE.Group();
-  const metal = new THREE.MeshStandardMaterial({color:0xeef1f5, metalness:0.75, roughness:0.35});
-  const metalDark = new THREE.MeshStandardMaterial({color:0xaeb8c4, metalness:0.7, roughness:0.45});
-  const moduleMat = new THREE.MeshStandardMaterial({color:0xf2ecd9, metalness:0.25, roughness:0.55});
-  const cupolaMat = new THREE.MeshStandardMaterial({color:0x7fc8ff, metalness:0.1, roughness:0.1, emissive:0x1a4a66, emissiveIntensity:0.4});
+  // A touch of emissive on every surface is a deliberate legibility cheat:
+  // pure-PBR metals with no light source read as near-black, and the ISS
+  // spends roughly half of every orbit on Earth's night side. This keeps
+  // it visibly bright at a glance without needing to chase the sun angle.
+  const metal = new THREE.MeshStandardMaterial({color:0xf6f9ff, metalness:0.6, roughness:0.32, emissive:0x8fa8c0, emissiveIntensity:0.35});
+  const metalDark = new THREE.MeshStandardMaterial({color:0xc7d2de, metalness:0.55, roughness:0.4, emissive:0x6f7f95, emissiveIntensity:0.3});
+  const moduleMat = new THREE.MeshStandardMaterial({color:0xfff8e6, metalness:0.15, roughness:0.5, emissive:0xa8946a, emissiveIntensity:0.3});
+  const cupolaMat = new THREE.MeshStandardMaterial({color:0x9fdcff, metalness:0.1, roughness:0.1, emissive:0x2f7ba8, emissiveIntensity:0.6});
   const panelTex = buildSolarPanelTexture();
-  const panelMat = new THREE.MeshStandardMaterial({map:panelTex, color:0xbcd6f5, metalness:0.55, roughness:0.3, side:THREE.DoubleSide});
+  const panelMat = new THREE.MeshStandardMaterial({map:panelTex, color:0xd7e8ff, metalness:0.4, roughness:0.28, emissive:0x35507a, emissiveIntensity:0.3, side:THREE.DoubleSide});
 
   // scale: whole model kept well inside the exaggerated altitude gap so it
   // never intersects the globe, at any zoom or rotation.
@@ -1767,10 +1781,15 @@ function buildIssModel(){
 
   // blinking beacon light — tiny emissive point that pulses via userData, driven in animate()
   const beaconMat = new THREE.MeshBasicMaterial({color:0xff4444});
-  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.006*S,6,6), beaconMat);
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.011*S,8,8), beaconMat);
   beacon.position.set(0.15*S, 0.014*S, 0);
   group.add(beacon);
+  const beaconGlow = makeGlowSprite('rgba(255,120,120,0.95)', 'rgba(255,60,60,0.55)');
+  beaconGlow.scale.set(0.055,0.055,1);
+  beaconGlow.position.copy(beacon.position);
+  group.add(beaconGlow);
   group.userData.beacon = beaconMat;
+  group.userData.beaconGlow = beaconGlow.material;
 
   return group;
 }
@@ -2744,6 +2763,7 @@ function animate(){
   if (issModel && issModel.userData.beacon){
     const blink = Math.sin(now.getTime()*0.006) > 0.7 ? 1 : 0.15;
     issModel.userData.beacon.color.setRGB(blink, blink*0.25, blink*0.25);
+    if (issModel.userData.beaconGlow) issModel.userData.beaconGlow.opacity = 0.25 + blink*0.7;
   }
 
   // Traveling glow particles that race along the future ground track to
@@ -2929,6 +2949,43 @@ const AR = {
   fovH:34, fovV:44, lockDeg:3.5
 };
 
+/* ---- magnetic declination — the reason other sky-AR apps don't need a
+   manual "face north and sync" step. A phone compass measures MAGNETIC
+   north, which is offset from TRUE north by anywhere from a few degrees
+   to 20+ depending where on Earth you are. Without correcting for that,
+   the app is always going to be off by roughly that amount until the
+   user manually nudges it out — so instead of only offering that manual
+   fix, look up the real local declination for the observer's saved
+   location (best-effort — falls back to 0 / manual calibration if the
+   lookup is blocked or offline, same nudge/sync controls still work on
+   top of it either way) and fold it in automatically. ---- */
+const MAG_DECL_CACHE_KEY = 'issTrackerMagDecl';
+const MAG_DECL_MAX_AGE_MS = 30*24*3600*1000; // declination drifts extremely slowly
+let magDeclinationDeg = 0;
+async function loadMagneticDeclination(lat, lon){
+  const roundKey = lat.toFixed(1)+','+lon.toFixed(1);
+  try{
+    const cached = JSON.parse(localStorage.getItem(MAG_DECL_CACHE_KEY) || 'null');
+    if (cached && cached.key === roundKey && (Date.now()-cached.t) < MAG_DECL_MAX_AGE_MS){
+      magDeclinationDeg = cached.decl;
+      return;
+    }
+  }catch(e){}
+  try{
+    const url = `https://www.ngdc.noaa.gov/geomag-web/calculators/calculateDeclination?lat1=${lat}&lon1=${lon}&resultFormat=json&key=zNEw7`;
+    const res = await fetchWithTimeout(url, 8000);
+    if (!res.ok) throw new Error('declination http '+res.status);
+    const data = await res.json();
+    const decl = data && data.result && data.result[0] && typeof data.result[0].declination === 'number'
+      ? data.result[0].declination : null;
+    if (decl == null || !isFinite(decl)) throw new Error('no declination in response');
+    magDeclinationDeg = decl;
+    try{ localStorage.setItem(MAG_DECL_CACHE_KEY, JSON.stringify({key:roundKey, decl, t:Date.now()})); }catch(e){}
+  }catch(e){
+    console.warn('magnetic declination lookup failed, falling back to manual AR calibration', e);
+  }
+}
+
 function getScreenAngleDeg(){
   if (screen.orientation && typeof screen.orientation.angle === 'number') return screen.orientation.angle;
   if (typeof window.orientation === 'number') return window.orientation;
@@ -2965,7 +3022,8 @@ function onArOrientation(event){
   const fwd = AR._forward.set(0,0,-1).applyQuaternion(q);
   let az = DEG*Math.atan2(fwd.x, -fwd.z);
   if (settings.arMirrorHeading) az = -az;
-  az = ((az + settings.arHeadingOffset) % 360 + 360) % 360;
+  // Magnetic -> true north, then whatever the user has manually nudged on top.
+  az = ((az + magDeclinationDeg + settings.arHeadingOffset) % 360 + 360) % 360;
   AR.heading = az;
   AR.pitch = DEG*Math.asin(Math.max(-1, Math.min(1, fwd.y)));
   AR.hasOrientation = true;
@@ -2991,16 +3049,52 @@ function stopArCamera(){
   AR.hasCamera = false;
 }
 
+// Projects an (az, el) sky point to normalized screen-space fractions
+// relative to the device's current heading/pitch — the same linear
+// approximation used for the target marker itself, so the path line and
+// the marker always agree with each other pixel-for-pixel.
+function arProjectToFrac(az, el){
+  const dAz = ((az - AR.heading + 540) % 360) - 180;
+  const dEl = el - AR.pitch;
+  return {xFrac: dAz/AR.fovH, yFrac: -dEl/AR.fovV, dAz, dEl};
+}
+
+// Draws the upcoming pass's full sky track (rise -> peak -> set) as a
+// green line across the AR view, split into separate subpaths wherever
+// the projection wraps around behind the viewer so it never draws a
+// spurious line straight across the screen.
+function drawArPathLine(){
+  const svg = document.getElementById('arPathSvg');
+  if (!svg) return;
+  const pass = window._targetPass;
+  if (!settings.showOrbitPath || !pass || !pass.points || !pass.points.length || !AR.hasOrientation){
+    svg.innerHTML = '';
+    return;
+  }
+  const w = window.innerWidth, h = window.innerHeight;
+  let d = '';
+  let prevX = null;
+  pass.points.forEach(p=>{
+    const {xFrac, yFrac} = arProjectToFrac(p.az, Math.max(-2, p.el));
+    const x = w/2 + xFrac*(w/2), y = h/2 + yFrac*(h/2);
+    const wrapped = prevX !== null && Math.abs(x - prevX) > w*0.6;
+    d += (wrapped || prevX === null ? 'M' : 'L') + x.toFixed(1)+','+y.toFixed(1)+' ';
+    prevX = x;
+  });
+  svg.innerHTML = `<path d="${d}" fill="none" stroke="#39ffa0" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>`;
+}
+
 function updateArFrame(){
   const statusPill = document.getElementById('arStatusPill');
   const marker = document.getElementById('arTargetMarker');
   const edgeArrow = document.getElementById('arEdgeArrow');
-  const belowHorizon = document.getElementById('arBelowHorizon');
+  const nextPassRow = document.getElementById('arNextPassRow');
 
   if (!settings.location || !state.satrec){
     statusPill.textContent = !settings.location ? 'SET LOCATION IN SETTINGS' : 'WAITING FOR ORBIT DATA…';
     statusPill.className = 'ar-status-pill dim';
-    marker.classList.remove('show'); edgeArrow.classList.remove('show'); belowHorizon.hidden = true;
+    marker.classList.remove('show'); edgeArrow.classList.remove('show'); nextPassRow.hidden = true;
+    document.getElementById('arPathSvg').innerHTML = '';
     return;
   }
 
@@ -3009,44 +3103,46 @@ function updateArFrame(){
   const la = lookAnglesAt(now, observer);
   if (!la) return;
 
+  const belowHorizon = la.elevation < 0;
   document.getElementById('arTargetAz').textContent = la.azimuth.toFixed(1)+'°';
   document.getElementById('arTargetEl').textContent = la.elevation.toFixed(1)+'°';
   document.getElementById('arDeviceHeading').textContent = AR.hasOrientation ? AR.heading.toFixed(1)+'°' : '—';
 
-  if (la.elevation < 0){
-    belowHorizon.hidden = false;
-    marker.classList.remove('show'); edgeArrow.classList.remove('show');
-    statusPill.textContent = 'BELOW HORIZON'; statusPill.className = 'ar-status-pill dim';
+  if (belowHorizon){
     const next = state.passes && state.passes[0];
+    nextPassRow.hidden = false;
     document.getElementById('arNextPassText').textContent = next
-      ? 'Next pass in ' + fmtHMS((next.aosTime-now.getTime())/1000)
-      : 'No upcoming pass computed yet';
-    document.getElementById('arAngularSep').textContent = '—';
-    AR.locked = false;
-    return;
+      ? 'in ' + fmtHMS((next.aosTime-now.getTime())/1000)
+      : '—';
+  } else {
+    nextPassRow.hidden = true;
   }
-  belowHorizon.hidden = true;
 
   if (!AR.hasOrientation){
     statusPill.textContent = 'CALIBRATING SENSORS…'; statusPill.className = 'ar-status-pill dim';
     marker.classList.remove('show'); edgeArrow.classList.remove('show');
+    document.getElementById('arPathSvg').innerHTML = '';
     return;
   }
 
-  const dAz = ((la.azimuth - AR.heading + 540) % 360) - 180;
-  const dEl = la.elevation - AR.pitch;
+  // Tracking now always runs off the real azimuth/elevation regardless of
+  // horizon — like other sky-AR apps, it keeps pointing you at exactly
+  // where the ISS actually is (even if that's currently below the
+  // ground), rather than refusing to track it until it happens to rise.
+  const {xFrac, yFrac, dAz, dEl} = arProjectToFrac(la.azimuth, la.elevation);
   const sep = Math.sqrt(dAz*dAz + dEl*dEl);
-  document.getElementById('arAngularSep').textContent = sep.toFixed(1)+'°';
+  document.getElementById('arAngularSep').textContent = belowHorizon ? '—' : sep.toFixed(1)+'°';
 
-  const locked = sep < AR.lockDeg;
+  const locked = !belowHorizon && sep < AR.lockDeg;
   if (locked && !AR.locked){
     if (settings.sound) playTone();
     if (settings.vibrate && navigator.vibrate) navigator.vibrate([90,40,90]);
   }
   AR.locked = locked;
 
+  drawArPathLine();
+
   const w = window.innerWidth, h = window.innerHeight;
-  const xFrac = dAz / AR.fovH, yFrac = -dEl / AR.fovV;
   const within = Math.abs(xFrac) <= 1 && Math.abs(yFrac) <= 1;
 
   if (within){
@@ -3054,10 +3150,12 @@ function updateArFrame(){
     marker.style.top = (h/2 + yFrac*(h/2)) + 'px';
     marker.classList.add('show');
     marker.classList.toggle('locked', locked);
-    document.getElementById('arTargetLabel').textContent = locked ? 'LOCKED ON' : ('ISS · '+la.elevation.toFixed(0)+'°');
+    marker.classList.toggle('below-horizon', belowHorizon);
+    document.getElementById('arTargetLabel').textContent = locked ? 'LOCKED ON' :
+      (belowHorizon ? ('ISS · '+la.elevation.toFixed(0)+'° (below horizon)') : ('ISS · '+la.elevation.toFixed(0)+'°'));
     edgeArrow.classList.remove('show');
-    statusPill.textContent = locked ? 'LOCKED ON' : 'TRACKING';
-    statusPill.className = 'ar-status-pill ' + (locked ? 'locked' : 'tracking');
+    statusPill.textContent = locked ? 'LOCKED ON' : (belowHorizon ? 'BELOW HORIZON — TRACKING' : 'TRACKING');
+    statusPill.className = 'ar-status-pill ' + (locked ? 'locked' : (belowHorizon ? 'dim' : 'tracking'));
   } else {
     marker.classList.remove('show');
     const rotDeg = DEG*Math.atan2(dAz, dEl);
@@ -3067,9 +3165,12 @@ function updateArFrame(){
     edgeArrow.style.top = (h/2 - Math.cos(rad)*R) + 'px';
     edgeArrow.querySelector('.ar-edge-svg').style.transform = `rotate(${rotDeg}deg)`;
     edgeArrow.classList.add('show');
+    edgeArrow.classList.toggle('below-horizon', belowHorizon);
     document.getElementById('arEdgeText').textContent =
-      `Turn ${dAz>=0?'right':'left'} ${Math.abs(dAz).toFixed(0)}° · look ${dEl>=0?'up':'down'} ${Math.abs(dEl).toFixed(0)}°`;
-    statusPill.textContent = 'TRACKING'; statusPill.className = 'ar-status-pill tracking';
+      `Turn ${dAz>=0?'right':'left'} ${Math.abs(dAz).toFixed(0)}° · look ${dEl>=0?'up':'down'} ${Math.abs(dEl).toFixed(0)}°`
+      + (belowHorizon ? ' (below horizon)' : '');
+    statusPill.textContent = belowHorizon ? 'BELOW HORIZON — TRACKING' : 'TRACKING';
+    statusPill.className = 'ar-status-pill ' + (belowHorizon ? 'dim' : 'tracking');
   }
 }
 
@@ -3088,6 +3189,7 @@ async function openArView(){
   closeIssPopup();
   document.getElementById('arOverlay').classList.add('show');
   AR.active = true;
+  if (settings.location) loadMagneticDeclination(settings.location.lat, settings.location.lon);
   if (!AR.started){
     document.getElementById('arGate').hidden = false;
     document.getElementById('arHud').hidden = true;
@@ -3389,6 +3491,20 @@ async function init(){
   setInterval(()=>{ buildOrbitPath(); updateLocationMarker(); }, 60000);
   setInterval(pollRealtimePosition, 15000);
   setInterval(fetchTLEFresh, 3*3600*1000);
+
+  // Pass alerts used to only get checked from inside the animate() render
+  // loop, which browsers fully pause via requestAnimationFrame the moment
+  // the tab is backgrounded or the phone is locked — so a real alert due
+  // 10 minutes from now would simply never get checked. A plain
+  // setInterval keeps ticking (throttled, but not stopped) in that same
+  // situation — it's exactly what the working "test notification" button
+  // already relied on — so pass recompute + alert checking now also runs
+  // here, independent of whether a frame is ever rendered.
+  setInterval(()=>{
+    const now = new Date();
+    if (settings.location && state.satrec) recomputePasses();
+    if (settings.notifEnabled) checkAlerts(now);
+  }, 20000);
 
   if (settings.location) recomputePasses();
 
