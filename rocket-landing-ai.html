@@ -82,6 +82,34 @@
   #progress .stat b{color:var(--ink);}
 
   .toggleProgress{position:absolute; right:calc(env(safe-area-inset-right,0px) + 8px); top:calc(env(safe-area-inset-top,0px) + 8px);}
+
+  .gearBtn{
+    flex:0 0 auto; min-height:0; padding:6px 10px; font-size:15px; border-radius:999px;
+    background:var(--panel); backdrop-filter: blur(8px); border:1px solid var(--line); color:var(--ink);
+  }
+  .boosterHud{
+    position:absolute; top:calc(env(safe-area-inset-top,0px) + 52px); left:calc(env(safe-area-inset-left,0px) + 10px);
+    display:flex; flex-direction:column; gap:4px; pointer-events:none; background:var(--panel);
+    backdrop-filter: blur(8px); border:1px solid var(--line); border-radius:10px; padding:7px 9px;
+  }
+  .boosterHud[hidden]{display:none;}
+  .bmeter{display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--sub);}
+  .bmeter span{width:26px; font-weight:700; letter-spacing:.03em;}
+  .bmeter b{width:30px; text-align:right; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .bbar{width:56px; height:6px; border-radius:4px; background:#252a45; overflow:hidden;}
+  .bbar i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent2),var(--accent)); border-radius:4px; transition:width .08s linear;}
+  .bmeter.firing .bbar i{background:linear-gradient(90deg,#ffb347,#ff5c7a);}
+  .bmeter.firing b{color:var(--warn);}
+
+  .settingsPanel{
+    position:absolute; top:calc(env(safe-area-inset-top,0px) + 52px); right:calc(env(safe-area-inset-right,0px) + 10px);
+    background:var(--panel-solid); border:1px solid var(--line); border-radius:12px; padding:12px;
+    width:210px; box-shadow:0 12px 30px #000a; z-index:5;
+  }
+  .settingsTitle{font-weight:700; font-size:13px; margin-bottom:8px;}
+  .settingRow{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink); padding:6px 0;}
+  .settingRow input{width:16px; height:16px;}
+  #settingsPanel button{width:100%; min-height:36px;}
 </style>
 </head>
 <body>
@@ -94,10 +122,27 @@
         <div class="chip good"><span>Landings</span><b id="statSuccess">0</b></div>
         <div class="chip accent"><span>Success rate</span><b id="statRate">0%</b></div>
         <div class="chip"><span>Reward</span><b id="statReward">0</b></div>
+        <div class="chip" id="fuelChip"><span>Fuel</span><b id="statFuel">100%</b></div>
       </div>
-      <div class="learning-pill" id="learnPill"><span class="dot"></span><span id="learnLabel">Learning…</span></div>
+      <div style="display:flex; gap:6px; align-items:center; pointer-events:auto;">
+        <div class="learning-pill" id="learnPill"><span class="dot"></span><span id="learnLabel">Learning…</span></div>
+        <button id="btnSettings" class="gearBtn">⚙</button>
+      </div>
+    </div>
+    <div id="boosterHud" class="boosterHud">
+      <div class="bmeter" data-b="bottom"><span>BTM</span><div class="bbar"><i></i></div><b>0%</b></div>
+      <div class="bmeter" data-b="top"><span>TOP</span><div class="bbar"><i></i></div><b>0%</b></div>
+      <div class="bmeter" data-b="left"><span>LFT</span><div class="bbar"><i></i></div><b>0%</b></div>
+      <div class="bmeter" data-b="right"><span>RGT</span><div class="bbar"><i></i></div><b>0%</b></div>
     </div>
     <div class="banner" id="banner"></div>
+    <div id="settingsPanel" class="settingsPanel" hidden>
+      <div class="settingsTitle">Settings</div>
+      <label class="settingRow"><input type="checkbox" id="optBoosterPct" checked> Show booster power %</label>
+      <label class="settingRow"><input type="checkbox" id="optTrail" checked> Show trajectory trail</label>
+      <label class="settingRow"><input type="checkbox" id="optFuel" checked> Show fuel gauge</label>
+      <button id="btnCloseSettings" style="margin-top:6px;">Close</button>
+    </div>
   </div>
   <div id="bottom">
     <div id="progress">
@@ -547,6 +592,8 @@ function computeReward(r, stepResult){
    ========================================================================= */
 let attempts=0, successes=0, best=-Infinity, rewardHistory=[];
 let running=false, speed=1;
+let lastP = new Float64Array(OUT); // most recent policy output, for the booster-power HUD
+const settings = { showBoosterPct:true, showTrail:true, showFuel:true };
 
 function resetLearning(){
   net = freshNet();
@@ -589,6 +636,7 @@ function tick(){
   const r = computeReward(rocket, res);
   episodeReward += r;
   recordStep(x,h,p,v,a,r);
+  lastP = p;
 
   trail.push({x:rocket.x,y:rocket.y});
   if(trail.length>220) trail.shift();
@@ -680,7 +728,7 @@ function draw(){
   ctx.fillText("LANDING PAD", (PAD.x1+PAD.x2)/2, PAD.y-16);
 
   // trail
-  if(trail.length>1){
+  if(settings.showTrail && trail.length>1){
     ctx.beginPath();
     for(let i=0;i<trail.length;i++){
       const pt = trail[i];
@@ -696,18 +744,30 @@ function draw(){
   ctx.restore();
 }
 
+// booster mount points, in the rocket's local frame - flames AND the visible
+// nozzle pods are drawn from these same points so what fires is what you see
+function boosterMounts(hw,hh){
+  return {
+    bottom: { x:0, y:hh,    dir:0 },
+    top:    { x:0, y:-hh,   dir:Math.PI },
+    left:   { x:-hw, y:0,   dir:-Math.PI/2 },
+    right:  { x:hw, y:0,    dir:Math.PI/2 }
+  };
+}
+
 function drawRocket(r){
   ctx.save();
   ctx.translate(r.x, r.y);
   ctx.rotate(r.angle);
 
   const hw=ROCKET_W/2, hh=ROCKET_H/2;
+  const mounts = boosterMounts(hw,hh);
 
   // flames (draw behind body, per booster)
-  drawFlame(0, hh, r.boosters.bottom, 0);            // bottom -> flame pointing down
-  drawFlame(0, -hh, r.boosters.top, Math.PI);         // top -> flame pointing up
-  drawFlame(-hw, -hh*0.5, r.boosters.left, -Math.PI/2); // left -> flame pointing left
-  drawFlame(hw, -hh*0.5, r.boosters.right, Math.PI/2);  // right -> flame pointing right
+  drawFlame(mounts.bottom, r.boosters.bottom);
+  drawFlame(mounts.top, r.boosters.top);
+  drawFlame(mounts.left, r.boosters.left);
+  drawFlame(mounts.right, r.boosters.right);
 
   // body
   const bodyGrad = ctx.createLinearGradient(-hw,0,hw,0);
@@ -739,30 +799,54 @@ function drawRocket(r){
   ctx.fillStyle="#7c5cff";
   ctx.fillRect(-hw, hh*0.35, ROCKET_W, 6);
 
-  // booster pods
-  ctx.fillStyle="#2a2f4a";
-  ctx.fillRect(-hw-5, hh-14, 5, 14);
-  ctx.fillRect(hw, hh-14, 5, 14);
-  ctx.fillRect(-4, -hh-6, 8, 6);
-  ctx.fillRect(-4, hh, 8, 6);
+  // booster nozzle pods - always visible so all 4 boosters read clearly,
+  // lit up brightly whenever their booster is actively firing
+  drawNozzle(mounts.bottom, 0, r.boosters.bottom);
+  drawNozzle(mounts.top, Math.PI, r.boosters.top);
+  drawNozzle(mounts.left, -Math.PI/2, r.boosters.left);
+  drawNozzle(mounts.right, Math.PI/2, r.boosters.right);
 
   ctx.restore();
 }
 
-function drawFlame(px,py,active,dirAngle){
+function drawNozzle(mount, dirAngle, active){
+  ctx.save();
+  ctx.translate(mount.x, mount.y);
+  ctx.rotate(dirAngle);
+  // trapezoid nozzle body
+  ctx.beginPath();
+  ctx.moveTo(-6,0); ctx.lineTo(6,0); ctx.lineTo(4,9); ctx.lineTo(-4,9); ctx.closePath();
+  ctx.fillStyle = active ? "#ffd580" : "#3a3f5c";
+  ctx.fill();
+  ctx.strokeStyle = active ? "#ffb347" : "#1c2038";
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  if(active){
+    ctx.shadowColor = "#ffb347"; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(0,0,3,0,7); ctx.fillStyle="#fff6e0"; ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+  ctx.restore();
+}
+
+function drawFlame(mount, active){
   if(!active) return;
-  const flick = 0.7+0.3*Math.sin(performance.now()/35+px+py);
-  const len = (16+10*Math.random())*flick;
+  const px=mount.x, py=mount.y, dirAngle=mount.dir;
+  const flick = 0.75+0.35*Math.sin(performance.now()/30+px+py);
+  const len = (30+16*Math.random())*flick;
   ctx.save();
   ctx.translate(px,py);
   ctx.rotate(dirAngle);
+  ctx.shadowColor = "rgba(255,170,80,0.9)";
+  ctx.shadowBlur = 16;
   const grad = ctx.createLinearGradient(0,0,0,len);
-  grad.addColorStop(0,"rgba(255,255,255,0.95)");
-  grad.addColorStop(0.35,"rgba(255,184,71,0.9)");
+  grad.addColorStop(0,"rgba(255,255,255,0.98)");
+  grad.addColorStop(0.3,"rgba(255,210,120,0.95)");
+  grad.addColorStop(0.65,"rgba(255,150,60,0.85)");
   grad.addColorStop(1,"rgba(255,92,122,0)");
   ctx.fillStyle=grad;
   ctx.beginPath();
-  ctx.moveTo(-5,0); ctx.lineTo(5,0); ctx.lineTo(0,len); ctx.closePath();
+  ctx.moveTo(-8,2); ctx.lineTo(8,2); ctx.lineTo(0,len); ctx.closePath();
   ctx.fill();
   ctx.restore();
 }
@@ -845,12 +929,34 @@ function refreshHUD(){
 /* =========================================================================
    MAIN LOOP
    ========================================================================= */
+const boosterMeters = {
+  bottom: document.querySelector('.bmeter[data-b="bottom"]'),
+  top: document.querySelector('.bmeter[data-b="top"]'),
+  left: document.querySelector('.bmeter[data-b="left"]'),
+  right: document.querySelector('.bmeter[data-b="right"]')
+};
+// policy output index for each booster: axial group is [none,bottom,top], lateral is [none,left,right]
+const boosterPIndex = { bottom:1, top:2, left:GROUPN+1, right:GROUPN+2 };
+
+function updateBoosterHud(){
+  if(!settings.showBoosterPct) return;
+  for(const name in boosterMeters){
+    const el = boosterMeters[name];
+    const pct = Math.round((lastP[boosterPIndex[name]]||0)*100);
+    el.querySelector('i').style.width = pct+"%";
+    el.querySelector('b').textContent = pct+"%";
+    el.classList.toggle('firing', !!rocket.boosters[name]);
+  }
+}
+
 function frame(){
   if(running){
     for(let i=0;i<speed;i++){ tick(); }
   }
   draw();
   document.getElementById('statReward').textContent = episodeReward.toFixed(1);
+  if(settings.showFuel) document.getElementById('statFuel').textContent = Math.round(rocket.fuel/FUEL_MAX*100)+"%";
+  updateBoosterHud();
   requestAnimationFrame(frame);
 }
 
@@ -883,10 +989,51 @@ document.querySelectorAll('.speedgrp button').forEach(b=>{
   });
 });
 
+/* --- settings panel --- */
+const SETTINGS_KEY = "rocketLandingAI_settings_v1";
+function saveSettings(){
+  try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }catch(e){}
+}
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if(!raw) return;
+    Object.assign(settings, JSON.parse(raw));
+  }catch(e){}
+}
+function applySettingsToUI(){
+  document.getElementById('optBoosterPct').checked = settings.showBoosterPct;
+  document.getElementById('optTrail').checked = settings.showTrail;
+  document.getElementById('optFuel').checked = settings.showFuel;
+  document.getElementById('boosterHud').hidden = !settings.showBoosterPct;
+  document.getElementById('fuelChip').hidden = !settings.showFuel;
+}
+
+const btnSettings = document.getElementById('btnSettings');
+const settingsPanel = document.getElementById('settingsPanel');
+btnSettings.addEventListener('click', ()=>{ settingsPanel.hidden = !settingsPanel.hidden; });
+document.getElementById('btnCloseSettings').addEventListener('click', ()=>{ settingsPanel.hidden = true; });
+document.getElementById('optBoosterPct').addEventListener('change', e=>{
+  settings.showBoosterPct = e.target.checked;
+  document.getElementById('boosterHud').hidden = !settings.showBoosterPct;
+  saveSettings();
+});
+document.getElementById('optTrail').addEventListener('change', e=>{
+  settings.showTrail = e.target.checked;
+  saveSettings();
+});
+document.getElementById('optFuel').addEventListener('change', e=>{
+  settings.showFuel = e.target.checked;
+  document.getElementById('fuelChip').hidden = !settings.showFuel;
+  saveSettings();
+});
+
 /* =========================================================================
    BOOT
    ========================================================================= */
 const hadSave = loadAll();
+loadSettings();
+applySettingsToUI();
 resetEpisode();
 resize();
 refreshHUD();
