@@ -653,11 +653,17 @@ function computeReward(w, stepResult){
   // dense "final approach" shaping: reward hovering over the pad, upright and
   // slow, while still airborne - pulls the policy toward the success funnel
   // instead of relying only on the rare terminal landing bonus to bootstrap.
+  // The bonus tapers off the longer it lingers there without landing, so
+  // camping in a good spot forever can't out-earn actually touching down.
   if(vdist < 220 && hdist < 40){
+    w.approachSteps = (w.approachSteps||0) + 1;
     const speed = Math.hypot(r.vx,r.vy);
     const uprightness = Math.max(0, 1 - Math.abs(r.angle)/LAND_TILT_OK);
     const slowness = Math.max(0, 1 - speed/LAND_SPEED_OK);
-    reward += 0.12 * uprightness * slowness * (1 - vdist/220);
+    const loiterDecay = Math.max(0, 1 - w.approachSteps/90);
+    reward += 0.12 * uprightness * slowness * (1 - vdist/220) * loiterDecay;
+  } else {
+    w.approachSteps = 0;
   }
 
   if(stepResult.done){
@@ -668,6 +674,12 @@ function computeReward(w, stepResult){
       reward -= 45;
     } else if(stepResult.reason==="missed pad"){
       reward -= 40;
+    } else if(stepResult.reason==="timed out"){
+      // ran out of time without ever landing - this must always read as a
+      // clear failure, no matter how good a spot it was hovering in, or the
+      // policy learns that camping near the pad forever is nearly as good
+      // as actually landing on it.
+      reward -= 35 + Math.min(15, hdist*0.05);
     } else { // hard landing (on pad but too fast/tilted) - penalty scales with how bad the impact was
       const speed = Math.hypot(r.vx,r.vy);
       const overSpeed = Math.max(0, speed/LAND_SPEED_OK - 1);
@@ -690,6 +702,7 @@ function newWorker(){
     episodeReward: 0,
     prevHDist: null,
     prevVDist: null,
+    approachSteps: 0,
     traj: { x:[], choice:[], pOld:[], v:[], r:[] }
   };
 }
@@ -716,7 +729,7 @@ function resetLearning(){
 
 function resetWorker(w){
   w.rocket = newRocket();
-  w.stepCount=0; w.episodeReward=0; w.prevHDist=null; w.prevVDist=null;
+  w.stepCount=0; w.episodeReward=0; w.prevHDist=null; w.prevVDist=null; w.approachSteps=0;
   w.traj = { x:[], choice:[], pOld:[], v:[], r:[] };
 }
 
@@ -781,7 +794,14 @@ function tickWorker(w, isHero){
   const x = getState(w.rocket);
   const {p, v} = forward(x);
   const a = sampleActions(p);
-  const res = physicsStep(w.rocket, a.booster);
+  let res = physicsStep(w.rocket, a.booster);
+  w.stepCount++;
+  // fold the timeout into the same step's reward instead of ending the
+  // episode with a synthetic result computeReward never actually sees -
+  // otherwise a timed-out episode gets no terminal penalty at all
+  if(!res.done && w.stepCount>=MAX_STEPS){
+    res = {done:true, success:false, reason:"timed out"};
+  }
   const r = computeReward(w, res);
   w.episodeReward += r;
   w.traj.x.push(x); w.traj.choice.push(a.choice); w.traj.pOld.push(p); w.traj.v.push(v); w.traj.r.push(r);
@@ -792,15 +812,9 @@ function tickWorker(w, isHero){
     if(trail.length>220) trail.shift();
   }
 
-  w.stepCount++;
   if(res.done){
     w.rocket.alive = false;
     finishWorkerEpisode(w, res, isHero);
-    return;
-  }
-  if(w.stepCount>=MAX_STEPS){
-    w.rocket.alive = false;
-    finishWorkerEpisode(w, {done:true, success:false, reason:"timed out"}, isHero);
   }
 }
 
