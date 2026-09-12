@@ -1,0 +1,3411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+<title>ISS Tracker</title>
+<meta name="description" content="Live 3D International Space Station tracker with real orbital data, pass predictions, and sky-view alerts.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ISS Tracker">
+<meta name="theme-color" content="#05070d">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9InYzYmciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMwYzBjMGQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwMDAwMDAiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgZmlsbD0idXJsKCN2M2JnKSIvPjxnIGZpbGw9IiNmNGY1ZjYiIHRyYW5zZm9ybT0icm90YXRlKC0zMCA5MCA5MCkiPjxyZWN0IHg9Ijc2IiB5PSI3NiIgd2lkdGg9IjI4IiBoZWlnaHQ9IjI4IiByeD0iNSIvPjxyZWN0IHg9IjM0IiB5PSI4MyIgd2lkdGg9IjM0IiBoZWlnaHQ9IjE0IiByeD0iMyIvPjxyZWN0IHg9IjExMiIgeT0iODMiIHdpZHRoPSIzNCIgaGVpZ2h0PSIxNCIgcng9IjMiLz48cmVjdCB4PSI4NiIgeT0iNDYiIHdpZHRoPSI4IiBoZWlnaHQ9IjI0IiByeD0iMyIvPjwvZz48L3N2Zz4=">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9InYzYmciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMwYzBjMGQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwMDAwMDAiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgZmlsbD0idXJsKCN2M2JnKSIvPjxnIGZpbGw9IiNmNGY1ZjYiIHRyYW5zZm9ybT0icm90YXRlKC0zMCA5MCA5MCkiPjxyZWN0IHg9Ijc2IiB5PSI3NiIgd2lkdGg9IjI4IiBoZWlnaHQ9IjI4IiByeD0iNSIvPjxyZWN0IHg9IjM0IiB5PSI4MyIgd2lkdGg9IjM0IiBoZWlnaHQ9IjE0IiByeD0iMyIvPjxyZWN0IHg9IjExMiIgeT0iODMiIHdpZHRoPSIzNCIgaGVpZ2h0PSIxNCIgcng9IjMiLz48cmVjdCB4PSI4NiIgeT0iNDYiIHdpZHRoPSI4IiBoZWlnaHQ9IjI0IiByeD0iMyIvPjwvZz48L3N2Zz4=">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  /* Liquid Glass material system: neutral translucent white on black,
+     heavy blur + saturation boost (so color behind the glass reads
+     vividly through it), bright thin edges that catch light, and very
+     rounded continuous-corner shapes. Component rules below mostly just
+     consume these tokens, so retuning them here reaches the whole app. */
+  --bg:#000000;
+  --bg2:#050505;
+  --panel:rgba(255,255,255,.10);
+  --panel-solid:#161616;
+  --line:rgba(255,255,255,.30);
+  --line-soft:rgba(255,255,255,.14);
+  --ink:#ffffff;
+  --sub:rgba(255,255,255,.64);
+  --sub2:rgba(255,255,255,.42);
+  --accent:#3fd2ff;
+  --accent2:#8b7bff;
+  --good:#32d74b;
+  --warn:#ffd60a;
+  --bad:#ff453a;
+  --glow-accent: 0 8px 30px rgba(0,0,0,.35);
+  /* Blur radius is the single biggest lever on backdrop-filter cost —
+     kept strong enough to still read as glass, cheap enough to animate
+     smoothly on a phone GPU. */
+  --glass-blur: blur(22px) saturate(170%);
+  --glass-blur-lite: blur(13px) saturate(150%);
+  --glass-highlight: rgba(255,255,255,.55);
+  --radius:26px;
+  --radius-sm:18px;
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-l:env(safe-area-inset-left,0px);
+  --safe-r:env(safe-area-inset-right,0px);
+  --ff-display:-apple-system,BlinkMacSystemFont,'SF Pro Display','Space Grotesk',system-ui,sans-serif;
+  --ff-mono:ui-monospace,'SF Mono',SFMono-Regular,'JetBrains Mono',Menlo,monospace;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--ff-display);
+  overflow:hidden;
+  position:fixed; inset:0;
+  overscroll-behavior:none;
+  -webkit-user-select:none; user-select:none;
+}
+#gl{position:fixed; inset:0; z-index:0; touch-action:none; outline:none;}
+#gl canvas{display:block; width:100%; height:100%;}
+
+.app{position:fixed; inset:0; z-index:2; display:flex; flex-direction:column; pointer-events:none;}
+.app > *{pointer-events:auto;}
+
+/* ---------- Top bar ---------- */
+.topbar{
+  padding:calc(10px + var(--safe-t)) max(14px,var(--safe-r)) 8px max(14px,var(--safe-l));
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.brand{display:flex; align-items:center; gap:9px;}
+.brand-mark{
+  width:30px; height:30px; border-radius:50%;
+  background:radial-gradient(circle at 32% 28%, #4fc3ff, #0a2444 72%);
+  box-shadow:0 4px 14px rgba(0,0,0,.4), inset 0 1px 1px rgba(255,255,255,.6), inset 0 -6px 10px rgba(0,0,0,.3);
+  position:relative; flex:none;
+}
+.brand-mark::after{
+  content:""; position:absolute; inset:-5px; border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.4); transform:rotate(-25deg);
+  clip-path:inset(38% 0 0 0);
+}
+.brand-title{font-weight:700; font-size:15px; letter-spacing:.02em;}
+.brand-sub{font-size:9.5px; color:var(--sub2); letter-spacing:.14em; text-transform:uppercase; margin-top:1px;}
+
+.status-chip{
+  display:flex; align-items:center; gap:6px;
+  background:var(--panel); border:1px solid var(--line); backdrop-filter:var(--glass-blur-lite);
+  -webkit-backdrop-filter:var(--glass-blur-lite);
+  box-shadow:0 1px 1px rgba(255,255,255,.18) inset, 0 4px 16px rgba(0,0,0,.25);
+  padding:6px 10px 6px 8px; border-radius:999px; font-size:10.5px; color:var(--sub);
+  font-family:var(--ff-mono);
+}
+.status-dot{width:7px; height:7px; border-radius:50%; background:var(--sub2); flex:none;}
+.status-dot.live{background:var(--good); box-shadow:0 0 8px var(--good); animation:pulseDot 1.8s ease-in-out infinite;}
+.status-dot.syncing{background:var(--warn); box-shadow:0 0 8px var(--warn); animation:pulseDot 1s ease-in-out infinite;}
+.status-dot.offline{background:var(--bad); box-shadow:0 0 8px var(--bad);}
+@keyframes pulseDot{0%,100%{opacity:1; transform:scale(1);} 50%{opacity:.45; transform:scale(.75);}}
+
+/* ---------- Overhead alert banner ---------- */
+.overhead-banner{
+  position:absolute; left:50%; top:calc(58px + var(--safe-t)); transform:translate(-50%,-12px);
+  width:min(94vw,420px);
+  background:rgba(50,215,75,.14);
+  border:1px solid rgba(50,215,75,.5);
+  box-shadow:0 1px 1px rgba(255,255,255,.25) inset, 0 10px 34px rgba(0,0,0,.4);
+  border-radius:var(--radius-sm); padding:10px 14px; backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+  display:flex; align-items:center; gap:10px; z-index:5;
+  opacity:0; pointer-events:none; transition:opacity .4s ease, transform .4s ease;
+}
+.overhead-banner.show{opacity:1; transform:translate(-50%,0); animation:bannerGlow 2.4s ease-in-out infinite;}
+/* Deliberately still pointer-events:none — this banner is a passive
+   status readout with no tap targets of its own. It used to switch to
+   auto here, which meant it silently ate globe-drag gestures underneath
+   it any time it was showing — most noticeably with "Visible Passes
+   Only" off, since the banner's trigger condition relaxes to "ISS above
+   the horizon" (common) instead of "actually visible" (rare). */
+@keyframes bannerGlow{0%,100%{box-shadow:0 1px 1px rgba(255,255,255,.25) inset, 0 10px 34px rgba(0,0,0,.4);} 50%{box-shadow:0 1px 1px rgba(255,255,255,.4) inset, 0 0 26px rgba(50,215,75,.4), 0 10px 34px rgba(0,0,0,.4);}}
+.overhead-banner .ic{width:34px;height:34px;border-radius:50%;background:rgba(50,215,75,.25); border:1px solid rgba(50,215,75,.5); flex:none; display:flex; align-items:center; justify-content:center; font-size:16px;}
+.overhead-banner .txt{flex:1; min-width:0;}
+.overhead-banner .t1{font-weight:700; font-size:13px; color:#eafff5;}
+.overhead-banner .t2{font-size:11px; color:#bdf5da; font-family:var(--ff-mono); margin-top:1px;}
+
+/* ---------- Bottom sheet content area ---------- */
+.sheet-wrap{
+  margin-top:auto; position:relative; z-index:3;
+  padding:0 max(10px,var(--safe-l)) 0 max(10px,var(--safe-r));
+  /* The wrap's own box always reserves the sheet's full expanded height
+     in layout, even when collapsed — transform (used for the collapse
+     animation) moves the sheet visually but doesn't shrink the space
+     its ancestor's box occupies. Left auto here, that reserved region
+     silently ate touches meant for the globe across most of the lower
+     screen regardless of collapsed state. Only the sheet's own box —
+     which does move with the transform — should capture pointer events. */
+  pointer-events:none;
+}
+.sheet{
+  background:rgba(255,255,255,.07);
+  border:1px solid var(--line); border-bottom:none;
+  border-radius:28px 28px 0 0;
+  backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+  padding:14px 14px calc(84px + var(--safe-b)) 14px;
+  max-height:62vh; overflow-y:auto; overscroll-behavior:contain;
+  box-shadow:0 1px 1px rgba(255,255,255,.3) inset, 0 -10px 40px rgba(0,0,0,.4);
+  scrollbar-width:none; -ms-overflow-style:none; /* Firefox / old Edge */
+  /* Collapse/expand animates transform only (GPU-composited) instead of
+     max-height/padding, which force a full layout reflow on every frame
+     and were the main source of visible jank opening/closing the panel. */
+  transform:translateY(0); transition:transform .42s cubic-bezier(.19,1,.22,1); will-change:transform;
+  pointer-events:auto; /* re-enable — .sheet-wrap opts out so it doesn't block the globe */
+}
+.sheet::-webkit-scrollbar{width:0; height:0; display:none; background:transparent;} /* Safari/Chrome */
+.sheet.collapsed{transform:translateY(var(--collapse-dy, 420px)); overflow:hidden;}
+.sheet.collapsed .view{opacity:0;}
+.grabber-zone{padding:2px 0 12px; margin:-14px -14px 0; cursor:grab; touch-action:none;}
+.grabber{width:36px; height:4px; border-radius:3px; background:rgba(255,255,255,.18); margin:0 auto; transition:background .2s;}
+.grabber-zone:active .grabber{background:rgba(79,216,255,.6);}
+.peek-hint{text-align:center; font-size:10px; color:var(--sub2); font-family:var(--ff-mono); letter-spacing:.08em; margin-top:2px; opacity:0; transition:opacity .3s; pointer-events:none;}
+.sheet.collapsed .peek-hint{opacity:1;}
+
+.view{display:none;}
+.view.active{display:block;}
+@keyframes cardIn{from{opacity:0; transform:translateY(16px) scale(.97);} to{opacity:1; transform:translateY(0) scale(1);}}
+.card{animation:cardIn .5s cubic-bezier(.16,1,.3,1) both;}
+.card:nth-of-type(1){animation-delay:.02s;}
+.card:nth-of-type(2){animation-delay:.08s;}
+.card:nth-of-type(3){animation-delay:.14s;}
+.card:nth-of-type(4){animation-delay:.2s;}
+.card:nth-of-type(5){animation-delay:.26s;}
+
+/* skeleton loading shimmer, shown before first live data arrives */
+.skeleton{position:relative; color:transparent !important; text-shadow:none !important; border-radius:6px; overflow:hidden; background:rgba(255,255,255,.06); min-width:38px; display:inline-block;}
+.skeleton::after{
+  content:""; position:absolute; inset:0; transform:translateX(-100%);
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent);
+  animation:shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer{100%{transform:translateX(100%);}}
+
+/* micro press-feedback everywhere it matters */
+.btn{transition:transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease, filter .2s ease;}
+.btn:active{transform:scale(.96); filter:brightness(.95);}
+.btn:disabled{opacity:.55; pointer-events:none;}
+.chip{transition:transform .15s cubic-bezier(.34,1.56,.64,1), background .2s, border-color .2s, color .2s, box-shadow .2s;}
+.chip:active{transform:scale(.9);}
+.switch{transition:background .25s ease;}
+.switch:active{transform:scale(.94);}
+.switch::after{transition:transform .3s cubic-bezier(.34,1.56,.64,1);}
+.tab{transition:background .25s ease, color .25s ease, transform .15s cubic-bezier(.34,1.56,.64,1);}
+.tab:active{transform:scale(.9);}
+.tab.active .ic{animation:tabPop .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes tabPop{0%{transform:scale(.7);} 60%{transform:scale(1.18);} 100%{transform:scale(1);}}
+.pass-row{transition:transform .15s ease, background .2s ease, border-color .2s ease;}
+.pass-row:active{transform:scale(.97); background:rgba(79,216,255,.05);}
+.card-badge{transition:background .3s, border-color .3s, color .3s;}
+@media (hover:hover){
+  .btn:hover{filter:brightness(1.06);}
+  .pass-row:hover{border-color:rgba(79,216,255,.3); background:rgba(79,216,255,.04);}
+  .chip:hover{border-color:rgba(79,216,255,.4);}
+}
+
+/* countdown ring */
+.countdown-ring{flex:none; transform:rotate(-90deg);}
+.countdown-ring .ring-bg{fill:none; stroke:rgba(255,255,255,.08); stroke-width:5;}
+.countdown-ring .ring-fg{fill:none; stroke:var(--accent); stroke-width:5; stroke-linecap:round; stroke-dasharray:157; stroke-dashoffset:157; transition:stroke-dashoffset .6s cubic-bezier(.16,1,.3,1), stroke .4s;}
+.countdown-ring.urgent .ring-fg{stroke:var(--good);}
+
+.share-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:5px;
+  background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--sub);
+  font-size:10.5px; font-family:var(--ff-mono); padding:5px 10px; border-radius:999px;
+  cursor:pointer; transition:transform .15s cubic-bezier(.34,1.56,.64,1), border-color .2s, color .2s;
+}
+.share-btn:active{transform:scale(.92);}
+.share-btn:hover{color:var(--accent); border-color:rgba(79,216,255,.4);}
+.share-btn[hidden]{display:none;}
+
+/* ---------- Cards / glass panels ---------- */
+/* Deliberately no backdrop-filter here: cards sit on the sheet's own
+   blur layer, and with up to 5 of them on screen at once, each doing
+   its own independent (and animated, during entrance/scroll) blur pass
+   was the single biggest source of frame drops. Translucency + border +
+   the top highlight line still reads as glass without the extra cost. */
+.card{
+  background:rgba(255,255,255,.12); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:0 1px 1px rgba(255,255,255,.22) inset, 0 10px 28px rgba(0,0,0,.28);
+  padding:14px; margin-bottom:10px; position:relative; overflow:hidden;
+}
+.card::before{
+  content:""; position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg, transparent, var(--glass-highlight), transparent);
+}
+.card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+.card-label{font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--sub); font-weight:600;}
+.card-badge{font-size:9.5px; font-family:var(--ff-mono); color:var(--accent); background:rgba(63,210,255,.12); border:1px solid rgba(63,210,255,.35); padding:2px 7px; border-radius:999px;}
+
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.stat{background:rgba(255,255,255,.05); border:1px solid var(--line-soft); border-radius:16px; padding:9px 11px;}
+.stat .k{font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--sub2); margin-bottom:3px;}
+.stat .v{font-family:var(--ff-mono); font-size:16px; font-weight:600; color:var(--ink); line-height:1.15;}
+.stat .v small{font-size:10px; color:var(--sub); font-weight:500;}
+.stat .v.accent{color:var(--accent);}
+
+.countdown-row{display:flex; align-items:center; gap:14px; margin:4px 0 12px;}
+.countdown{font-family:var(--ff-mono); font-size:34px; font-weight:700; letter-spacing:.01em; background:linear-gradient(90deg,#fff,#bfe8ff); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.countdown-lbl{font-size:10px; color:var(--sub); text-transform:uppercase; letter-spacing:.1em;}
+.pass-meta{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;}
+.pill{
+  font-size:10.5px; font-family:var(--ff-mono); background:rgba(255,255,255,.12); border:1px solid var(--line);
+  padding:5px 10px; border-radius:999px; color:var(--sub);
+  box-shadow:0 1px 1px rgba(255,255,255,.22) inset;
+}
+.pill b{color:var(--ink); font-weight:600;}
+.pill.vis-yes{border-color:rgba(57,255,160,.4); color:var(--good);}
+.pill.vis-no{border-color:rgba(255,92,122,.3); color:var(--bad);}
+
+/* sky compass */
+.sky-wrap{display:flex; align-items:center; gap:16px;}
+.sky-compass{width:118px; height:118px; border-radius:50%; position:relative; flex:none;
+  background:radial-gradient(circle at 50% 50%, rgba(79,216,255,.06), transparent 70%);
+  border:1px solid var(--line);
+}
+.sky-compass .ring{position:absolute; inset:14px; border-radius:50%; border:1px dashed var(--line-soft);}
+.sky-compass .ring2{position:absolute; inset:38px; border-radius:50%; border:1px dashed var(--line-soft);}
+.sky-compass .dir{position:absolute; font-size:9px; color:var(--sub2); font-family:var(--ff-mono);}
+.sky-compass .dot{position:absolute; width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent); left:50%; top:50%; transform:translate(-50%,-50%); transition:left .6s cubic-bezier(.16,1,.3,1), top .6s cubic-bezier(.16,1,.3,1), opacity .3s;}
+.sky-compass .dot::after{content:""; position:absolute; inset:-5px; border-radius:50%; border:1px solid rgba(79,216,255,.4); animation:dotPing 2s ease-out infinite;}
+@keyframes dotPing{0%{transform:scale(.6); opacity:.9;} 100%{transform:scale(1.8); opacity:0;}}
+body.reduce-motion .sky-compass .dot::after{animation:none; display:none;}
+.sky-compass .path{position:absolute; inset:0; pointer-events:none;}
+.sky-legend{flex:1; font-size:11px; color:var(--sub); line-height:1.9; font-family:var(--ff-mono);}
+.sky-legend b{color:var(--ink);}
+
+.list-passes{display:flex; flex-direction:column; gap:8px;}
+.pass-row{display:flex; align-items:center; justify-content:space-between; padding:9px 11px; background:rgba(255,255,255,.05); border:1px solid var(--line-soft); border-radius:16px;}
+.pass-row .pd{display:flex; flex-direction:column; gap:2px;}
+.pass-row .pd .date{font-size:12px; font-weight:600;}
+.pass-row .pd .sub{font-size:10px; color:var(--sub2); font-family:var(--ff-mono);}
+.pass-row .pm{text-align:right; font-family:var(--ff-mono); font-size:11px; color:var(--sub);}
+.pass-row .pm .el{color:var(--accent); font-weight:700; font-size:13px;}
+
+/* ---------- Settings ---------- */
+.setting-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 2px; border-bottom:1px solid var(--line-soft);}
+.setting-row:last-child{border-bottom:none;}
+.setting-txt .t{font-size:13px; font-weight:600;}
+.setting-txt .d{font-size:11px; color:var(--sub2); margin-top:2px; max-width:230px;}
+.switch{
+  width:46px; height:27px; border-radius:999px; background:rgba(255,255,255,.18); border:1px solid var(--line);
+  position:relative; flex:none; cursor:pointer; transition:background .25s ease, border-color .25s ease;
+  box-shadow:0 1px 1px rgba(255,255,255,.3) inset, 0 1px 3px rgba(0,0,0,.25) inset;
+}
+.switch.on{background:linear-gradient(135deg,var(--accent2),var(--accent)); border-color:transparent; box-shadow:0 1px 1px rgba(255,255,255,.45) inset, 0 2px 8px rgba(63,210,255,.3);}
+.switch::after{
+  content:""; position:absolute; width:23px; height:23px; border-radius:50%;
+  background:radial-gradient(circle at 32% 28%, #fff, #eef2f5 75%);
+  top:1.5px; left:1.5px; transform:translateX(0); transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 2px 5px rgba(0,0,0,.35), 0 0 0 .5px rgba(0,0,0,.05);
+}
+.switch.on::after{transform:translateX(19px);}
+
+.chip-row{display:flex; flex-wrap:wrap; gap:7px;}
+.chip{font-size:11.5px; font-family:var(--ff-mono); padding:7px 12px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:var(--sub); cursor:pointer; transition:.15s;}
+.chip.on{background:rgba(63,210,255,.16); border-color:var(--accent); color:var(--accent);}
+
+/* ---------- Satellite layer chips ---------- */
+.chip.layer-chip{display:inline-flex; align-items:center; gap:6px;}
+.chip.layer-chip .dot{width:7px; height:7px; border-radius:50%; background:var(--layer-color,var(--sub2)); flex:none; transition:box-shadow .2s;}
+.chip.layer-chip.on{background:color-mix(in srgb, var(--layer-color,var(--accent)) 18%, transparent); border-color:var(--layer-color,var(--accent)); color:var(--layer-color,var(--accent));}
+.chip.layer-chip.on .dot{box-shadow:0 0 6px var(--layer-color,var(--accent));}
+.chip.layer-chip.loading{opacity:.55; pointer-events:none;}
+.chip.layer-chip.loading .dot{animation:pulseDot 1s ease-in-out infinite;}
+
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  background:linear-gradient(135deg,var(--accent2),var(--accent)); color:#00151f; font-weight:700;
+  border:none; border-radius:16px; padding:12px 16px; font-size:13px; font-family:var(--ff-display);
+  cursor:pointer; width:100%; box-shadow:0 1px 1px rgba(255,255,255,.4) inset, 0 6px 20px rgba(63,210,255,.22);
+}
+.btn.secondary{background:rgba(255,255,255,.10); color:var(--ink); border:1px solid var(--line); box-shadow:0 1px 1px rgba(255,255,255,.2) inset; font-weight:600;}
+.btn.small{width:auto; padding:9px 14px; font-size:12px;}
+.row2{display:flex; gap:8px;}
+.field{flex:1;}
+.field label{display:block; font-size:10px; color:var(--sub2); text-transform:uppercase; letter-spacing:.08em; margin-bottom:5px;}
+.field input{
+  width:100%; background:rgba(255,255,255,.07); border:1px solid var(--line); border-radius:14px;
+  padding:9px 10px; color:var(--ink); font-family:var(--ff-mono); font-size:13px;
+}
+.field input:focus{outline:none; border-color:var(--accent);}
+.loc-current{font-size:11px; color:var(--sub); font-family:var(--ff-mono); margin:10px 0; padding:8px 10px; background:rgba(255,255,255,.06); border-radius:14px; border:1px solid var(--line-soft);}
+
+select.selstyle{
+  background:rgba(255,255,255,.08); color:var(--ink); border:1px solid var(--line); border-radius:12px;
+  padding:7px 9px; font-family:var(--ff-mono); font-size:12px;
+}
+
+/* ---------- Bottom nav ---------- */
+.tabbar{
+  position:fixed; left:50%; bottom:calc(10px + var(--safe-b)); transform:translateX(-50%);
+  z-index:6; display:flex; gap:2px;
+  background:rgba(255,255,255,.09); border:1px solid var(--line); border-radius:22px;
+  padding:5px; backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+  box-shadow:0 1px 1px rgba(255,255,255,.3) inset, 0 10px 30px rgba(0,0,0,.45);
+}
+.tab-indicator{
+  position:absolute; top:5px; bottom:5px; left:5px; width:66px; border-radius:16px;
+  background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.3);
+  box-shadow:0 1px 1px rgba(255,255,255,.35) inset, 0 2px 8px rgba(0,0,0,.2);
+  transform:translateX(0); transition:transform .4s cubic-bezier(.34,1.3,.4,1);
+  pointer-events:none; z-index:0; will-change:transform;
+}
+.tab{
+  position:relative; z-index:1;
+  display:flex; flex-direction:column; align-items:center; gap:2px; justify-content:center;
+  width:66px; padding:8px 3px 7px; border-radius:16px; color:var(--sub2); cursor:pointer; transition:color .2s;
+}
+.tab.active{color:var(--accent);}
+.tab .ic{font-size:17px; line-height:1;}
+.tab .lb{font-size:9px; font-weight:600; letter-spacing:.01em; white-space:nowrap;}
+
+/* ---------- Icons ----------
+   Content pulled in via <use> lives in a generated instance tree that CSS
+   selectors from the main document can't reach — only *inherited*
+   properties cross that boundary. So fill/stroke must be set directly on
+   the .icon host (an inherited property), not via ".icon path" selectors. */
+.icon{
+  width:16px; height:16px; flex:none; display:inline-block; vertical-align:-3px;
+  fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;
+}
+.icon *{ vector-effect:non-scaling-stroke; }
+.card-label{display:inline-flex; align-items:center; gap:6px;}
+.card-label .icon{width:13px; height:13px; color:var(--accent); opacity:.85;}
+.tab .ic .icon{width:19px; height:19px;}
+.tab .ic{display:flex; align-items:center; justify-content:center; height:19px;}
+.overhead-banner .ic .icon{width:18px; height:18px; color:#e8ffee;}
+.btn .icon{width:15px; height:15px;}
+.badge-ic{display:inline-flex; align-items:center; gap:4px;}
+.badge-ic .icon{width:11px; height:11px;}
+.setting-txt{display:flex; align-items:flex-start; gap:9px;}
+.setting-txt .icon{width:16px; height:16px; margin-top:1px; color:var(--sub); flex:none;}
+
+/* misc */
+.hint{font-size:11px; color:var(--sub2); line-height:1.6; margin-top:4px;}
+.divider{height:1px; background:var(--line-soft); margin:12px 0;}
+.footer-credit{text-align:center; font-size:9.5px; color:var(--sub2); font-family:var(--ff-mono); padding:6px 0 2px; letter-spacing:.04em;}
+.toast{
+  position:fixed; left:50%; bottom:calc(90px + var(--safe-b)); transform:translateX(-50%) translateY(10px);
+  background:rgba(255,255,255,.14); border:1px solid var(--line); color:var(--ink); font-size:12.5px;
+  padding:10px 16px; border-radius:16px; z-index:20; opacity:0; pointer-events:none; transition:.3s;
+  box-shadow:0 1px 1px rgba(255,255,255,.3) inset, 0 8px 24px rgba(0,0,0,.35);
+  backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); max-width:88vw; text-align:center;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+.loading-veil{
+  position:fixed; inset:0; z-index:30; background:radial-gradient(circle at 50% 40%, #0b1a33, #030509 75%);
+  display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px;
+  transition:opacity .6s ease;
+}
+.loading-veil.hide{opacity:0; pointer-events:none;}
+.loading-ring{width:52px; height:52px; border-radius:50%; border:3px solid rgba(79,216,255,.15); border-top-color:var(--accent); animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-veil .lt{font-family:var(--ff-mono); font-size:11.5px; color:var(--sub); letter-spacing:.08em;}
+
+body.reduce-motion .card{animation:none;}
+body.reduce-motion .tab.active .ic{animation:none;}
+body.reduce-motion .overhead-banner.show{animation:none;}
+
+/* ---------- ISS tap-to-inspect popup ---------- */
+.iss-popup-backdrop{
+  position:fixed; inset:0; z-index:11; background:rgba(0,0,0,.4);
+  opacity:0; pointer-events:none; transition:opacity .3s ease;
+}
+.iss-popup-backdrop.show{opacity:1; pointer-events:auto;}
+.iss-popup{
+  position:fixed; left:50%; top:50%; transform:translate(-50%,-50%) scale(.94); z-index:12;
+  width:min(92vw,380px);
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:18px; box-shadow:0 1px 1px rgba(255,255,255,.22) inset, 0 24px 60px rgba(0,0,0,.5);
+  opacity:0; pointer-events:none; transition:opacity .28s ease, transform .32s cubic-bezier(.34,1.4,.4,1);
+}
+.iss-popup.show{opacity:1; transform:translate(-50%,-50%) scale(1); pointer-events:auto;}
+body.reduce-motion .iss-popup{transition:opacity .2s ease;}
+body.reduce-motion .iss-popup.show{transform:translate(-50%,-50%) scale(1);}
+
+/* ---------- AR Finder ---------- */
+.ar-overlay{
+  position:fixed; inset:0; z-index:15; display:none; background:#000;
+  overflow:hidden;
+}
+.ar-overlay.show{display:block;}
+#arVideo{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#000;}
+.ar-fallback-bg{
+  position:absolute; inset:0; display:none;
+  background:
+    radial-gradient(1.5px 1.5px at 20% 30%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 70% 60%, #fff, transparent),
+    radial-gradient(1px 1px at 40% 80%, #cde, transparent),
+    radial-gradient(1px 1px at 85% 20%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 55% 45%, #cde, transparent),
+    radial-gradient(1px 1px at 10% 65%, #fff, transparent),
+    radial-gradient(1px 1px at 90% 85%, #fff, transparent),
+    radial-gradient(ellipse at 50% 100%, #0a1830 0%, #03050a 70%);
+}
+.ar-fallback-bg.on{display:block;}
+.ar-vignette{position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 120px rgba(0,0,0,.65);}
+
+/* Permission gate */
+.ar-gate, .ar-calib{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:min(88vw,360px); background:rgba(255,255,255,.10); border:1px solid var(--line);
+  border-radius:var(--radius); padding:26px 22px; text-align:center;
+  backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); z-index:2;
+  box-shadow:0 1px 1px rgba(255,255,255,.3) inset, 0 20px 60px rgba(0,0,0,.6);
+}
+.ar-gate-icon{
+  width:64px; height:64px; border-radius:50%; margin:0 auto 14px;
+  background:radial-gradient(circle at 35% 30%, rgba(63,210,255,.35), rgba(63,210,255,.05));
+  border:1px solid rgba(63,210,255,.4); display:flex; align-items:center; justify-content:center;
+}
+.ar-gate-icon .icon{width:32px; height:32px; color:var(--accent);}
+.ar-gate-title{font-size:19px; font-weight:700; margin-bottom:8px;}
+.ar-gate-text{font-size:12.5px; color:var(--sub); line-height:1.6; margin-bottom:18px;}
+.ar-gate-hint{font-size:11px; color:var(--warn); margin-top:10px; line-height:1.5;}
+.ar-gate .btn{margin-bottom:10px;}
+
+/* HUD */
+.ar-hud{position:absolute; inset:0; z-index:1;}
+.ar-topbar{
+  position:absolute; top:0; left:0; right:0;
+  padding:calc(12px + var(--safe-t)) max(14px,var(--safe-r)) 0 max(14px,var(--safe-l));
+  display:flex; align-items:center; justify-content:space-between;
+}
+.ar-icon-btn{
+  width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.12); border:1px solid var(--line);
+  backdrop-filter:var(--glass-blur-lite); -webkit-backdrop-filter:var(--glass-blur-lite); color:var(--ink); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:transform .15s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 1px 1px rgba(255,255,255,.3) inset;
+}
+.ar-icon-btn:active{transform:scale(.9);}
+.ar-status-pill{
+  font-family:var(--ff-mono); font-size:11px; letter-spacing:.08em; color:var(--sub);
+  background:rgba(255,255,255,.12); border:1px solid var(--line); border-radius:999px; padding:7px 14px;
+  box-shadow:0 1px 1px rgba(255,255,255,.3) inset;
+  backdrop-filter:var(--glass-blur-lite); -webkit-backdrop-filter:var(--glass-blur-lite); transition:color .3s, border-color .3s;
+}
+.ar-status-pill.tracking{color:var(--accent); border-color:rgba(63,210,255,.4);}
+.ar-status-pill.locked{color:var(--good); border-color:rgba(50,215,75,.5); animation:bannerGlow 1.6s ease-in-out infinite;}
+.ar-status-pill.dim{color:var(--sub2);}
+
+.ar-reticle{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:52px; height:52px; pointer-events:none;
+}
+.ar-reticle-ring{position:absolute; inset:0; border:1.5px solid rgba(255,255,255,.5); border-radius:50%;}
+.ar-reticle-cross{position:absolute; inset:0;}
+.ar-reticle-cross::before, .ar-reticle-cross::after{content:""; position:absolute; background:rgba(255,255,255,.5);}
+.ar-reticle-cross::before{left:50%; top:-8px; bottom:-8px; width:1.5px; transform:translateX(-50%);}
+.ar-reticle-cross::after{top:50%; left:-8px; right:-8px; height:1.5px; transform:translateY(-50%);}
+
+.ar-target-marker{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); opacity:0;
+  transition:left .18s linear, top .18s linear, opacity .3s ease;
+  display:flex; flex-direction:column; align-items:center; pointer-events:none; z-index:2;
+}
+.ar-target-marker.show{opacity:1;}
+.ar-target-glow{
+  position:absolute; width:70px; height:70px; border-radius:50%;
+  background:radial-gradient(circle, rgba(79,216,255,.5), transparent 70%);
+  animation:targetPulse 1.8s ease-in-out infinite;
+}
+.ar-target-marker.locked .ar-target-glow{background:radial-gradient(circle, rgba(57,255,160,.65), transparent 70%);}
+@keyframes targetPulse{0%,100%{transform:scale(.85); opacity:.7;} 50%{transform:scale(1.15); opacity:1;}}
+.ar-target-dot{
+  width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 0 16px var(--accent), 0 0 4px #fff;
+  border:2px solid var(--accent);
+}
+.ar-target-marker.locked .ar-target-dot{border-color:var(--good); box-shadow:0 0 20px var(--good), 0 0 4px #fff;}
+.ar-target-label{
+  margin-top:8px; font-family:var(--ff-mono); font-size:11px; font-weight:600; color:#fff;
+  background:rgba(255,255,255,.14); backdrop-filter:var(--glass-blur-lite); -webkit-backdrop-filter:var(--glass-blur-lite);
+  padding:3px 9px; border-radius:999px; white-space:nowrap;
+  border:1px solid rgba(63,210,255,.4);
+}
+.ar-target-marker.locked .ar-target-label{border-color:rgba(50,215,75,.5); color:var(--good);}
+
+.ar-edge-arrow{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); opacity:0;
+  display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none;
+  transition:opacity .25s ease; z-index:2;
+}
+.ar-edge-arrow.show{opacity:1;}
+.ar-edge-svg{width:36px; height:36px; color:var(--accent); filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));}
+.ar-edge-text{
+  font-family:var(--ff-mono); font-size:11px; font-weight:600; color:#fff;
+  background:rgba(255,255,255,.14); backdrop-filter:var(--glass-blur-lite); -webkit-backdrop-filter:var(--glass-blur-lite);
+  padding:4px 10px; border-radius:999px; white-space:nowrap;
+  border:1px solid rgba(63,210,255,.4);
+}
+
+.ar-below-horizon{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(80vw,300px);
+  text-align:center; background:rgba(255,255,255,.10); border:1px solid var(--line); border-radius:var(--radius-sm);
+  padding:20px; backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); z-index:2;
+  box-shadow:0 1px 1px rgba(255,255,255,.3) inset, 0 10px 30px rgba(0,0,0,.4);
+}
+.ar-below-horizon .icon{color:var(--sub); margin-bottom:8px;}
+.ar-below-horizon .t1{font-weight:700; font-size:14px; margin-bottom:4px;}
+.ar-below-horizon .t2{font-size:12px; color:var(--sub); font-family:var(--ff-mono);}
+
+.ar-readout{
+  position:absolute; left:max(14px,var(--safe-l)); bottom:calc(18px + var(--safe-b));
+  background:rgba(255,255,255,.10); border:1px solid var(--line); border-radius:16px; padding:9px 12px;
+  box-shadow:0 1px 1px rgba(255,255,255,.25) inset;
+  backdrop-filter:var(--glass-blur-lite); -webkit-backdrop-filter:var(--glass-blur-lite); font-family:var(--ff-mono); font-size:10.5px; z-index:2;
+}
+.ar-readout-row{display:flex; justify-content:space-between; gap:14px; padding:2px 0; color:var(--sub);}
+.ar-readout-row b{color:var(--ink); font-weight:600;}
+
+.ar-calib-row{display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:16px;}
+.ar-calib-val{font-family:var(--ff-mono); font-size:22px; font-weight:700; color:var(--accent); min-width:56px;}
+
+body.reduce-motion .ar-target-glow{animation:none;}
+body.reduce-motion .ar-status-pill.locked{animation:none;}
+
+@media (min-width:760px){
+  .sheet-wrap{max-width:420px; margin-left:auto; margin-right:14px;}
+  .sheet{border-radius:22px; margin-bottom:14px; border-bottom:1px solid var(--line);}
+}
+</style>
+</head>
+<body>
+
+<svg style="position:absolute; width:0; height:0; overflow:hidden;" aria-hidden="true">
+<defs>
+<symbol id="icon-satellite" viewBox="0 0 24 24">
+  <rect x="1.6" y="2.6" width="5" height="3.2" rx="0.8" transform="rotate(-45 4.1 4.2)"/>
+  <rect x="17.4" y="18" width="5" height="3.2" rx="0.8" transform="rotate(-45 19.9 19.6)"/>
+  <rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1.1" transform="rotate(45 12 12)"/>
+  <line x1="7.9" y1="7.9" x2="5.6" y2="5.6"/>
+  <line x1="16.1" y1="16.1" x2="18.4" y2="18.4"/>
+  <line x1="14.6" y1="9.4" x2="18" y2="6"/>
+  <circle cx="18.6" cy="5.4" r="1" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="icon-compass" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="9"/>
+  <polygon points="15,8.7 13,13 8.7,15 10.7,10.7"/>
+  <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="icon-settings" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="3.1"/>
+  <line x1="12" y1="2.7" x2="12" y2="5.4"/>
+  <line x1="12" y1="18.6" x2="12" y2="21.3"/>
+  <line x1="2.7" y1="12" x2="5.4" y2="12"/>
+  <line x1="18.6" y1="12" x2="21.3" y2="12"/>
+  <line x1="5.3" y1="5.3" x2="7.2" y2="7.2"/>
+  <line x1="16.8" y1="16.8" x2="18.7" y2="18.7"/>
+  <line x1="18.7" y1="5.3" x2="16.8" y2="7.2"/>
+  <line x1="7.2" y1="16.8" x2="5.3" y2="18.7"/>
+</symbol>
+<symbol id="icon-pin" viewBox="0 0 24 24">
+  <path d="M12 21s-6.5-6.2-6.5-11A6.5 6.5 0 0 1 18.5 10c0 4.8-6.5 11-6.5 11z"/>
+  <circle cx="12" cy="10" r="2.1"/>
+</symbol>
+<symbol id="icon-bell" viewBox="0 0 24 24">
+  <path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 14 6 10z"/>
+  <path d="M10 19a2 2 0 0 0 4 0"/>
+</symbol>
+<symbol id="icon-volume" viewBox="0 0 24 24">
+  <path d="M4 9v6h4l5 4V5L8 9H4z"/>
+  <path d="M16.3 9.2a4.5 4.5 0 0 1 0 5.6"/>
+  <path d="M18.7 6.8a8 8 0 0 1 0 10.4"/>
+</symbol>
+<symbol id="icon-vibrate" viewBox="0 0 24 24">
+  <rect x="8" y="4" width="8" height="16" rx="1.6"/>
+  <line x1="2" y1="9" x2="2" y2="15"/>
+  <line x1="22" y1="9" x2="22" y2="15"/>
+  <circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="icon-sun" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="3.8"/>
+  <line x1="12" y1="2.6" x2="12" y2="5"/>
+  <line x1="12" y1="19" x2="12" y2="21.4"/>
+  <line x1="2.6" y1="12" x2="5" y2="12"/>
+  <line x1="19" y1="12" x2="21.4" y2="12"/>
+  <line x1="5.2" y1="5.2" x2="6.8" y2="6.8"/>
+  <line x1="17.2" y1="17.2" x2="18.8" y2="18.8"/>
+  <line x1="18.8" y1="5.2" x2="17.2" y2="6.8"/>
+  <line x1="6.8" y1="17.2" x2="5.2" y2="18.8"/>
+</symbol>
+<symbol id="icon-moon" viewBox="0 0 24 24">
+  <path d="M20 14.3A8.4 8.4 0 1 1 9.7 4a6.6 6.6 0 1 0 10.3 10.3z"/>
+</symbol>
+<symbol id="icon-target" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="8.4"/>
+  <circle cx="12" cy="12" r="4.9"/>
+  <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="icon-monitor" viewBox="0 0 24 24">
+  <rect x="3" y="4.5" width="18" height="12" rx="1.6"/>
+  <line x1="8" y1="20" x2="16" y2="20"/>
+  <line x1="12" y1="16.5" x2="12" y2="20"/>
+</symbol>
+<symbol id="icon-signal" viewBox="0 0 24 24">
+  <line x1="4" y1="19" x2="4" y2="15"/>
+  <line x1="9.3" y1="19" x2="9.3" y2="11"/>
+  <line x1="14.6" y1="19" x2="14.6" y2="7"/>
+  <line x1="20" y1="19" x2="20" y2="3.5"/>
+</symbol>
+<symbol id="icon-list" viewBox="0 0 24 24">
+  <line x1="8.4" y1="6" x2="21" y2="6"/>
+  <line x1="8.4" y1="12" x2="21" y2="12"/>
+  <line x1="8.4" y1="18" x2="21" y2="18"/>
+  <circle cx="3.6" cy="6" r="1" fill="currentColor" stroke="none"/>
+  <circle cx="3.6" cy="12" r="1" fill="currentColor" stroke="none"/>
+  <circle cx="3.6" cy="18" r="1" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="icon-clock" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="9"/>
+  <polyline points="12,7 12,12 16,14"/>
+</symbol>
+<symbol id="icon-orbit" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="2.6"/>
+  <ellipse cx="12" cy="12" rx="9.5" ry="4" transform="rotate(-25 12 12)"/>
+  <circle cx="20.2" cy="8.5" r="1.1" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="icon-lock" viewBox="0 0 24 24">
+  <path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8"/>
+  <path d="M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8"/>
+  <path d="M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16"/>
+  <path d="M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/>
+  <circle cx="12" cy="12" r="2.4"/>
+</symbol>
+<symbol id="icon-share" viewBox="0 0 24 24">
+  <circle cx="18" cy="5.5" r="2.3"/>
+  <circle cx="6" cy="12" r="2.3"/>
+  <circle cx="18" cy="18.5" r="2.3"/>
+  <line x1="8" y1="10.8" x2="16" y2="7"/>
+  <line x1="8" y1="13.2" x2="16" y2="17"/>
+</symbol>
+<symbol id="icon-viewfinder" viewBox="0 0 24 24">
+  <path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8"/>
+  <path d="M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8"/>
+  <path d="M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16"/>
+  <path d="M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/>
+  <circle cx="12" cy="12" r="3.4"/>
+  <circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="icon-x" viewBox="0 0 24 24">
+  <line x1="5" y1="5" x2="19" y2="19"/>
+  <line x1="19" y1="5" x2="5" y2="19"/>
+</symbol>
+<symbol id="icon-arrow-up" viewBox="0 0 24 24">
+  <line x1="12" y1="20" x2="12" y2="5"/>
+  <polyline points="6,11 12,5 18,11"/>
+</symbol>
+<symbol id="icon-gauge" viewBox="0 0 24 24">
+  <path d="M4 15a8 8 0 1 1 16 0"/>
+  <line x1="12" y1="15" x2="16" y2="9.5"/>
+  <circle cx="12" cy="15" r="1.2" fill="currentColor" stroke="none"/>
+</symbol>
+</defs>
+</svg>
+
+<div id="gl"></div>
+
+<div class="loading-veil" id="loadingVeil">
+  <div class="loading-ring"></div>
+  <div class="lt" id="loadingText">ACQUIRING ORBITAL DATA…</div>
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-title">ISS Tracker</div>
+        <div class="brand-sub">Live Orbit · Mission View</div>
+      </div>
+    </div>
+    <div class="status-chip">
+      <span class="status-dot syncing" id="statusDot"></span>
+      <span id="statusText">SYNCING</span>
+    </div>
+  </div>
+
+  <div class="overhead-banner" id="overheadBanner">
+    <div class="ic"><svg class="icon"><use href="#icon-satellite"/></svg></div>
+    <div class="txt">
+      <div class="t1">ISS IS OVERHEAD</div>
+      <div class="t2" id="overheadDetail">EL 0° · AZ 0°</div>
+    </div>
+  </div>
+
+  <div class="sheet-wrap">
+    <div class="sheet" id="sheet">
+      <div class="grabber-zone" id="grabberZone">
+        <div class="grabber"></div>
+        <div class="peek-hint">TAP OR SWIPE UP FOR DETAILS</div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div class="view active" id="view-dashboard">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-label"><svg class="icon"><use href="#icon-satellite"/></svg>Current Position</span>
+            <span class="card-badge" id="illumBadge">—</span>
+          </div>
+          <div class="stat-grid">
+            <div class="stat"><div class="k">Latitude</div><div class="v accent skeleton" id="statLat" data-skeleton="1">--.--°</div></div>
+            <div class="stat"><div class="k">Longitude</div><div class="v accent skeleton" id="statLon" data-skeleton="1">--.--°</div></div>
+            <div class="stat"><div class="k">Altitude</div><div class="v skeleton" id="statAlt" data-skeleton="1">---.- km</div></div>
+            <div class="stat"><div class="k">Velocity</div><div class="v skeleton" id="statVel" data-skeleton="1">----- km/h</div></div>
+            <div class="stat"><div class="k">Distance From You</div><div class="v skeleton" id="statDist" data-skeleton="1">----- km</div></div>
+            <div class="stat"><div class="k">Orbital Period</div><div class="v skeleton" id="statPeriod" data-skeleton="1">--.- min</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <span class="card-label"><svg class="icon"><use href="#icon-orbit"/></svg>Satellite Layers</span>
+            <span class="card-badge" id="satLayersBadge">0 shown</span>
+          </div>
+          <div class="chip-row" id="satLayerChips">
+            <div class="chip layer-chip" data-layer="starlink"><span class="dot"></span>Starlink</div>
+            <div class="chip layer-chip" data-layer="gps"><span class="dot"></span>GPS</div>
+            <div class="chip layer-chip" data-layer="weather"><span class="dot"></span>Weather</div>
+            <div class="chip layer-chip" data-layer="science"><span class="dot"></span>Science</div>
+            <div class="chip layer-chip" data-layer="geo"><span class="dot"></span>Geo / Comms</div>
+            <div class="chip layer-chip" data-layer="active"><span class="dot"></span>Active (All)</div>
+          </div>
+          <div class="hint">Live positions from CelesTrak, refreshed periodically. Markers only — no details or alerts, those stay ISS-only.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <span class="card-label"><svg class="icon"><use href="#icon-clock"/></svg>Next Visible Pass</span>
+            <span class="card-badge" id="nextPassBadge">—</span>
+          </div>
+          <div class="countdown-row">
+            <svg class="countdown-ring" viewBox="0 0 60 60" width="56" height="56" id="countdownRing">
+              <circle class="ring-bg" cx="30" cy="30" r="25"/>
+              <circle class="ring-fg" id="countdownRingFg" cx="30" cy="30" r="25"/>
+            </svg>
+            <div>
+              <div class="countdown" id="countdownVal">--:--:--</div>
+              <div class="countdown-lbl" id="countdownLbl">until acquisition</div>
+            </div>
+          </div>
+          <div class="pass-meta" id="passMeta"></div>
+          <button class="share-btn" id="btnSharePass" hidden><svg class="icon"><use href="#icon-share"/></svg>Share this pass</button>
+          <div class="sky-wrap">
+            <div class="sky-compass" id="skyCompass">
+              <div class="ring"></div><div class="ring2"></div>
+              <div class="dir" style="top:2px;left:50%;transform:translate(-50%,0);">N</div>
+              <div class="dir" style="bottom:2px;left:50%;transform:translate(-50%,0);">S</div>
+              <div class="dir" style="left:2px;top:50%;transform:translate(0,-50%);">W</div>
+              <div class="dir" style="right:2px;top:50%;transform:translate(0,-50%);">E</div>
+              <svg class="path" id="skyPath" viewBox="0 0 118 118"></svg>
+              <div class="dot" id="skyDot" style="opacity:0;"></div>
+            </div>
+            <div class="sky-legend" id="skyLegend">
+              No location set.<br>Open Settings to enable pass tracking.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <span class="card-label"><svg class="icon"><use href="#icon-list"/></svg>Upcoming Passes</span>
+            <span class="card-badge" id="passCountBadge">0</span>
+          </div>
+          <div class="list-passes" id="passList">
+            <div class="hint">Set your location in Settings to compute upcoming ISS passes.</div>
+          </div>
+        </div>
+
+        <div class="footer-credit">DATA: WHERETHEISS.AT · TLE ORBITAL PROPAGATION (SGP4)</div>
+      </div>
+
+      <!-- SKY VIEW -->
+      <div class="view" id="view-sky">
+        <div class="card">
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-compass"/></svg>Live Sky Position</span><span class="card-badge" id="liveVisBadge">—</span></div>
+          <div class="sky-wrap" style="flex-direction:column; align-items:center;">
+            <div class="sky-compass" id="skyCompassBig" style="width:220px;height:220px;">
+              <div class="ring"></div><div class="ring2"></div>
+              <div class="dir" style="top:4px;left:50%;transform:translate(-50%,0);">N</div>
+              <div class="dir" style="bottom:4px;left:50%;transform:translate(-50%,0);">S</div>
+              <div class="dir" style="left:4px;top:50%;transform:translate(0,-50%);">W</div>
+              <div class="dir" style="right:4px;top:50%;transform:translate(0,-50%);">E</div>
+              <svg class="path" id="skyPathBig" viewBox="0 0 220 220"></svg>
+              <div class="dot" id="skyDotBig" style="opacity:0; width:14px; height:14px;"></div>
+            </div>
+          </div>
+          <div class="stat-grid" style="margin-top:12px;">
+            <div class="stat"><div class="k">Elevation</div><div class="v accent" id="liveEl">—</div></div>
+            <div class="stat"><div class="k">Azimuth</div><div class="v accent" id="liveAz">—</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-sun"/></svg>Sun / Twilight</span></div>
+          <div class="stat-grid">
+            <div class="stat"><div class="k">Your Sky</div><div class="v" id="obsDark">—</div></div>
+            <div class="stat"><div class="k">ISS Sunlit</div><div class="v" id="issSun">—</div></div>
+          </div>
+          <div class="hint">The ISS is only visible to the naked eye when it is sunlit <b>and</b> your sky is dark enough (civil twilight or darker).</div>
+        </div>
+        <div class="footer-credit">DRAG THE EARTH · PINCH TO ZOOM</div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="view" id="view-settings">
+        <div class="card">
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-pin"/></svg>Observer Location</span></div>
+          <div class="loc-current" id="locCurrent">No location set</div>
+          <button class="btn" id="btnGeo"><svg class="icon"><use href="#icon-pin"/></svg>Use My Location</button>
+          <div class="divider"></div>
+          <div class="row2">
+            <div class="field"><label>Latitude</label><input type="number" step="0.0001" id="inLat" placeholder="e.g. 40.7128"></div>
+            <div class="field"><label>Longitude</label><input type="number" step="0.0001" id="inLon" placeholder="e.g. -74.0060"></div>
+          </div>
+          <div style="height:8px;"></div>
+          <button class="btn secondary" id="btnManualSave">Save Manual Location</button>
+          <div style="height:8px;"></div>
+          <button class="btn secondary" id="btnViewOnGlobe"><svg class="icon"><use href="#icon-target"/></svg>View My Marker On Globe</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-bell"/></svg>Notifications</span></div>
+          <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-bell"/></svg><div><div class="t">Pass Alerts</div><div class="d">Notify before the ISS becomes visible</div></div></div>
+            <div class="switch" id="swNotif"></div>
+          </div>
+          <div class="setting-row" style="display:block;">
+            <div class="setting-txt" style="margin-bottom:9px;"><svg class="icon"><use href="#icon-clock"/></svg><div><div class="t">Alert Timing</div><div class="d">Minutes before acquisition</div></div></div>
+            <div class="chip-row" id="alertChips">
+              <div class="chip" data-min="1">1 min</div>
+              <div class="chip" data-min="5">5 min</div>
+              <div class="chip" data-min="10">10 min</div>
+              <div class="chip" data-min="15">15 min</div>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-sun"/></svg><div><div class="t">Visible Passes Only</div><div class="d">Skip alerts for daylight/invisible passes</div></div></div>
+            <div class="switch" id="swVisOnly"></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-volume"/></svg><div><div class="t">Sound</div><div class="d">Play a tone on overhead alert</div></div></div>
+            <div class="switch" id="swSound"></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-vibrate"/></svg><div><div class="t">Vibration</div><div class="d">Haptic pulse on overhead alert</div></div></div>
+            <div class="switch" id="swVibrate"></div>
+          </div>
+          <div style="height:4px;"></div>
+          <button class="btn secondary" id="btnTestNotif"><svg class="icon"><use href="#icon-bell"/></svg>Send Test Notification (10s)</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-target"/></svg>Pass Criteria</span></div>
+          <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-target"/></svg><div><div class="t">Minimum Elevation</div><div class="d">Only list passes above this peak</div></div></div>
+            <select class="selstyle" id="selMinEl">
+              <option value="10">10°</option>
+              <option value="30">30°</option>
+              <option value="60">60°</option>
+              <option value="80">80°</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-label"><svg class="icon"><use href="#icon-monitor"/></svg>Display</span></div>
+          <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-orbit"/></svg><div><div class="t">Orbit Path</div><div class="d">Ground track, flow trail, and your visibility radius circle</div></div></div>
+            <div class="switch" id="swOrbitPath"></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-lock"/></svg><div><div class="t">Follow ISS</div><div class="d">Camera smoothly tracks the station</div></div></div>
+            <div class="switch" id="swFollowIss"></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-target"/></svg><div><div class="t">Real Altitude Scale</div><div class="d">Orbit ring at true 1:1 scale (~13x thinner — the ISS is genuinely that close to Earth)</div></div></div>
+            <div class="switch" id="swTrueScale"></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-monitor"/></svg><div><div class="t">Reduce Motion</div><div class="d">Slower camera drift, fewer particles</div></div></div>
+            <div class="switch" id="swReduceMotion"></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-txt"><svg class="icon"><use href="#icon-signal"/></svg><div><div class="t">Units</div><div class="d">Distance / altitude / speed</div></div></div>
+            <select class="selstyle" id="selUnits">
+              <option value="km">Metric (km)</option>
+              <option value="mi">Imperial (mi)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="footer-credit">ISS TRACKER · REAL-TIME ORBITAL MECHANICS</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab-indicator" id="tabIndicator"></div>
+    <div class="tab active" data-view="dashboard"><div class="ic"><svg class="icon"><use href="#icon-satellite"/></svg></div><div class="lb">Dashboard</div></div>
+    <div class="tab" data-view="sky"><div class="ic"><svg class="icon"><use href="#icon-compass"/></svg></div><div class="lb">Sky View</div></div>
+    <div class="tab" data-view="ar"><div class="ic"><svg class="icon"><use href="#icon-viewfinder"/></svg></div><div class="lb">AR Finder</div></div>
+    <div class="tab" data-view="settings"><div class="ic"><svg class="icon"><use href="#icon-settings"/></svg></div><div class="lb">Settings</div></div>
+  </div>
+</div>
+
+<div class="ar-overlay" id="arOverlay">
+  <video id="arVideo" autoplay playsinline muted></video>
+  <div class="ar-fallback-bg" id="arFallbackBg"></div>
+  <div class="ar-vignette"></div>
+
+  <div class="ar-gate" id="arGate">
+    <div class="ar-gate-icon"><svg class="icon"><use href="#icon-viewfinder"/></svg></div>
+    <div class="ar-gate-title">AR Finder</div>
+    <div class="ar-gate-text">Point your phone at the sky. Using your camera and motion sensors, this points you straight at the ISS in real time — like a compass for space.</div>
+    <button class="btn" id="btnArEnable">Enable AR Finder</button>
+    <div class="ar-gate-hint" id="arGateHint"></div>
+    <button class="btn secondary" id="btnArCancel">Not Now</button>
+  </div>
+
+  <div class="ar-hud" id="arHud" hidden>
+    <div class="ar-topbar">
+      <button class="ar-icon-btn" id="btnArExit" aria-label="Exit"><svg class="icon"><use href="#icon-x"/></svg></button>
+      <div class="ar-status-pill" id="arStatusPill">SEARCHING…</div>
+      <button class="ar-icon-btn" id="btnArCalibrate" aria-label="Calibrate"><svg class="icon"><use href="#icon-gauge"/></svg></button>
+    </div>
+
+    <div class="ar-reticle" id="arReticle">
+      <div class="ar-reticle-ring"></div>
+      <div class="ar-reticle-cross"></div>
+    </div>
+
+    <div class="ar-target-marker" id="arTargetMarker">
+      <div class="ar-target-glow"></div>
+      <div class="ar-target-dot"></div>
+      <div class="ar-target-label" id="arTargetLabel">ISS · 0°</div>
+    </div>
+
+    <div class="ar-edge-arrow" id="arEdgeArrow">
+      <svg class="icon ar-edge-svg"><use href="#icon-arrow-up"/></svg>
+      <div class="ar-edge-text" id="arEdgeText"></div>
+    </div>
+
+    <div class="ar-below-horizon" id="arBelowHorizon" hidden>
+      <svg class="icon"><use href="#icon-moon"/></svg>
+      <div class="t1">ISS is below the horizon</div>
+      <div class="t2" id="arNextPassText">—</div>
+    </div>
+
+    <div class="ar-readout" id="arReadout">
+      <div class="ar-readout-row"><span>Device heading</span><b id="arDeviceHeading">—</b></div>
+      <div class="ar-readout-row"><span>ISS azimuth</span><b id="arTargetAz">—</b></div>
+      <div class="ar-readout-row"><span>ISS elevation</span><b id="arTargetEl">—</b></div>
+      <div class="ar-readout-row"><span>Pointing error</span><b id="arAngularSep">—</b></div>
+    </div>
+  </div>
+
+  <div class="ar-calib" id="arCalib" hidden>
+    <div class="ar-gate-title">Calibrate Compass</div>
+    <div class="ar-gate-text">Phone compasses can drift. If the arrow is consistently off by a fixed amount, nudge it here — or face true north and tap Sync.</div>
+    <div class="ar-calib-row">
+      <button class="btn small secondary" id="btnArNudgeMinus">−5°</button>
+      <div class="ar-calib-val" id="arOffsetVal">0°</div>
+      <button class="btn small secondary" id="btnArNudgePlus">+5°</button>
+    </div>
+    <button class="btn" id="btnArSyncNorth">I'm Facing North — Sync</button>
+    <div class="setting-row" style="border:none; padding:10px 2px;">
+      <div class="setting-txt"><svg class="icon"><use href="#icon-compass"/></svg><div><div class="t">Reverse Turn Direction</div><div class="d">Try if the arrow swings the wrong way as you turn</div></div></div>
+      <div class="switch" id="btnArMirror"></div>
+    </div>
+    <button class="btn secondary" id="btnArCalibClose">Done</button>
+  </div>
+</div>
+
+<div class="iss-popup-backdrop" id="issPopupBackdrop"></div>
+<div class="iss-popup" id="issPopup">
+  <div class="card-head">
+    <span class="card-label"><svg class="icon"><use href="#icon-satellite"/></svg>Current Position</span>
+    <span class="card-badge" id="issPopupIllum">—</span>
+  </div>
+  <div class="stat-grid">
+    <div class="stat"><div class="k">Latitude</div><div class="v accent" id="issPopupLat">—</div></div>
+    <div class="stat"><div class="k">Longitude</div><div class="v accent" id="issPopupLon">—</div></div>
+    <div class="stat"><div class="k">Altitude</div><div class="v" id="issPopupAlt">—</div></div>
+    <div class="stat"><div class="k">Velocity</div><div class="v" id="issPopupVel">—</div></div>
+    <div class="stat"><div class="k">Distance From You</div><div class="v" id="issPopupDist">—</div></div>
+    <div class="stat"><div class="k">Orbital Period</div><div class="v" id="issPopupPeriod">—</div></div>
+  </div>
+  <button class="btn secondary" id="btnIssPopupClose" style="margin-top:14px;">Close</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* =========================================================================
+   STATE + PERSISTENCE
+   ========================================================================= */
+const DEFAULTS = {
+  location: null,               // {lat, lon}
+  notifEnabled: false,
+  alertMinutes: [5, 10],
+  visibleOnly: true,
+  sound: true,
+  vibrate: true,
+  minElevation: 30,
+  reduceMotion: false,
+  units: 'km',
+  showOrbitPath: true,
+  followIss: false,
+  trueScaleAltitude: false,
+  arHeadingOffset: 0,
+  arMirrorHeading: false,
+  activeSatLayers: []
+};
+let settings = Object.assign({}, DEFAULTS);
+try{
+  const saved = JSON.parse(localStorage.getItem('issTrackerSettings') || 'null');
+  if (saved) settings = Object.assign({}, DEFAULTS, saved);
+}catch(e){}
+function saveSettings(){
+  try{ localStorage.setItem('issTrackerSettings', JSON.stringify(settings)); }catch(e){}
+}
+
+const state = {
+  satrec: null,
+  tleEpochText: '',
+  lastApiSync: 0,
+  dataStatus: 'syncing', // syncing | live | offline
+  currentLL: {lat:0, lon:0, alt:408, velKmh:27600},
+  sunEci: {x:1,y:0,z:0},
+  subsolar: {lat:0, lon:0},
+  passes: [],
+  notifiedKeys: new Set(),
+  lastOverheadState: false
+};
+
+/* =========================================================================
+   TOAST
+   ========================================================================= */
+let toastTimer = null;
+function toast(msg, ms){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> el.classList.remove('show'), ms || 2600);
+}
+
+/* =========================================================================
+   ASTRONOMY HELPERS
+   ========================================================================= */
+const DEG = 180/Math.PI, RAD = Math.PI/180;
+const EARTH_R_KM = 6371;
+
+function daysSinceJ2000(date){
+  return (date.getTime() - Date.UTC(2000,0,1,12,0,0)) / 86400000;
+}
+// Low-precision solar position (equatorial / ECI-equivalent unit vector)
+function sunPositionEci(date){
+  const n = daysSinceJ2000(date);
+  const L = (280.460 + 0.9856474*n) % 360;
+  const g = ((357.528 + 0.9856003*n) % 360) * RAD;
+  let lambda = (L + 1.915*Math.sin(g) + 0.020*Math.sin(2*g)) * RAD;
+  const eps = (23.439 - 0.0000004*n) * RAD;
+  return {
+    x: Math.cos(lambda),
+    y: Math.cos(eps)*Math.sin(lambda),
+    z: Math.sin(eps)*Math.sin(lambda)
+  };
+}
+function gmstDegrees(date){
+  // Uses satellite.js's precise gstime (radians) if available, else fallback.
+  if (window.satellite && satellite.gstime){
+    return satellite.gstime(date) * DEG;
+  }
+  const n = daysSinceJ2000(date);
+  return (280.46061837 + 360.98564736629*n) % 360;
+}
+function subsolarPoint(date){
+  const sun = sunPositionEci(date);
+  const ra = Math.atan2(sun.y, sun.x) * DEG;
+  const dec = Math.asin(Math.max(-1,Math.min(1,sun.z))) * DEG;
+  let lon = ra - gmstDegrees(date);
+  lon = ((lon + 180) % 360 + 360) % 360 - 180;
+  return {lat: dec, lon: lon};
+}
+function sunElevationAt(lat, lon, subsolar){
+  const la = lat*RAD, ss = subsolar.lat*RAD;
+  const dLon = (lon - subsolar.lon) * RAD;
+  const sinEl = Math.sin(la)*Math.sin(ss) + Math.cos(la)*Math.cos(ss)*Math.cos(dLon);
+  return Math.asin(Math.max(-1,Math.min(1,sinEl))) * DEG;
+}
+function isSatEclipsed(posEciKm, sunUnit){
+  const d = Math.sqrt(posEciKm.x*posEciKm.x + posEciKm.y*posEciKm.y + posEciKm.z*posEciKm.z);
+  const dot = (posEciKm.x*sunUnit.x + posEciKm.y*sunUnit.y + posEciKm.z*sunUnit.z) / d;
+  if (dot > 0) return false; // sun-side, definitely lit
+  const angle = Math.acos(Math.max(-1,Math.min(1,dot)));
+  const perp = d * Math.sin(angle);
+  return perp < EARTH_R_KM;
+}
+function haversineKm(lat1,lon1,lat2,lon2){
+  const R=EARTH_R_KM, p1=lat1*RAD, p2=lat2*RAD, dp=(lat2-lat1)*RAD, dl=(lon2-lon1)*RAD;
+  const a = Math.sin(dp/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(a)));
+}
+function slantRangeKm(observer, issLat, issLon, issAltKm){
+  const surface = haversineKm(observer.lat, observer.lon, issLat, issLon);
+  // approximate straight-line distance combining ground arc and altitude via chord geometry
+  const theta = surface / EARTH_R_KM;
+  const r1 = EARTH_R_KM, r2 = EARTH_R_KM + issAltKm;
+  return Math.sqrt(r1*r1 + r2*r2 - 2*r1*r2*Math.cos(theta));
+}
+function fmtHMS(totalSec){
+  totalSec = Math.max(0, Math.round(totalSec));
+  const h = Math.floor(totalSec/3600), m = Math.floor((totalSec%3600)/60), s = totalSec%60;
+  return (h>0? String(h).padStart(2,'0')+':':'') + String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+function compassDir(az){
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(az/22.5) % 16];
+}
+
+/* =========================================================================
+   TLE / SATELLITE DATA
+   ========================================================================= */
+const TLE_URL = 'https://api.wheretheiss.at/v1/satellites/25544/tles';
+const POS_URL = 'https://api.wheretheiss.at/v1/satellites/25544';
+const FALLBACK_POS_URL = 'https://api.open-notify.org/iss-now.json';
+const TLE_CACHE_KEY = 'issTrackerTLECache';
+const TLE_MAX_AGE_MS = 6*3600*1000;
+
+function setStatus(kind, text){
+  state.dataStatus = kind;
+  const dot = document.getElementById('statusDot');
+  const t = document.getElementById('statusText');
+  dot.className = 'status-dot ' + kind;
+  t.textContent = text;
+}
+
+async function fetchTLE(){
+  try{
+    const cached = JSON.parse(localStorage.getItem(TLE_CACHE_KEY) || 'null');
+    if (cached && (Date.now() - cached.t) < TLE_MAX_AGE_MS){
+      applyTLE(cached.line1, cached.line2, cached.t);
+      fetchTLEFresh(); // refresh in background but don't block
+      return true;
+    }
+  }catch(e){}
+  return await fetchTLEFresh();
+}
+// Every network call gets a hard timeout — a slow/absent connection must
+// never leave the app stuck behind the loading veil.
+function fetchWithTimeout(url, ms){
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), ms);
+  return fetch(url, {cache:'no-store', signal:ctrl.signal}).finally(()=>clearTimeout(timer));
+}
+
+async function fetchTLEFresh(){
+  try{
+    const res = await fetchWithTimeout(TLE_URL, 8000);
+    if (!res.ok) throw new Error('tle http '+res.status);
+    const data = await res.json();
+    applyTLE(data.line1, data.line2, Date.now());
+    localStorage.setItem(TLE_CACHE_KEY, JSON.stringify({line1:data.line1, line2:data.line2, t:Date.now()}));
+    return true;
+  }catch(e){
+    console.warn('TLE fetch failed', e);
+    return false;
+  }
+}
+function applyTLE(line1, line2, fetchedAt){
+  try{
+    state.satrec = satellite.twoline2satrec(line1, line2);
+    state.tleEpochText = new Date(fetchedAt).toUTCString();
+    recomputePasses();
+  }catch(e){ console.warn('bad TLE', e); }
+}
+
+async function pollRealtimePosition(){
+  try{
+    const res = await fetchWithTimeout(POS_URL, 7000);
+    if (!res.ok) throw new Error('http '+res.status);
+    const d = await res.json();
+    state.lastApiSync = Date.now();
+    setStatus('live', 'LIVE');
+    // Sync check only — real-time smooth position comes from SGP4 propagation each frame.
+    if (!state.satrec){
+      state.currentLL.lat = d.latitude;
+      state.currentLL.lon = d.longitude;
+      state.currentLL.alt = d.altitude;
+      state.currentLL.velKmh = d.velocity;
+    }
+  }catch(e){
+    try{
+      const res2 = await fetchWithTimeout(FALLBACK_POS_URL, 7000);
+      const d2 = await res2.json();
+      state.lastApiSync = Date.now();
+      setStatus('live', 'LIVE (fallback)');
+      if (!state.satrec){
+        state.currentLL.lat = parseFloat(d2.iss_position.latitude);
+        state.currentLL.lon = parseFloat(d2.iss_position.longitude);
+      }
+    }catch(e2){
+      if (Date.now() - state.lastApiSync > 60000){
+        setStatus('offline', 'OFFLINE');
+      }
+    }
+  }
+}
+
+/* =========================================================================
+   THREE.JS SCENE
+   ========================================================================= */
+const EARTH_R = 2.0;
+// Real LEO altitude (~408km) is only ~6% of Earth's radius — visually
+// exaggerate it so the ISS reads as clearly above the surface rather than
+// skimming/z-fighting against it.
+const ALT_EXAG = 2.4;
+function issSceneRadius(altKm){
+  // This exaggeration is purely a rendering choice for the 3D orbit ring —
+  // it never touches the real altitude number shown in the dashboard, nor
+  // any pass-prediction/look-angle math (those all use satellite.js's raw
+  // SGP4 propagation + real geodetic conversion, untouched by this).
+  // The ground track itself is also drawn at true surface level (see
+  // trackPastLine/trackFutureLine), not exaggerated.
+  const exag = settings.trueScaleAltitude ? 1 : ALT_EXAG;
+  return EARTH_R + (altKm/6371)*EARTH_R*exag;
+}
+let renderer, scene, camera, earthMesh, cloudsMesh, atmoMesh, issGroup, issModel, issDot, starPoints;
+let orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine, flowDots, futurePathPoints3D, passHighlightLine;
+let locationMarker, visibilityCircleLine, sightLine, issHitSphere;
+let issPopupOpen = false;
+let sunLight, ambLight;
+const clock = new THREE.Clock();
+
+function latLonToVec3(lat, lon, radius){
+  const phi = (90 - lat) * RAD;
+  const theta = (lon + 180) * RAD;
+  return new THREE.Vector3(
+    -radius * Math.sin(phi) * Math.cos(theta),
+     radius * Math.cos(phi),
+     radius * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
+/* ---- simple value noise / fbm for procedural planet texture ---- */
+function makeHash(seed){
+  let s = seed >>> 0;
+  return function(x,y){
+    let h = (x*374761393 + y*668265263 + s*1274126177) | 0;
+    h = (h ^ (h >>> 13)) * 1274126177;
+    h = h ^ (h >>> 16);
+    return ((h >>> 0) / 4294967295);
+  };
+}
+function valueNoise2D(hash){
+  return function(x,y){
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const xf = x - xi, yf = y - yi;
+    const u = xf*xf*(3-2*xf), v = yf*yf*(3-2*yf);
+    const a = hash(xi,yi), b = hash(xi+1,yi), c = hash(xi,yi+1), d = hash(xi+1,yi+1);
+    return (a*(1-u)+b*u)*(1-v) + (c*(1-u)+d*u)*v;
+  };
+}
+function fbm(noise, x, y, oct){
+  let val=0, amp=0.5, freq=1, sum=0;
+  for(let i=0;i<oct;i++){
+    val += noise(x*freq, y*freq)*amp;
+    sum += amp;
+    amp *= 0.5; freq *= 2.15;
+  }
+  return val/sum;
+}
+
+/* ---- real Earth imagery (NASA-derived, bundled with three.js examples) ---- */
+const TEXTURE_BASE = 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/';
+function loadTextureAsync(loader, url, timeoutMs){
+  return new Promise((resolve, reject)=>{
+    const timer = setTimeout(()=>reject(new Error('texture load timed out: '+url)), timeoutMs || 9000);
+    loader.load(url, tex=>{ clearTimeout(timer); resolve(tex); }, undefined, err=>{ clearTimeout(timer); reject(err); });
+  });
+}
+async function loadRealPlanetTextures(){
+  const loader = new THREE.TextureLoader();
+  const [dayTex, nightTex, cloudTex, specTex] = await Promise.all([
+    loadTextureAsync(loader, TEXTURE_BASE+'earth_atmos_2048.jpg'),
+    loadTextureAsync(loader, TEXTURE_BASE+'earth_lights_2048.png'),
+    loadTextureAsync(loader, TEXTURE_BASE+'earth_clouds_1024.png'),
+    loadTextureAsync(loader, TEXTURE_BASE+'earth_specular_2048.jpg')
+  ]);
+  [dayTex, nightTex, cloudTex, specTex].forEach(t=>{ t.wrapS = THREE.RepeatWrapping; t.anisotropy = 4; });
+  return {dayTex, nightTex, cloudTex, specTex, isFallback:false};
+}
+async function loadPlanetTextures(){
+  try{
+    return await loadRealPlanetTextures();
+  }catch(e){
+    console.warn('Real Earth textures unavailable, using procedural fallback', e);
+    const t = generatePlanetTextures();
+    t.specTex = null;
+    t.isFallback = true;
+    return t;
+  }
+}
+
+function generatePlanetTextures(){
+  const W = 1024, H = 512;
+  const hash = makeHash(917);
+  const noise = valueNoise2D(hash);
+  const hash2 = makeHash(4021);
+  const noise2 = valueNoise2D(hash2);
+
+  const dayCanvas = document.createElement('canvas'); dayCanvas.width=W; dayCanvas.height=H;
+  const dctx = dayCanvas.getContext('2d');
+  const nightCanvas = document.createElement('canvas'); nightCanvas.width=W; nightCanvas.height=H;
+  const nctx = nightCanvas.getContext('2d');
+  const cloudCanvas = document.createElement('canvas'); cloudCanvas.width=512; cloudCanvas.height=256;
+  const cctx = cloudCanvas.getContext('2d');
+
+  const dayImg = dctx.createImageData(W,H);
+  const nightImg = nctx.createImageData(W,H);
+
+  const landHi=[46,125,72], landLo=[92,150,64], landMt=[110,102,86], sandC=[168,150,98];
+  const oceanDeep=[6,24,58], oceanMid=[10,52,102], oceanShallow=[20,92,148];
+
+  for(let y=0;y<H;y++){
+    const lat = 90 - (y/H)*180;
+    for(let x=0;x<W;x++){
+      const lon = (x/W)*360 - 180;
+      const nx = x/W*4.2, ny = y/H*4.2;
+      let elevation = fbm(noise, nx, ny, 5);
+      elevation += fbm(noise2, nx*2.3+50, ny*2.3+50, 3) * 0.25;
+      const isLand = elevation > 0.5;
+      const idx = (y*W+x)*4;
+      let r,g,b;
+      if (isLand){
+        const t = Math.min(1,(elevation-0.5)/0.35);
+        if (t > 0.82){ r=235;g=238;b=242; } // snow peaks
+        else if (t > 0.55){ [r,g,b]=landMt; }
+        else if (t < 0.12){ [r,g,b]=sandC; }
+        else {
+          const mix = t;
+          r = landHi[0]*mix + landLo[0]*(1-mix);
+          g = landHi[1]*mix + landLo[1]*(1-mix);
+          b = landHi[2]*mix + landLo[2]*(1-mix);
+        }
+      } else {
+        const depth = Math.min(1, (0.5-elevation)/0.5);
+        if (depth < 0.08){ [r,g,b]=oceanShallow; }
+        else if (depth < 0.4){
+          const m = depth/0.4;
+          r = oceanShallow[0]*(1-m)+oceanMid[0]*m;
+          g = oceanShallow[1]*(1-m)+oceanMid[1]*m;
+          b = oceanShallow[2]*(1-m)+oceanMid[2]*m;
+        } else {
+          const m = Math.min(1,(depth-0.4)/0.6);
+          r = oceanMid[0]*(1-m)+oceanDeep[0]*m;
+          g = oceanMid[1]*(1-m)+oceanDeep[1]*m;
+          b = oceanMid[2]*(1-m)+oceanDeep[2]*m;
+        }
+      }
+      // polar ice caps
+      const absLat = Math.abs(lat);
+      if (absLat > 68){
+        const icy = Math.min(1,(absLat-68)/14) * (0.55 + 0.45*Math.max(0,noise(nx*3,ny*3)));
+        r = r*(1-icy) + 240*icy;
+        g = g*(1-icy) + 248*icy;
+        b = b*(1-icy) + 252*icy;
+      }
+      dayImg.data[idx]=r; dayImg.data[idx+1]=g; dayImg.data[idx+2]=b; dayImg.data[idx+3]=255;
+
+      // night lights: small bright clusters over mid-elevation land, away from poles
+      let city = 0;
+      if (isLand && absLat < 66){
+        const cn = fbm(noise2, nx*6+300, ny*6+300, 2);
+        const speck = hash((x*3)|0, (y*3)|0);
+        if (cn > 0.56 && speck > 0.965) city = 1;
+        else if (cn > 0.5 && speck > 0.992) city = 0.6;
+      }
+      const glow = city;
+      nightImg.data[idx]   = 255*glow;
+      nightImg.data[idx+1] = 205*glow;
+      nightImg.data[idx+2] = 120*glow;
+      nightImg.data[idx+3] = 255*glow;
+    }
+  }
+  dctx.putImageData(dayImg,0,0);
+  nctx.putImageData(nightImg,0,0);
+
+  // clouds
+  const cImg = cctx.createImageData(512,256);
+  const hash3 = makeHash(7331);
+  const noise3 = valueNoise2D(hash3);
+  for(let y=0;y<256;y++){
+    for(let x=0;x<512;x++){
+      const nx = x/512*6, ny = y/256*6;
+      let v = fbm(noise3, nx, ny, 5);
+      v = Math.max(0, (v-0.52))*2.4;
+      v = Math.min(1, v);
+      const idx=(y*512+x)*4;
+      cImg.data[idx]=255; cImg.data[idx+1]=255; cImg.data[idx+2]=255; cImg.data[idx+3]=v*220;
+    }
+  }
+  cctx.putImageData(cImg,0,0);
+
+  const dayTex = new THREE.CanvasTexture(dayCanvas);
+  dayTex.wrapS = THREE.RepeatWrapping;
+  const nightTex = new THREE.CanvasTexture(nightCanvas);
+  nightTex.wrapS = THREE.RepeatWrapping;
+  const cloudTex = new THREE.CanvasTexture(cloudCanvas);
+  cloudTex.wrapS = THREE.RepeatWrapping;
+  return {dayTex, nightTex, cloudTex};
+}
+
+function buildStarfield(){
+  const count = settings.reduceMotion ? 2200 : 5200;
+  const positions = new Float32Array(count*3);
+  const colors = new Float32Array(count*3);
+  for(let i=0;i<count;i++){
+    const r = 60 + Math.random()*40;
+    const theta = Math.random()*Math.PI*2;
+    const phi = Math.acos(2*Math.random()-1);
+    positions[i*3]   = r*Math.sin(phi)*Math.cos(theta);
+    positions[i*3+1] = r*Math.cos(phi);
+    positions[i*3+2] = r*Math.sin(phi)*Math.sin(theta);
+    const tint = 0.75 + Math.random()*0.25;
+    const warm = Math.random() < 0.15;
+    colors[i*3] = warm? tint : tint*0.85;
+    colors[i*3+1] = tint*0.92;
+    colors[i*3+2] = warm? tint*0.8 : tint;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+  const mat = new THREE.PointsMaterial({size:0.16, vertexColors:true, transparent:true, opacity:0.9, sizeAttenuation:true});
+  return new THREE.Points(geo, mat);
+}
+
+const EARTH_VERT = `
+varying vec3 vNormal;
+varying vec2 vUv;
+varying vec3 vViewDir;
+void main(){
+  vNormal = normalize(normalMatrix * normal);
+  vUv = uv;
+  vec4 mvPosition = modelViewMatrix * vec4(position,1.0);
+  vViewDir = normalize(-mvPosition.xyz);
+  gl_Position = projectionMatrix * mvPosition;
+}`;
+const EARTH_FRAG = `
+uniform sampler2D dayTex;
+uniform sampler2D nightTex;
+uniform sampler2D specTex;
+uniform bool hasSpec;
+uniform vec3 sunDir;
+varying vec3 vNormal;
+varying vec2 vUv;
+varying vec3 vViewDir;
+void main(){
+  vec3 N = normalize(vNormal);
+  vec3 L = normalize(sunDir);
+  float lambert = dot(N, L);
+  float dayMix = smoothstep(-0.18, 0.18, lambert);
+  vec3 dayColor = texture2D(dayTex, vUv).rgb;
+  vec3 nightColor = texture2D(nightTex, vUv).rgb;
+  float shade = max(lambert, 0.0) * 0.85 + 0.15;
+  vec3 color = mix(nightColor*1.1, dayColor*shade, dayMix);
+  if (hasSpec){
+    float oceanMask = texture2D(specTex, vUv).r;
+    vec3 R = reflect(-L, N);
+    float spec = pow(max(dot(R, normalize(vViewDir)), 0.0), 26.0) * oceanMask * dayMix;
+    color += vec3(0.75,0.88,1.0) * spec * 0.85;
+  }
+  float rim = pow(1.0 - max(dot(N, vec3(0.0,0.0,1.0)),0.0), 2.0);
+  color += dayColor * rim * 0.03 * dayMix;
+  gl_FragColor = vec4(color, 1.0);
+}`;
+const ATMO_VERT = `
+varying vec3 vNormal;
+void main(){
+  vNormal = normalize(normalMatrix * normal);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+}`;
+const ATMO_FRAG = `
+varying vec3 vNormal;
+uniform vec3 sunDir;
+void main(){
+  float intensity = pow(0.68 - dot(vNormal, vec3(0.0,0.0,1.0)), 3.2);
+  float sunFactor = clamp(dot(normalize(vNormal), normalize(sunDir))*0.5+0.6, 0.15, 1.0);
+  vec3 glow = mix(vec3(0.15,0.35,0.7), vec3(0.35,0.75,1.0), sunFactor);
+  gl_FragColor = vec4(glow, intensity*1.15);
+}`;
+
+async function initScene(){
+  const container = document.getElementById('gl');
+  renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance', logarithmicDepthBuffer:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, settings.reduceMotion?1.3:2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  container.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x03050a);
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 200);
+
+  starPoints = buildStarfield();
+  scene.add(starPoints);
+
+  ambLight = new THREE.AmbientLight(0x223355, 0.55);
+  scene.add(ambLight);
+  sunLight = new THREE.DirectionalLight(0xffffff, 1.1);
+  scene.add(sunLight);
+
+  const {dayTex, nightTex, cloudTex, specTex} = await loadPlanetTextures();
+
+  const dummySpec = new THREE.DataTexture(new Uint8Array([0,0,0,255]), 1, 1);
+  dummySpec.needsUpdate = true;
+
+  const earthGeo = new THREE.SphereGeometry(EARTH_R, 96, 96);
+  const earthMat = new THREE.ShaderMaterial({
+    uniforms:{
+      dayTex:{value:dayTex}, nightTex:{value:nightTex},
+      specTex:{value:specTex || dummySpec}, hasSpec:{value:!!specTex},
+      sunDir:{value:new THREE.Vector3(1,0,0)}
+    },
+    vertexShader:EARTH_VERT, fragmentShader:EARTH_FRAG,
+    transparent:false // the globe itself is always fully solid/opaque — only the
+                       // UI glass panels sitting on top of it are translucent
+  });
+  earthMesh = new THREE.Mesh(earthGeo, earthMat);
+  scene.add(earthMesh);
+
+  const cloudGeo = new THREE.SphereGeometry(EARTH_R*1.012, 64, 64);
+  const cloudMat = new THREE.MeshLambertMaterial({map:cloudTex, transparent:true, opacity:0.62, depthWrite:false});
+  cloudsMesh = new THREE.Mesh(cloudGeo, cloudMat);
+  scene.add(cloudsMesh);
+
+  const atmoGeo = new THREE.SphereGeometry(EARTH_R*1.15, 64, 64);
+  const atmoMat = new THREE.ShaderMaterial({
+    uniforms:{ sunDir:{value:new THREE.Vector3(1,0,0)} },
+    vertexShader:ATMO_VERT, fragmentShader:ATMO_FRAG,
+    side:THREE.BackSide, blending:THREE.AdditiveBlending, transparent:true, depthWrite:false
+  });
+  atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
+  scene.add(atmoMesh);
+
+  issGroup = new THREE.Group();
+  issModel = buildIssModel();
+  issGroup.add(issModel);
+  const glowSprite = makeGlowSprite();
+  glowSprite.scale.set(0.085,0.085,1);
+  issGroup.add(glowSprite);
+  // Invisible, generously-sized sphere just for tap/raycast hit-testing —
+  // the real model's thin truss geometry would be nearly impossible to
+  // tap precisely on a phone screen.
+  issHitSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(0.17, 8, 8),
+    new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false})
+  );
+  issGroup.add(issHitSphere);
+  scene.add(issGroup);
+  issDot = issGroup;
+
+  orbitPastLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0x4fd8ff, transparent:true, opacity:0.16}));
+  orbitFutureLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0x7fe8ff, transparent:true, opacity:0.75}));
+  trackPastLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0x4fd8ff, transparent:true, opacity:0.22}));
+  trackFutureLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0x9ef0ff, transparent:true, opacity:0.9}));
+  [orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine].forEach(l=>scene.add(l));
+
+  // Highlights the ground track of whichever specific pass is currently
+  // shown in the "Next Visible Pass" card — even if it's hours away and
+  // well outside the short near-term path above, so it's obvious *why*
+  // that pass happens (this is the arc Earth's rotation carries under
+  // the station between now and then).
+  passHighlightLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0x39ffa0, transparent:true, opacity:0.95}));
+  passHighlightLine.visible = false;
+  scene.add(passHighlightLine);
+
+  flowDots = [];
+  for(let i=0;i<3;i++){
+    const dot = makeGlowSprite();
+    dot.scale.set(0.045,0.045,1);
+    dot.visible = false;
+    scene.add(dot);
+    flowDots.push(dot);
+  }
+
+  // "You are here" ground marker + the visibility radius within which the
+  // ISS clears your minimum-elevation setting (the real satellite-coverage
+  // geometry, not a decorative circle — see computeVisibilityRadiusDeg).
+  locationMarker = new THREE.Group();
+  const markerGold = new THREE.MeshBasicMaterial({color:0xffc857});
+  const markerPin = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.05, 12), markerGold);
+  markerPin.position.y = 0.025;
+  locationMarker.add(markerPin);
+  const markerBase = new THREE.Mesh(new THREE.RingGeometry(0.018, 0.026, 24), new THREE.MeshBasicMaterial({color:0xffc857, transparent:true, opacity:0.8, side:THREE.DoubleSide}));
+  markerBase.rotation.x = -Math.PI/2;
+  markerBase.position.y = 0.001;
+  locationMarker.add(markerBase);
+  const markerGlow = makeGlowSprite('rgba(255,225,150,0.95)', 'rgba(255,200,87,0.5)');
+  markerGlow.scale.set(0.1,0.1,1);
+  locationMarker.add(markerGlow);
+  locationMarker.userData.glow = markerGlow;
+  locationMarker.visible = false;
+  scene.add(locationMarker);
+
+  visibilityCircleLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0xffc857, transparent:true, opacity:0.4}));
+  visibilityCircleLine.visible = false;
+  scene.add(visibilityCircleLine);
+
+  sightLine = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:0.6}));
+  sightLine.visible = false;
+  scene.add(sightLine);
+
+  camera.position.set(0,1.1,5.6);
+  camera.lookAt(0,0,0);
+
+  window.addEventListener('resize', onResize);
+}
+
+/* ---- 3D ISS model (stylized, built from primitives — long truss + paired solar arrays) ----
+   Local axes: X = truss/velocity axis, Y = radial "up" (away from Earth),
+   Z = side. Every part is built with y >= 0 so nothing can dip below the
+   planet's surface regardless of how it's rotated around the radial axis. */
+function buildSolarPanelTexture(){
+  const c = document.createElement('canvas'); c.width=32; c.height=128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0,0,32,0);
+  g.addColorStop(0,'#0c1c38'); g.addColorStop(0.5,'#122a52'); g.addColorStop(1,'#0c1c38');
+  ctx.fillStyle = g; ctx.fillRect(0,0,32,128);
+  ctx.strokeStyle = 'rgba(150,195,255,0.55)';
+  ctx.lineWidth = 1;
+  for(let y=5;y<128;y+=8){ ctx.beginPath(); ctx.moveTo(1,y); ctx.lineTo(31,y); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(16,1); ctx.lineTo(16,127); ctx.stroke();
+  ctx.strokeStyle = 'rgba(200,225,255,0.85)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1,1,30,126);
+  return new THREE.CanvasTexture(c);
+}
+
+function buildIssModel(){
+  const group = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({color:0xeef1f5, metalness:0.75, roughness:0.35});
+  const metalDark = new THREE.MeshStandardMaterial({color:0xaeb8c4, metalness:0.7, roughness:0.45});
+  const moduleMat = new THREE.MeshStandardMaterial({color:0xf2ecd9, metalness:0.25, roughness:0.55});
+  const cupolaMat = new THREE.MeshStandardMaterial({color:0x7fc8ff, metalness:0.1, roughness:0.1, emissive:0x1a4a66, emissiveIntensity:0.4});
+  const panelTex = buildSolarPanelTexture();
+  const panelMat = new THREE.MeshStandardMaterial({map:panelTex, color:0xbcd6f5, metalness:0.55, roughness:0.3, side:THREE.DoubleSide});
+
+  // scale: whole model kept well inside the exaggerated altitude gap so it
+  // never intersects the globe, at any zoom or rotation.
+  const S = 0.62;
+
+  // main integrated truss
+  const truss = new THREE.Mesh(new THREE.BoxGeometry(0.30*S, 0.009*S, 0.009*S), metal);
+  truss.position.y = 0.006*S;
+  group.add(truss);
+  [-1,1].forEach(i=>{
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.014*S,0.016*S,0.016*S), metalDark);
+    cap.position.set(i*0.15*S, 0.006*S, 0);
+    group.add(cap);
+  });
+
+  // pressurized module cluster near the center
+  [
+    [-0.035, 0.024, 0.085, 0.012],
+    [ 0.02,  0.030, 0.075, 0.011],
+    [-0.01,  0.010, 0.065, 0.010],
+    [ 0.055, 0.020, 0.050, 0.009]
+  ].forEach(([x,z,len,rad])=>{
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(rad*S,rad*S,len*S,12), moduleMat);
+    m.rotation.z = Math.PI/2;
+    m.position.set(x*S, 0.012*S, z*S);
+    group.add(m);
+  });
+
+  // cupola (small observation dome) — a nice recognizable detail
+  const cupola = new THREE.Mesh(new THREE.SphereGeometry(0.011*S, 12, 8, 0, Math.PI*2, 0, Math.PI/2), cupolaMat);
+  cupola.position.set(-0.05*S, 0.004*S, -0.028*S);
+  cupola.rotation.x = Math.PI;
+  group.add(cupola);
+
+  // radiator panels
+  [[-0.065,0.028],[0.095,0.028]].forEach(([x,z])=>{
+    const r = new THREE.Mesh(new THREE.BoxGeometry(0.045*S,0.0012*S,0.035*S), metalDark);
+    r.position.set(x*S, 0.012*S, z*S);
+    group.add(r);
+  });
+
+  // paired solar array wings at two truss stations (4 stations x 2 sides = 8 wings)
+  [-0.145, -0.095, 0.10, 0.15].forEach((x)=>{
+    [1,-1].forEach((side)=>{
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.0022*S,0.0022*S,0.022*S,6), metal);
+      mast.rotation.x = Math.PI/2;
+      mast.position.set(x*S, 0.006*S, side*0.042*S);
+      group.add(mast);
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.032*S,0.13*S), panelMat);
+      panel.position.set(x*S, 0.006*S, side*0.11*S);
+      panel.rotation.x = Math.PI/2;
+      group.add(panel);
+    });
+  });
+
+  // blinking beacon light — tiny emissive point that pulses via userData, driven in animate()
+  const beaconMat = new THREE.MeshBasicMaterial({color:0xff4444});
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.006*S,6,6), beaconMat);
+  beacon.position.set(0.15*S, 0.014*S, 0);
+  group.add(beacon);
+  group.userData.beacon = beaconMat;
+
+  return group;
+}
+
+function orientIssModel(target, posVec, tangentVec){
+  const up = posVec.clone().normalize();
+  let fwd = tangentVec.clone();
+  fwd.sub(up.clone().multiplyScalar(fwd.dot(up)));
+  if (fwd.lengthSq() < 1e-9){
+    // Degenerate tangent (e.g. before real data arrives) — fall back to a
+    // safe eastward direction so the model still orients without risking
+    // a radial (Y) component that could dip below the surface.
+    fwd = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), up);
+    if (fwd.lengthSq() < 1e-9) fwd.set(1,0,0);
+  }
+  fwd.normalize();
+  const side = new THREE.Vector3().crossVectors(up, fwd).normalize();
+  const m = new THREE.Matrix4().makeBasis(fwd, up, side);
+  target.quaternion.setFromRotationMatrix(m);
+}
+
+function makeGlowSprite(core, mid){
+  const size=128;
+  const c = document.createElement('canvas'); c.width=size; c.height=size;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(size/2,size/2,0,size/2,size/2,size/2);
+  g.addColorStop(0, core || 'rgba(120,220,255,0.9)');
+  g.addColorStop(0.4, mid || 'rgba(79,216,255,0.45)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,size,size);
+  const tex = new THREE.CanvasTexture(c);
+  const mat = new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending});
+  return new THREE.Sprite(mat);
+}
+
+function onResize(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/* ---- camera orbit controls (touch + mouse) ---- */
+const camState = {theta:0.7, phi:1.15, radius:5.6, minR:3.0, maxR:14, targetTheta:0.7, targetPhi:1.15, targetRadius:5.6};
+let pointers = new Map();
+let lastPinchDist = null;
+let dragLast = null;
+let autoRotate = true;
+let autoRotateTimer = null;
+let tapCandidate = null, tapMoved = false;
+
+function attachControls(){
+  const el = document.getElementById('gl');
+  el.addEventListener('pointerdown', (e)=>{
+    el.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, {x:e.clientX,y:e.clientY});
+    autoRotate = false;
+    clearTimeout(autoRotateTimer);
+    if (pointers.size===1){
+      dragLast = {x:e.clientX,y:e.clientY};
+      tapCandidate = {x:e.clientX,y:e.clientY,pointerId:e.pointerId};
+      tapMoved = false;
+    } else {
+      tapCandidate = null; // more than one finger down — this is a pinch, not a tap
+    }
+    if (pointers.size===2) lastPinchDist = pinchDistance();
+  });
+  el.addEventListener('pointermove', (e)=>{
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, {x:e.clientX,y:e.clientY});
+    if (tapCandidate && e.pointerId===tapCandidate.pointerId){
+      if (Math.hypot(e.clientX-tapCandidate.x, e.clientY-tapCandidate.y) > 8) tapMoved = true;
+    }
+    if (pointers.size===1 && dragLast){
+      const dx = e.clientX-dragLast.x, dy = e.clientY-dragLast.y;
+      camState.targetTheta -= dx*0.0055;
+      camState.targetPhi -= dy*0.0045;
+      camState.targetPhi = Math.max(0.25, Math.min(Math.PI-0.25, camState.targetPhi));
+      dragLast = {x:e.clientX,y:e.clientY};
+    } else if (pointers.size===2){
+      const d = pinchDistance();
+      if (lastPinchDist){
+        const delta = d - lastPinchDist;
+        camState.targetRadius -= delta*0.012;
+        camState.targetRadius = Math.max(camState.minR, Math.min(camState.maxR, camState.targetRadius));
+      }
+      lastPinchDist = d;
+    }
+  });
+  function endPointer(e){
+    pointers.delete(e.pointerId);
+    if (pointers.size<2) lastPinchDist=null;
+    if (pointers.size===1){
+      // Lifting one finger out of a pinch leaves exactly one pointer still
+      // down. dragLast was never touched during the 2-finger phase, so
+      // without this it's stale (or null) and the very next move computes
+      // a huge delta from that old reference — the camera visibly jumps
+      // toward whichever finger is still touching. Re-anchor to where
+      // that finger actually is right now instead.
+      dragLast = Array.from(pointers.values())[0];
+    }
+    if (pointers.size===0){
+      dragLast=null;
+      clearTimeout(autoRotateTimer);
+      autoRotateTimer = setTimeout(()=>{ autoRotate=true; }, 4000);
+    }
+    if (e.type==='pointerup' && tapCandidate && e.pointerId===tapCandidate.pointerId && !tapMoved){
+      handleSceneTap(tapCandidate.x, tapCandidate.y);
+    }
+    if (pointers.size===0) tapCandidate = null;
+  }
+  el.addEventListener('pointerup', endPointer);
+  el.addEventListener('pointercancel', endPointer);
+  el.addEventListener('wheel', (e)=>{
+    e.preventDefault();
+    autoRotate=false; clearTimeout(autoRotateTimer);
+    camState.targetRadius += e.deltaY*0.0025;
+    camState.targetRadius = Math.max(camState.minR, Math.min(camState.maxR, camState.targetRadius));
+    autoRotateTimer = setTimeout(()=>{ autoRotate=true; }, 4000);
+  }, {passive:false});
+  function pinchDistance(){
+    const pts = Array.from(pointers.values());
+    if (pts.length<2) return null;
+    return Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+  }
+}
+
+/* ---- tap-to-inspect the ISS model ---- */
+const tapRaycaster = new THREE.Raycaster();
+const tapNDC = new THREE.Vector2();
+function handleSceneTap(clientX, clientY){
+  if (!issHitSphere || !camera || !renderer) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  tapNDC.x = ((clientX-rect.left)/rect.width)*2 - 1;
+  tapNDC.y = -((clientY-rect.top)/rect.height)*2 + 1;
+  tapRaycaster.setFromCamera(tapNDC, camera);
+  const hits = tapRaycaster.intersectObject(issHitSphere, false);
+  if (hits.length){
+    toggleIssPopup();
+  }
+}
+function openIssPopup(){
+  issPopupOpen = true;
+  document.getElementById('issPopup').classList.add('show');
+  document.getElementById('issPopupBackdrop').classList.add('show');
+  if (settings.vibrate && navigator.vibrate) navigator.vibrate(30);
+  // state.currentLL starts life as the wheretheiss.at REST shape ({lat,lon,alt,velKmh})
+  // before SGP4 propagation replaces it with the full {altKm,speedKmh,posEci,...} shape
+  // (see line ~2698) — only pre-populate from the latter; the sub-second animate() loop
+  // fills the popup in either case once real data is available.
+  if (state.currentLL && state.currentLL.altKm !== undefined){
+    updateIssPopupStats(state.currentLL, !isSatEclipsed(state.currentLL.posEci || {x:0,y:0,z:0}, state.sunEci));
+  }
+}
+function closeIssPopup(){
+  issPopupOpen = false;
+  document.getElementById('issPopup').classList.remove('show');
+  document.getElementById('issPopupBackdrop').classList.remove('show');
+}
+function toggleIssPopup(){
+  if (issPopupOpen) closeIssPopup(); else openIssPopup();
+}
+function setupIssPopup(){
+  document.getElementById('btnIssPopupClose').onclick = closeIssPopup;
+  document.getElementById('issPopupBackdrop').onclick = closeIssPopup;
+}
+
+function nearestAngle(current, target){
+  const diff = ((target - current + Math.PI) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI) - Math.PI;
+  return current + diff;
+}
+
+function updateCamera(dt){
+  const following = settings.followIss && issGroup && pointers.size === 0;
+  if (following){
+    const d = issGroup.position.clone().normalize();
+    const followTheta = Math.atan2(d.x, d.z);
+    const followPhi = Math.acos(Math.max(-1, Math.min(1, d.y)));
+    camState.targetTheta = nearestAngle(camState.theta, followTheta);
+    camState.targetPhi = followPhi;
+    camState.targetRadius = Math.max(camState.minR, Math.min(4.6, camState.targetRadius));
+  } else if (autoRotate && !document.hidden){
+    camState.targetTheta += dt * (settings.reduceMotion? 0.008 : 0.02);
+  }
+  const followRate = following ? 2.2 : 4;
+  camState.theta += (camState.targetTheta-camState.theta)*Math.min(1,dt*followRate);
+  camState.phi += (camState.targetPhi-camState.phi)*Math.min(1,dt*followRate);
+  camState.radius += (camState.targetRadius-camState.radius)*Math.min(1,dt*followRate);
+  const r = camState.radius;
+  camera.position.set(
+    r*Math.sin(camState.phi)*Math.sin(camState.theta),
+    r*Math.cos(camState.phi),
+    r*Math.sin(camState.phi)*Math.cos(camState.theta)
+  );
+  camera.lookAt(0,0,0);
+}
+
+/* =========================================================================
+   ORBIT PROPAGATION / PASS PREDICTION
+   ========================================================================= */
+function propagateNow(date){
+  if (!state.satrec) return null;
+  const pv = satellite.propagate(state.satrec, date);
+  if (!pv || !pv.position || typeof pv.position === 'boolean') return null;
+  const gmst = satellite.gstime(date);
+  const geo = satellite.eciToGeodetic(pv.position, gmst);
+  const lat = satellite.degreesLat(geo.latitude);
+  const lon = satellite.degreesLong(geo.longitude);
+  const altKm = geo.height;
+  const vel = pv.velocity;
+  const speedKmS = vel ? Math.sqrt(vel.x*vel.x+vel.y*vel.y+vel.z*vel.z) : 7.66;
+  return {lat, lon, altKm, speedKmh: speedKmS*3600, posEci: pv.position};
+}
+
+function lookAnglesAt(date, observer){
+  if (!state.satrec) return null;
+  const pv = satellite.propagate(state.satrec, date);
+  if (!pv || !pv.position || typeof pv.position === 'boolean') return null;
+  const gmst = satellite.gstime(date);
+  const posEcf = satellite.eciToEcf(pv.position, gmst);
+  const observerGd = {
+    longitude: observer.lon*RAD,
+    latitude: observer.lat*RAD,
+    height: (observer.alt||0)/1000
+  };
+  const look = satellite.ecfToLookAngles(observerGd, posEcf);
+  const geo = satellite.eciToGeodetic(pv.position, gmst);
+  return {
+    azimuth: look.azimuth*DEG,
+    elevation: look.elevation*DEG,
+    rangeKm: look.rangeSat,
+    posEci: pv.position,
+    lat: satellite.degreesLat(geo.latitude),
+    lon: satellite.degreesLong(geo.longitude),
+    altKm: geo.height
+  };
+}
+
+function orbitalPeriodMinutes(){
+  if (!state.satrec) return 92.7;
+  const n = state.satrec.no; // rad/min
+  return (2*Math.PI)/n;
+}
+
+function computeUpcomingPasses(observer){
+  if (!state.satrec || !observer) return [];
+  const passes = [];
+  const now = Date.now();
+  const horizonMs = 72*3600*1000;
+  const stepMs = 20000;
+  let t = now;
+  let prevEl = null;
+  let current = null;
+  while (t < now + horizonMs){
+    const d = new Date(t);
+    const la = lookAnglesAt(d, observer);
+    if (la){
+      if (la.elevation > 0 && prevEl !== null && prevEl <= 0){
+        current = {aosTime: refineCrossing(t-stepMs, t, observer, true), maxEl:-90, points:[]};
+      }
+      if (current){
+        current.points.push({t, az:la.azimuth, el:la.elevation, lat:la.lat, lon:la.lon, altKm:la.altKm});
+        if (la.elevation > current.maxEl){ current.maxEl = la.elevation; current.maxElTime = t; current.maxElAz = la.azimuth; }
+      }
+      if (la.elevation <= 0 && prevEl !== null && prevEl > 0 && current){
+        current.losTime = refineCrossing(t-stepMs, t, observer, false);
+        current.aosAz = current.points[0] ? current.points[0].az : 0;
+        current.losAz = la.azimuth;
+        finalizePass(current, observer);
+        passes.push(current);
+        current = null;
+        if (passes.length >= 12) break;
+      }
+      prevEl = la.elevation;
+    }
+    t += stepMs;
+  }
+  return passes;
+}
+function refineCrossing(t0, t1, observer, rising){
+  for(let i=0;i<6;i++){
+    const tm = (t0+t1)/2;
+    const la = lookAnglesAt(new Date(tm), observer);
+    if (!la) break;
+    if (rising ? la.elevation < 0 : la.elevation > 0) t0 = tm; else t1 = tm;
+  }
+  return Math.round((t0+t1)/2);
+}
+function finalizePass(pass, observer){
+  const midTime = new Date(pass.maxElTime || pass.aosTime);
+  const la = lookAnglesAt(midTime, observer);
+  let satLit = true;
+  if (la && la.posEci){
+    const sunUnit = sunPositionEci(midTime);
+    satLit = !isSatEclipsed(la.posEci, sunUnit);
+  }
+  const subsolar = subsolarPoint(midTime);
+  const obsSunEl = sunElevationAt(observer.lat, observer.lon, subsolar);
+  pass.satLit = satLit;
+  pass.skyDark = obsSunEl < -6;
+  pass.visible = satLit && pass.skyDark;
+  pass.durationSec = Math.round(((pass.losTime||Date.now())-pass.aosTime)/1000);
+}
+
+function recomputePasses(){
+  if (!settings.location || !state.satrec) { state.passes = []; renderPassUI(); return; }
+  const observer = {lat:settings.location.lat, lon:settings.location.lon, alt:settings.location.alt||0};
+  let passes = computeUpcomingPasses(observer);
+  passes = passes.filter(p => p.maxEl >= settings.minElevation);
+  state.passes = passes;
+  state.notifiedKeys = new Set(Array.from(state.notifiedKeys).filter(k => passes.some(p=>String(p.aosTime)===k)));
+  renderPassUI();
+}
+
+/* =========================================================================
+   UI RENDERING
+   ========================================================================= */
+function fmtAlt(km){
+  if (settings.units==='mi') return (km*0.621371).toFixed(0)+' <small>mi</small>';
+  return km.toFixed(1)+' <small>km</small>';
+}
+function fmtSpeed(kmh){
+  if (settings.units==='mi') return (kmh*0.621371).toFixed(0)+' <small>mph</small>';
+  return kmh.toFixed(0)+' <small>km/h</small>';
+}
+function fmtDist(km){
+  if (settings.units==='mi') return (km*0.621371).toFixed(0)+' <small>mi</small>';
+  return km.toFixed(0)+' <small>km</small>';
+}
+
+// Update a stat value only when it actually changed (avoids redundant
+// DOM writes), clearing the initial skeleton shimmer on first real data.
+function setStatHTML(id, html){
+  const el = document.getElementById(id);
+  if (el.dataset.skeleton){ delete el.dataset.skeleton; el.classList.remove('skeleton'); }
+  if (el.innerHTML === html) return;
+  el.innerHTML = html;
+}
+
+function renderDashboardStats(ll){
+  setStatHTML('statLat', ll.lat.toFixed(2)+'°');
+  setStatHTML('statLon', ll.lon.toFixed(2)+'°');
+  setStatHTML('statAlt', fmtAlt(ll.altKm));
+  setStatHTML('statVel', fmtSpeed(ll.speedKmh));
+  setStatHTML('statPeriod', orbitalPeriodMinutes().toFixed(1)+' min');
+  if (settings.location){
+    const dist = slantRangeKm(settings.location, ll.lat, ll.lon, ll.altKm);
+    setStatHTML('statDist', fmtDist(dist));
+  } else {
+    setStatHTML('statDist', '<small>set location</small>');
+  }
+  const lit = !isSatEclipsed(ll.posEci || {x:0,y:0,z:0}, state.sunEci);
+  const badge = document.getElementById('illumBadge');
+  if (ll.posEci){
+    badge.innerHTML = '<span class="badge-ic"><svg class="icon"><use href="#icon-'+(lit?'sun':'moon')+'"/></svg>'+(lit?'SUNLIT':'SHADOW')+'</span>';
+    badge.style.color = lit ? '#32d74b' : 'rgba(255,255,255,.6)';
+  }
+  if (issPopupOpen) updateIssPopupStats(ll, lit);
+}
+
+// The tap-to-inspect popup mirrors the Dashboard's Current Position card
+// exactly, just reachable straight from tapping the 3D model on any tab.
+function updateIssPopupStats(ll, lit){
+  setStatHTML('issPopupLat', ll.lat.toFixed(2)+'°');
+  setStatHTML('issPopupLon', ll.lon.toFixed(2)+'°');
+  setStatHTML('issPopupAlt', fmtAlt(ll.altKm));
+  setStatHTML('issPopupVel', fmtSpeed(ll.speedKmh));
+  setStatHTML('issPopupPeriod', orbitalPeriodMinutes().toFixed(1)+' min');
+  if (settings.location){
+    setStatHTML('issPopupDist', fmtDist(slantRangeKm(settings.location, ll.lat, ll.lon, ll.altKm)));
+  } else {
+    setStatHTML('issPopupDist', '<small>set location</small>');
+  }
+  const badge = document.getElementById('issPopupIllum');
+  if (badge && ll.posEci){
+    badge.innerHTML = '<span class="badge-ic"><svg class="icon"><use href="#icon-'+(lit?'sun':'moon')+'"/></svg>'+(lit?'SUNLIT':'SHADOW')+'</span>';
+    badge.style.color = lit ? '#32d74b' : 'rgba(255,255,255,.6)';
+  }
+}
+
+function renderPassUI(){
+  const listEl = document.getElementById('passList');
+  const countBadge = document.getElementById('passCountBadge');
+  countBadge.textContent = state.passes.length;
+  if (!settings.location){
+    listEl.innerHTML = '<div class="hint">Set your location in Settings to compute upcoming ISS passes.</div>';
+    document.getElementById('nextPassBadge').textContent = '—';
+    document.getElementById('countdownVal').textContent = '--:--:--';
+    document.getElementById('countdownLbl').textContent = 'set location first';
+    document.getElementById('passMeta').innerHTML='';
+    document.getElementById('skyLegend').innerHTML = 'No location set.<br>Open Settings to enable pass tracking.';
+    window._targetPass = null;
+    updatePassHighlight(null);
+    return;
+  }
+  if (!state.passes.length){
+    listEl.innerHTML = '<div class="hint">No qualifying passes in the next 72 hours. Try lowering the minimum elevation in Settings.</div>';
+    document.getElementById('nextPassBadge').textContent = 'NONE';
+    document.getElementById('countdownVal').textContent = '--:--:--';
+    document.getElementById('skyLegend').innerHTML = 'No qualifying passes found.<br>Try lowering the minimum elevation in Settings.';
+    window._targetPass = null;
+    updatePassHighlight(null);
+    return;
+  }
+  const visiblePasses = state.passes.filter(p=>p.visible);
+  const target = visiblePasses[0] || state.passes[0];
+  document.getElementById('nextPassBadge').textContent = target.visible ? 'VISIBLE' : 'DAYLIGHT';
+  const farOut = target.aosTime - Date.now() > TRACK_FUTURE_MIN*60000;
+  document.getElementById('passMeta').innerHTML = `
+    <span class="pill">AOS <b>${new Date(target.aosTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</b></span>
+    <span class="pill">Duration <b>${Math.round(target.durationSec/60)} min</b></span>
+    <span class="pill">Max El <b>${target.maxEl.toFixed(0)}°</b></span>
+    <span class="pill">Dir <b>${compassDir(target.aosAz)} → ${compassDir(target.losAz)}</b></span>
+    <span class="pill ${target.visible?'vis-yes':'vis-no'}">${target.visible?'VISIBLE':'NOT VISIBLE'}</span>
+  `;
+  if (farOut){
+    document.getElementById('passMeta').innerHTML +=
+      `<div class="hint" style="flex-basis:100%; margin-top:2px;">This pass is ${(( target.aosTime-Date.now())/3600000).toFixed(1)}h away — too far ahead to be on the short cyan path above (Earth rotates under each orbit). Its actual ground track is drawn on the globe in <b style="color:var(--good)">green</b>.</div>`;
+  }
+  window._targetPass = target;
+  updatePassHighlight(target);
+  document.getElementById('skyLegend').innerHTML =
+    `Rises <b>${compassDir(target.aosAz)}</b>, climbs to <b>${target.maxEl.toFixed(0)}°</b> above the horizon, sets <b>${compassDir(target.losAz)}</b>.<br>Dashed rings mark 30°/60° elevation.`;
+
+  listEl.innerHTML = state.passes.slice(0,6).map(p=>{
+    const d = new Date(p.aosTime);
+    return `<div class="pass-row">
+      <div class="pd">
+        <div class="date">${d.toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'})} · ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+        <div class="sub">${compassDir(p.aosAz)} → ${compassDir(p.losAz)} · ${Math.round(p.durationSec/60)}m ${p.visible?'· visible':'· daylight'}</div>
+      </div>
+      <div class="pm"><div class="el">${p.maxEl.toFixed(0)}°</div>peak</div>
+    </div>`;
+  }).join('');
+}
+
+function projectSkyPoint(az, el, cx, cy, radius){
+  const r = radius * (1 - el/90);
+  const a = (az-90) * RAD;
+  return {x: cx + r*Math.cos(a), y: cy + r*Math.sin(a)};
+}
+function drawSkyPath(svgId, pass, size){
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  svg.innerHTML='';
+  if (!pass || !pass.points || !pass.points.length) return;
+  const cx=size/2, cy=size/2, R=size/2-10;
+  let d = '';
+  pass.points.forEach((p,i)=>{
+    const pt = projectSkyPoint(p.az, Math.max(0,p.el), cx, cy, R);
+    d += (i===0?'M':'L') + pt.x.toFixed(1)+','+pt.y.toFixed(1)+' ';
+  });
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d', d);
+  path.setAttribute('fill','none');
+  path.setAttribute('stroke','#4fd8ff');
+  path.setAttribute('stroke-width','2');
+  path.setAttribute('opacity','0.85');
+  svg.appendChild(path);
+}
+
+function updateSkyCompassLive(la){
+  const dotSmall = document.getElementById('skyDot');
+  const dotBig = document.getElementById('skyDotBig');
+  if (la && la.elevation > -2){
+    const ptS = projectSkyPoint(la.azimuth, Math.max(0,la.elevation), 59, 59, 49);
+    dotSmall.style.left = ptS.x+'px'; dotSmall.style.top = ptS.y+'px'; dotSmall.style.opacity = la.elevation>0?1:0.35;
+    const ptB = projectSkyPoint(la.azimuth, Math.max(0,la.elevation), 110, 110, 96);
+    dotBig.style.left = ptB.x+'px'; dotBig.style.top = ptB.y+'px'; dotBig.style.opacity = la.elevation>0?1:0.35;
+    document.getElementById('liveEl').textContent = la.elevation.toFixed(1)+'°';
+    document.getElementById('liveAz').textContent = la.azimuth.toFixed(0)+'° '+compassDir(la.azimuth);
+  } else {
+    dotSmall.style.opacity=0; dotBig.style.opacity=0;
+    document.getElementById('liveEl').textContent='—';
+    document.getElementById('liveAz').textContent='—';
+  }
+}
+
+/* overhead banner + notifications */
+function handleOverheadAndNotifications(now){
+  if (!settings.location || !state.satrec){
+    document.getElementById('overheadBanner').classList.remove('show');
+    return;
+  }
+  const observer = {lat:settings.location.lat, lon:settings.location.lon, alt:settings.location.alt||0};
+  const la = lookAnglesAt(now, observer);
+  updateSkyCompassLive(la);
+
+  // Live line of sight from your marker to the ISS's current 3D position,
+  // for as long as it's actually above your horizon.
+  if (sightLine){
+    if (la && la.elevation > 0 && locationMarker && locationMarker.visible && issGroup){
+      setLineGeometry(sightLine, [locationMarker.position.clone(), issGroup.position.clone()]);
+      sightLine.visible = true;
+    } else {
+      sightLine.visible = false;
+    }
+  }
+  const subsolar = subsolarPoint(now);
+  const obsSunEl = sunElevationAt(observer.lat, observer.lon, subsolar);
+  const satLit = la ? !isSatEclipsed(la.posEci, sunPositionEci(now)) : false;
+  document.getElementById('obsDark').textContent = obsSunEl < -6 ? 'Dark' : (obsSunEl < 0 ? 'Twilight' : 'Daylight');
+  document.getElementById('issSun').textContent = satLit ? 'Yes' : 'Eclipsed';
+  document.getElementById('liveVisBadge').textContent = (la && la.elevation>0) ? ((satLit && obsSunEl<-6)?'VISIBLE NOW':'ABOVE HORIZON') : 'BELOW HORIZON';
+
+  const overhead = !!(la && la.elevation > 0 && (!settings.visibleOnly || (satLit && obsSunEl < -6)));
+  const banner = document.getElementById('overheadBanner');
+  if (overhead){
+    banner.classList.add('show');
+    document.getElementById('overheadDetail').textContent = `EL ${la.elevation.toFixed(0)}° · AZ ${la.azimuth.toFixed(0)}° ${compassDir(la.azimuth)}`;
+    if (!state.lastOverheadState){ fireOverheadEffects(); }
+  } else {
+    banner.classList.remove('show');
+  }
+  state.lastOverheadState = overhead;
+
+  // countdown to next target pass, plus a circular progress ring showing
+  // how far through the ~90-minute waiting window we are
+  const ringFg = document.getElementById('countdownRingFg');
+  const ringWrap = document.getElementById('countdownRing');
+  const RING_CIRC = 157;
+  const RING_WINDOW_MS = 90*60000;
+  document.getElementById('btnSharePass').hidden = !window._targetPass;
+  if (window._targetPass){
+    const msLeft = window._targetPass.aosTime - now.getTime();
+    if (msLeft > 0){
+      document.getElementById('countdownVal').textContent = fmtHMS(msLeft/1000);
+      document.getElementById('countdownLbl').textContent = 'until acquisition (AOS)';
+      const frac = Math.max(0, Math.min(1, 1 - msLeft/RING_WINDOW_MS));
+      ringFg.style.strokeDashoffset = RING_CIRC*(1-frac);
+      ringWrap.classList.toggle('urgent', msLeft < 5*60000);
+    } else if (now.getTime() < (window._targetPass.losTime||0)){
+      document.getElementById('countdownVal').textContent = 'PASSING NOW';
+      document.getElementById('countdownLbl').textContent = 'until loss of signal';
+      ringFg.style.strokeDashoffset = 0;
+      ringWrap.classList.add('urgent');
+    } else {
+      document.getElementById('countdownVal').textContent = '--:--:--';
+      ringFg.style.strokeDashoffset = RING_CIRC;
+      ringWrap.classList.remove('urgent');
+    }
+    drawSkyPath('skyPath', window._targetPass, 118);
+  } else {
+    ringFg.style.strokeDashoffset = RING_CIRC;
+    ringWrap.classList.remove('urgent');
+  }
+
+  checkAlerts(now);
+}
+
+let audioCtx = null;
+function playTone(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type='sine'; o.frequency.value=880;
+    g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime+0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.9);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime+0.95);
+  }catch(e){}
+}
+function fireOverheadEffects(){
+  if (settings.sound) playTone();
+  if (settings.vibrate && navigator.vibrate) navigator.vibrate([120,60,120]);
+}
+function checkAlerts(now){
+  if (!settings.notifEnabled || !state.passes.length) return;
+  state.passes.forEach(p=>{
+    if (settings.visibleOnly && !p.visible) return;
+    const key = String(p.aosTime);
+    const minsOut = (p.aosTime - now.getTime())/60000;
+    settings.alertMinutes.forEach(m=>{
+      const alertKey = key+'_'+m;
+      if (minsOut <= m && minsOut > m-0.5 && !state.notifiedKeys.has(alertKey)){
+        state.notifiedKeys.add(alertKey);
+        sendNotification(p, m);
+      }
+    });
+  });
+}
+function sendNotification(pass, minsBefore){
+  const body = `Visible in ${minsBefore} min · Peak ${pass.maxEl.toFixed(0)}° · ${compassDir(pass.aosAz)} → ${compassDir(pass.losAz)}`;
+  if (window.Notification && Notification.permission === 'granted'){
+    try{ new Notification('🛰️ ISS Pass Approaching', {body, tag:'iss-'+pass.aosTime}); }catch(e){}
+  }
+  toast('ISS in ' + minsBefore + ' min · peak ' + pass.maxEl.toFixed(0)+'°');
+  if (settings.sound) playTone();
+  if (settings.vibrate && navigator.vibrate) navigator.vibrate(80);
+}
+
+// Lets a user verify their actual notification/sound/vibration setup
+// works end-to-end, fired 10s out so there's time to background the app
+// or lock the phone and see it arrive like a real alert would.
+let testNotifTimer = null;
+function sendTestNotification(){
+  const btn = document.getElementById('btnTestNotif');
+  if (testNotifTimer) return;
+  let secsLeft = 10;
+  btn.disabled = true;
+  btn.textContent = `Sending in ${secsLeft}s… (lock your phone now)`;
+  testNotifTimer = setInterval(()=>{
+    secsLeft--;
+    if (secsLeft <= 0){
+      clearInterval(testNotifTimer);
+      testNotifTimer = null;
+      btn.disabled = false;
+      btn.innerHTML = '<svg class="icon"><use href="#icon-bell"/></svg>Send Test Notification (10s)';
+      if (window.Notification && Notification.permission === 'granted'){
+        try{ new Notification('🛰️ ISS Tracker — Test', {body:'This is what a real pass alert looks like. Sound/vibration follow your Settings.', tag:'iss-test-'+Date.now()}); }catch(e){}
+      } else {
+        toast('Test notification fired (system banner needs permission — enable Pass Alerts first)');
+      }
+      if (settings.sound) playTone();
+      if (settings.vibrate && navigator.vibrate) navigator.vibrate([90,40,90]);
+    } else {
+      btn.textContent = `Sending in ${secsLeft}s… (lock your phone now)`;
+    }
+  }, 1000);
+}
+
+/* =========================================================================
+   SETTINGS UI WIRING
+   ========================================================================= */
+function refreshSettingsUI(){
+  document.getElementById('swNotif').classList.toggle('on', settings.notifEnabled);
+  document.getElementById('swVisOnly').classList.toggle('on', settings.visibleOnly);
+  document.getElementById('swSound').classList.toggle('on', settings.sound);
+  document.getElementById('swVibrate').classList.toggle('on', settings.vibrate);
+  document.getElementById('swReduceMotion').classList.toggle('on', settings.reduceMotion);
+  document.getElementById('swTrueScale').classList.toggle('on', settings.trueScaleAltitude);
+  document.getElementById('swOrbitPath').classList.toggle('on', settings.showOrbitPath);
+  document.getElementById('swFollowIss').classList.toggle('on', settings.followIss);
+  document.getElementById('selMinEl').value = String(settings.minElevation);
+  document.getElementById('selUnits').value = settings.units;
+  document.querySelectorAll('#alertChips .chip').forEach(chip=>{
+    const m = Number(chip.dataset.min);
+    chip.classList.toggle('on', settings.alertMinutes.includes(m));
+  });
+  const loc = document.getElementById('locCurrent');
+  if (settings.location){
+    loc.textContent = `${settings.location.lat.toFixed(4)}°, ${settings.location.lon.toFixed(4)}° ${settings.location.label?('· '+settings.location.label):''}`;
+    document.getElementById('inLat').value = settings.location.lat.toFixed(4);
+    document.getElementById('inLon').value = settings.location.lon.toFixed(4);
+  } else {
+    loc.textContent = 'No location set';
+  }
+}
+
+function setupSettingsHandlers(){
+  document.getElementById('swNotif').onclick = ()=>{
+    settings.notifEnabled = !settings.notifEnabled;
+    if (settings.notifEnabled && window.Notification && Notification.permission==='default'){
+      Notification.requestPermission().then(p=>{
+        if (p!=='granted'){ toast('Notifications blocked — alerts will still show in-app'); }
+      });
+    }
+    saveSettings(); refreshSettingsUI();
+  };
+  document.getElementById('btnTestNotif').onclick = ()=>{
+    if (window.Notification && Notification.permission==='default'){
+      Notification.requestPermission().then(()=> sendTestNotification());
+    } else {
+      sendTestNotification();
+    }
+  };
+  document.getElementById('swVisOnly').onclick = ()=>{ settings.visibleOnly=!settings.visibleOnly; saveSettings(); refreshSettingsUI(); recomputePasses(); };
+  document.getElementById('swSound').onclick = ()=>{ settings.sound=!settings.sound; saveSettings(); refreshSettingsUI(); };
+  document.getElementById('swVibrate').onclick = ()=>{ settings.vibrate=!settings.vibrate; saveSettings(); refreshSettingsUI(); };
+  document.getElementById('swReduceMotion').onclick = ()=>{
+    settings.reduceMotion=!settings.reduceMotion; saveSettings(); refreshSettingsUI(); applyReduceMotionClass();
+    toast(settings.reduceMotion ? 'Motion reduced' : 'Full motion restored');
+  };
+  document.getElementById('swTrueScale').onclick = ()=>{
+    settings.trueScaleAltitude = !settings.trueScaleAltitude;
+    saveSettings(); refreshSettingsUI(); buildOrbitPath();
+    toast(settings.trueScaleAltitude ? 'Showing true 1:1 orbit altitude' : 'Showing exaggerated orbit altitude');
+  };
+  document.getElementById('swOrbitPath').onclick = ()=>{ settings.showOrbitPath=!settings.showOrbitPath; saveSettings(); refreshSettingsUI(); applyOrbitVisibility(); };
+  document.getElementById('swFollowIss').onclick = ()=>{
+    settings.followIss = !settings.followIss;
+    saveSettings(); refreshSettingsUI();
+    toast(settings.followIss ? 'Camera will follow the ISS' : 'Camera follow disabled');
+  };
+  document.getElementById('selMinEl').onchange = (e)=>{ settings.minElevation = Number(e.target.value); saveSettings(); recomputePasses(); updateLocationMarker(); };
+  document.getElementById('selUnits').onchange = (e)=>{ settings.units = e.target.value; saveSettings(); };
+  document.querySelectorAll('#alertChips .chip').forEach(chip=>{
+    chip.onclick = ()=>{
+      const m = Number(chip.dataset.min);
+      const idx = settings.alertMinutes.indexOf(m);
+      if (idx>=0) settings.alertMinutes.splice(idx,1); else settings.alertMinutes.push(m);
+      saveSettings(); refreshSettingsUI();
+    };
+  });
+  document.getElementById('btnGeo').onclick = ()=>{
+    if (!navigator.geolocation){ toast('Geolocation not supported on this device'); return; }
+    toast('Requesting location…');
+    navigator.geolocation.getCurrentPosition(pos=>{
+      settings.location = {lat:pos.coords.latitude, lon:pos.coords.longitude, alt:pos.coords.altitude||0, label:'GPS'};
+      saveSettings(); refreshSettingsUI(); recomputePasses(); updateLocationMarker();
+      toast('Location set from GPS');
+    }, err=>{
+      toast('Could not get location: '+err.message);
+    }, {enableHighAccuracy:true, timeout:10000});
+  };
+  document.getElementById('btnManualSave').onclick = ()=>{
+    const lat = parseFloat(document.getElementById('inLat').value);
+    const lon = parseFloat(document.getElementById('inLon').value);
+    if (isNaN(lat)||isNaN(lon)||lat<-90||lat>90||lon<-180||lon>180){
+      toast('Enter a valid latitude (-90..90) and longitude (-180..180)');
+      return;
+    }
+    settings.location = {lat, lon, alt:0, label:'Manual'};
+    saveSettings(); refreshSettingsUI(); recomputePasses(); updateLocationMarker();
+    toast('Location saved');
+  };
+  document.getElementById('btnViewOnGlobe').onclick = ()=>{
+    if (!settings.location){ toast('Set your location first'); return; }
+    setSheetCollapsed(true);
+    focusCameraOnLocation();
+  };
+}
+
+/* =========================================================================
+   NAVIGATION
+   ========================================================================= */
+const SHEET_PEEK_PX = 54;
+
+// Single source of truth for opening/closing the bottom sheet. Measures
+// the panel's natural (uncollapsed) height once per call and expresses
+// the collapse as a pixel translateY, so the animation itself is pure
+// transform — no layout reflow, whatever the content height happens to
+// be on the current tab. Collapsing only hides the sheet's cards
+// (opacity:0) and translates the whole box down — it does NOT shrink the
+// box's own height — so the translate distance must leave exactly
+// SHEET_PEEK_PX of the box inside the viewport, anchored at the viewport's
+// own bottom edge (where the box naturally sits already). Anchoring the
+// peek to the tab bar's position instead (rather than the box's own
+// height) leaves most of the box's still-full-height, now-blank glass
+// panel sitting on screen — a large empty slab, not a tight peek strip.
+function computeCollapseDy(sheet){
+  const wasCollapsed = sheet.classList.contains('collapsed');
+  if (wasCollapsed) sheet.classList.remove('collapsed');
+  const height = sheet.getBoundingClientRect().height;
+  if (wasCollapsed) sheet.classList.add('collapsed');
+  return Math.max(0, height - SHEET_PEEK_PX);
+}
+
+function setSheetCollapsed(collapsed){
+  const sheet = document.getElementById('sheet');
+  if (!sheet) return;
+  if (collapsed){
+    const dy = computeCollapseDy(sheet);
+    sheet.style.setProperty('--collapse-dy', dy + 'px');
+    sheet.classList.add('collapsed');
+  } else {
+    sheet.classList.remove('collapsed');
+    sheet.scrollTop = 0;
+  }
+}
+
+// Swiping to open/close works from anywhere on the panel, not just the
+// grabber — with a live finger-follow drag (like a native iOS sheet) —
+// while still leaving normal list scrolling alone. The rule: a downward
+// drag only starts a "pull to close" once the list is already scrolled
+// to its top; anything else (mid-list, dragging up while expanded) is
+// left for the browser's native scroll to handle.
+function setupSheetCollapse(){
+  const sheet = document.getElementById('sheet');
+  const zone = document.getElementById('grabberZone');
+  const drag = {active:false, pointerId:null, startY:0, startScrollTop:0, moved:false, mode:null, fromGrabber:false, baseDy:0};
+
+  function currentDy(){
+    const m = getComputedStyle(sheet).transform;
+    if (!m || m === 'none') return 0;
+    const match = /matrix\(([^)]+)\)/.exec(m);
+    if (!match) return 0;
+    const parts = match[1].split(',').map(parseFloat);
+    return parts[5] || 0;
+  }
+
+  function onDown(e){
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    drag.active = true; drag.pointerId = e.pointerId;
+    drag.startY = e.clientY; drag.startScrollTop = sheet.scrollTop;
+    drag.moved = false; drag.mode = null;
+    drag.fromGrabber = !!e.target.closest('#grabberZone');
+    drag.baseDy = currentDy();
+  }
+  function onMove(e){
+    if (!drag.active || e.pointerId !== drag.pointerId) return;
+    const dy = e.clientY - drag.startY;
+    if (!drag.moved && Math.abs(dy) > 6) drag.moved = true;
+    const collapsed = sheet.classList.contains('collapsed');
+
+    if (drag.mode === null){
+      if (collapsed && dy < -6){
+        drag.mode = 'expand';
+        try{ sheet.setPointerCapture(drag.pointerId); }catch(err){}
+      } else if (!collapsed && dy > 6 && drag.startScrollTop <= 0){
+        drag.mode = 'collapse';
+        drag.maxDy = computeCollapseDy(sheet);
+        try{ sheet.setPointerCapture(drag.pointerId); }catch(err){}
+      } else if (!collapsed && drag.startScrollTop > 0){
+        drag.active = false; // let native scrolling handle it
+        return;
+      } else {
+        return; // not enough signal yet either way
+      }
+    }
+
+    if (drag.mode === 'collapse'){
+      e.preventDefault();
+      const maxDy = drag.maxDy;
+      const offset = Math.max(0, Math.min(maxDy, dy));
+      sheet.style.transition = 'none';
+      sheet.style.transform = `translateY(${offset}px)`;
+    } else if (drag.mode === 'expand'){
+      e.preventDefault();
+      const offset = Math.max(0, drag.baseDy + dy);
+      sheet.style.transition = 'none';
+      sheet.style.transform = `translateY(${offset}px)`;
+    }
+  }
+  function onUp(e){
+    if (!drag.active || e.pointerId !== drag.pointerId){ drag.active = false; return; }
+    drag.active = false;
+    sheet.style.transition = '';
+    sheet.style.transform = '';
+    const dy = e.clientY - drag.startY;
+
+    if (!drag.moved){
+      if (drag.fromGrabber) setSheetCollapsed(!sheet.classList.contains('collapsed'));
+      drag.mode = null;
+      return;
+    }
+    if (drag.mode === 'collapse'){
+      setSheetCollapsed(dy > 60);
+    } else if (drag.mode === 'expand'){
+      setSheetCollapsed(dy > -40);
+    }
+    drag.mode = null;
+  }
+
+  sheet.addEventListener('pointerdown', onDown);
+  sheet.addEventListener('pointermove', onMove, {passive:false});
+  sheet.addEventListener('pointerup', onUp);
+  sheet.addEventListener('pointercancel', onUp);
+  zone.style.touchAction = 'none';
+}
+
+function restartCardAnimation(view){
+  view.querySelectorAll('.card').forEach(c=>{
+    c.style.animation = 'none';
+    void c.offsetWidth; // force reflow so the animation restarts
+    c.style.animation = '';
+  });
+}
+
+function moveTabIndicator(tab){
+  const indicator = document.getElementById('tabIndicator');
+  if (!indicator || !tab) return;
+  // translateX from a fixed base position, not left/width — keeps this
+  // animation on the compositor instead of triggering layout each frame.
+  indicator.style.transform = `translateX(${tab.offsetLeft - 5}px)`;
+}
+
+function setupNav(){
+  document.querySelectorAll('.tab').forEach(tab=>{
+    tab.onclick = ()=>{
+      if (tab.dataset.view === 'ar'){
+        document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t===tab));
+        moveTabIndicator(tab);
+        openArView();
+        return;
+      }
+      if (tab.classList.contains('active')){
+        // Tapping the already-active tab toggles the sheet open/closed,
+        // same as the swipe gesture on the grabber.
+        setSheetCollapsed(!document.getElementById('sheet').classList.contains('collapsed'));
+        return;
+      }
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      moveTabIndicator(tab);
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      const view = document.getElementById('view-'+tab.dataset.view);
+      view.classList.add('active');
+      restartCardAnimation(view);
+      setSheetCollapsed(false);
+    };
+  });
+  const initialTab = document.querySelector('.tab.active') || document.querySelector('.tab');
+  moveTabIndicator(initialTab);
+  window.addEventListener('resize', ()=> moveTabIndicator(document.querySelector('.tab.active')));
+}
+
+function applyReduceMotionClass(){
+  document.body.classList.toggle('reduce-motion', !!settings.reduceMotion);
+}
+
+function setupShareButton(){
+  const btn = document.getElementById('btnSharePass');
+  btn.onclick = async ()=>{
+    const p = window._targetPass;
+    if (!p) return;
+    const d = new Date(p.aosTime);
+    const text = `🛰️ ISS pass on ${d.toLocaleDateString([], {weekday:'long', month:'short', day:'numeric'})} at ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} — peak ${p.maxEl.toFixed(0)}°, ${compassDir(p.aosAz)} to ${compassDir(p.losAz)}, ${p.visible ? 'visible to the naked eye' : 'daylight pass'}.`;
+    if (navigator.share){
+      try{ await navigator.share({title:'ISS Pass', text}); return; }catch(e){ /* user cancelled or unsupported — fall through */ }
+    }
+    try{
+      await navigator.clipboard.writeText(text);
+      toast('Pass details copied to clipboard');
+    }catch(e){
+      toast(text, 4200);
+    }
+  };
+}
+
+/* =========================================================================
+   MAIN LOOP
+   ========================================================================= */
+let lastUiUpdate = 0, lastPassRecompute = 0, lastSunUpdate = 0;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.1, clock.getDelta());
+  updateCamera(dt);
+
+  if (issGroup){
+    // Keep the ISS model legibly sized whether the camera is zoomed in on
+    // it or pulled back to see the whole globe.
+    const distScale = Math.max(0.75, Math.min(2.4, camState.radius/5.6));
+    issGroup.scale.setScalar(distScale);
+  }
+
+  const now = new Date();
+
+  if (now.getTime() - lastSunUpdate > 8000){
+    lastSunUpdate = now.getTime();
+    state.sunEci = sunPositionEci(now);
+    state.subsolar = subsolarPoint(now);
+    const sunVec = latLonToVec3(state.subsolar.lat, state.subsolar.lon, 10).normalize();
+    earthMesh.material.uniforms.sunDir.value.copy(sunVec);
+    atmoMesh.material.uniforms.sunDir.value.copy(sunVec);
+    sunLight.position.copy(sunVec.clone().multiplyScalar(20));
+  }
+
+  let ll = null;
+  if (state.satrec){
+    ll = propagateNow(now);
+    if (ll){
+      state.currentLL = ll;
+      const pos = latLonToVec3(ll.lat, ll.lon, issSceneRadius(ll.altKm));
+      issGroup.position.copy(pos);
+      const future = propagateNow(new Date(now.getTime()+2000));
+      if (future){
+        const posFuture = latLonToVec3(future.lat, future.lon, issSceneRadius(future.altKm));
+        orientIssModel(issGroup, pos, posFuture.clone().sub(pos));
+      }
+    }
+  } else {
+    const pos = latLonToVec3(state.currentLL.lat, state.currentLL.lon, issSceneRadius(state.currentLL.alt||408));
+    issGroup.position.copy(pos);
+    orientIssModel(issGroup, pos, new THREE.Vector3(0,0,1));
+  }
+
+  cloudsMesh.rotation.y += dt * (settings.reduceMotion?0.003:0.012);
+
+  if (issModel && issModel.userData.beacon){
+    const blink = Math.sin(now.getTime()*0.006) > 0.7 ? 1 : 0.15;
+    issModel.userData.beacon.color.setRGB(blink, blink*0.25, blink*0.25);
+  }
+
+  // Traveling glow particles that race along the future ground track to
+  // give the path a sense of direction/motion, not just a static line.
+  if (flowDots && futurePathPoints3D && futurePathPoints3D.length > 1 && settings.showOrbitPath && !settings.reduceMotion){
+    const L = futurePathPoints3D.length;
+    const cycleSec = 7;
+    const tSec = now.getTime()/1000;
+    flowDots.forEach((dot, i)=>{
+      const frac = ((tSec/cycleSec + i/flowDots.length) % 1 + 1) % 1;
+      const idx = frac*(L-1);
+      const i0 = Math.floor(idx), i1 = Math.min(L-1, i0+1);
+      const p = futurePathPoints3D[i0].clone().lerp(futurePathPoints3D[i1], idx-i0);
+      dot.position.copy(p);
+      dot.visible = true;
+      dot.material.opacity = 0.55 * (1 - frac*0.4);
+    });
+  } else if (flowDots){
+    flowDots.forEach(d=>{ d.visible = false; });
+  }
+
+  if (passHighlightLine && passHighlightLine.visible){
+    const pulse = settings.reduceMotion ? 0.85 : 0.65 + 0.3*Math.sin(now.getTime()*0.0025);
+    passHighlightLine.material.opacity = pulse;
+  }
+
+  if (locationMarker && locationMarker.visible && locationMarker.userData.glow){
+    const breathe = settings.reduceMotion ? 1 : 0.9 + 0.25*Math.sin(now.getTime()*0.0018);
+    locationMarker.userData.glow.scale.set(0.1*breathe, 0.1*breathe, 1);
+  }
+
+  if (now.getTime() - lastUiUpdate > 500){
+    lastUiUpdate = now.getTime();
+    if (ll) renderDashboardStats(ll);
+    handleOverheadAndNotifications(now);
+  }
+  if (now.getTime() - lastPassRecompute > 45000){
+    lastPassRecompute = now.getTime();
+    recomputePasses();
+  }
+
+  tickSatLayers(now);
+
+  renderer.render(scene, camera);
+}
+
+// How far behind/ahead of "now" the visualized path extends.
+const TRACK_PAST_MIN = 22, TRACK_FUTURE_MIN = 75;
+
+function setLineGeometry(line, points){
+  line.geometry.dispose();
+  line.geometry = points.length > 1 ? new THREE.BufferGeometry().setFromPoints(points) : new THREE.BufferGeometry();
+}
+
+/* ---- location marker + visibility-radius circle ----
+   The circle is real satellite-coverage geometry, not decoration: it's
+   the standard closed-form relationship between a satellite's altitude,
+   a minimum elevation angle, and the ground-central-angle within which
+   that elevation is achievable (used for satellite footprint/coverage
+   calculations). Anywhere the ISS's ground track crosses inside this
+   circle, it is above your Minimum Elevation setting right now. */
+function computeVisibilityRadiusDeg(altKm, minElDeg){
+  const Re = EARTH_R_KM, Rs = EARTH_R_KM + altKm;
+  const elRad = minElDeg*RAD;
+  const ratio = Math.max(-1, Math.min(1, (Re/Rs)*Math.cos(elRad)));
+  const gamma = Math.acos(ratio) - elRad;
+  return Math.max(0, gamma*DEG);
+}
+// Standard spherical "destination point given start, bearing, and
+// angular distance" formula (great-circle navigation).
+function destinationPoint(lat0, lon0, bearingDeg, angularDistDeg){
+  const phi1 = lat0*RAD, lambda1 = lon0*RAD, theta = bearingDeg*RAD, delta = angularDistDeg*RAD;
+  const sinPhi2 = Math.sin(phi1)*Math.cos(delta) + Math.cos(phi1)*Math.sin(delta)*Math.cos(theta);
+  const phi2 = Math.asin(Math.max(-1, Math.min(1, sinPhi2)));
+  const y = Math.sin(theta)*Math.sin(delta)*Math.cos(phi1);
+  const x = Math.cos(delta) - Math.sin(phi1)*sinPhi2;
+  const lambda2 = lambda1 + Math.atan2(y, x);
+  return {lat: phi2*DEG, lon: ((lambda2*DEG + 540) % 360) - 180};
+}
+function buildVisibilityCirclePoints(lat0, lon0, radiusDeg, radius3D){
+  const pts = [];
+  const steps = 72;
+  for(let i=0;i<=steps;i++){
+    const d = destinationPoint(lat0, lon0, (i/steps)*360, radiusDeg);
+    pts.push(latLonToVec3(d.lat, d.lon, radius3D));
+  }
+  return pts;
+}
+
+function updateLocationMarker(){
+  if (!locationMarker || !visibilityCircleLine) return;
+  if (!settings.location){
+    locationMarker.visible = false;
+    visibilityCircleLine.visible = false;
+    return;
+  }
+  const pos = latLonToVec3(settings.location.lat, settings.location.lon, EARTH_R*1.004);
+  locationMarker.position.copy(pos);
+  locationMarker.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), pos.clone().normalize());
+  locationMarker.visible = true;
+
+  const altKm = (state.currentLL && state.currentLL.altKm) || 408;
+  const radiusDeg = computeVisibilityRadiusDeg(altKm, settings.minElevation);
+  const pts = buildVisibilityCirclePoints(settings.location.lat, settings.location.lon, radiusDeg, EARTH_R*1.003);
+  setLineGeometry(visibilityCircleLine, pts);
+  visibilityCircleLine.visible = settings.showOrbitPath;
+}
+
+function focusCameraOnLocation(){
+  if (!settings.location) return;
+  const pos = latLonToVec3(settings.location.lat, settings.location.lon, 1);
+  camState.targetPhi = Math.acos(Math.max(-1, Math.min(1, pos.y)));
+  camState.targetTheta = nearestAngle(camState.theta, Math.atan2(pos.x, pos.z));
+  camState.targetRadius = Math.max(camState.minR, Math.min(camState.maxR, 3.6));
+  autoRotate = false;
+  clearTimeout(autoRotateTimer);
+  autoRotateTimer = setTimeout(()=>{ autoRotate = true; }, 6000);
+}
+
+function buildOrbitPath(){
+  if (!state.satrec || !orbitFutureLine) return;
+  const now = Date.now();
+  const stepMs = 15000;
+  const pastN = Math.round(TRACK_PAST_MIN*60000/stepMs);
+  const futureN = Math.round(TRACK_FUTURE_MIN*60000/stepMs);
+
+  const orbitPast = [], orbitFuture = [], trackPast = [], trackFuture = [];
+  for(let i=-pastN; i<=futureN; i++){
+    const p = propagateNow(new Date(now + i*stepMs));
+    if (!p) continue;
+    const altPt = latLonToVec3(p.lat, p.lon, issSceneRadius(p.altKm));
+    const groundPt = latLonToVec3(p.lat, p.lon, EARTH_R*1.004);
+    if (i <= 0){ orbitPast.push(altPt); trackPast.push(groundPt); }
+    if (i >= 0){ orbitFuture.push(altPt); trackFuture.push(groundPt); }
+  }
+  setLineGeometry(orbitPastLine, orbitPast);
+  setLineGeometry(orbitFutureLine, orbitFuture);
+  setLineGeometry(trackPastLine, trackPast);
+  setLineGeometry(trackFutureLine, trackFuture);
+  futurePathPoints3D = orbitFuture;
+  applyOrbitVisibility();
+}
+
+function updatePassHighlight(pass){
+  if (!passHighlightLine) return;
+  if (!pass || !pass.points || pass.points.length < 2 || typeof pass.points[0].lat !== 'number'){
+    passHighlightLine.visible = false;
+    return;
+  }
+  const pts = pass.points.map(p => latLonToVec3(p.lat, p.lon, EARTH_R*1.008));
+  setLineGeometry(passHighlightLine, pts);
+  passHighlightLine.visible = settings.showOrbitPath;
+}
+
+function applyOrbitVisibility(){
+  const show = settings.showOrbitPath;
+  [orbitPastLine, orbitFutureLine, trackPastLine, trackFutureLine].forEach(l=>{ if (l) l.visible = show; });
+  if (flowDots) flowDots.forEach(d=>{ if (!show) d.visible = false; });
+  if (passHighlightLine) passHighlightLine.visible = show && !!window._targetPass;
+  if (visibilityCircleLine) visibilityCircleLine.visible = show && !!settings.location;
+}
+
+/* =========================================================================
+   AR FINDER — camera-passthrough compass pointer to the live ISS position
+   ========================================================================= */
+// Everything here derives the target direction from the exact same
+// lookAnglesAt() used by the dashboard/pass predictions — there is no
+// separate/approximate copy of the astronomy, so the *target* is always
+// as accurate as the rest of the app. The one thing that genuinely can't
+// be verified without a physical device is the phone's own compass
+// heading math below (device sensors can't be simulated in a sandbox),
+// so it leans on the same quaternion algorithm real-world AR libraries
+// use, plus on-device calibration controls as a safety net.
+const AR = {
+  active:false, started:false, hasCamera:false, stream:null,
+  heading:null, pitch:null, hasOrientation:false, headingAbsolute:true, locked:false,
+  rafId:null, orientationHandler:null, visHandler:null,
+  _quat:new THREE.Quaternion(), _euler:new THREE.Euler(), _zee:new THREE.Vector3(0,0,1),
+  _q1:new THREE.Quaternion(-Math.sqrt(0.5),0,0,Math.sqrt(0.5)),
+  _q2:new THREE.Quaternion(), _forward:new THREE.Vector3(),
+  // Approximate rear-camera half-FOV in portrait — used only to decide
+  // on-screen vs off-screen placement, not claimed to be lens-accurate.
+  fovH:34, fovV:44, lockDeg:3.5
+};
+
+function getScreenAngleDeg(){
+  if (screen.orientation && typeof screen.orientation.angle === 'number') return screen.orientation.angle;
+  if (typeof window.orientation === 'number') return window.orientation;
+  return 0;
+}
+
+// Standard device-orientation -> quaternion composition (the same
+// construction used across the AR/VR web ecosystem): rotate by the
+// device's alpha/beta/gamma, correct for the camera facing out of the
+// back of the phone rather than out of the top, then correct for the
+// current screen rotation (portrait/landscape).
+function arDeviceQuaternion(alpha, beta, gamma, screenAngleDeg){
+  const d2r = RAD;
+  AR._euler.set(beta*d2r, alpha*d2r, -gamma*d2r, 'YXZ');
+  AR._quat.setFromEuler(AR._euler);
+  AR._quat.multiply(AR._q1);
+  AR._quat.multiply(AR._q2.setFromAxisAngle(AR._zee, -screenAngleDeg*d2r));
+  return AR._quat;
+}
+
+function onArOrientation(event){
+  const beta = event.beta || 0, gamma = event.gamma || 0;
+  let effectiveAlpha;
+  if (typeof event.webkitCompassHeading === 'number' && !isNaN(event.webkitCompassHeading)){
+    effectiveAlpha = event.webkitCompassHeading; // iOS: tilt-compensated true/magnetic heading
+    AR.headingAbsolute = true;
+  } else if (typeof event.alpha === 'number'){
+    effectiveAlpha = event.alpha; // world-referenced only when event.absolute is true
+    AR.headingAbsolute = !!event.absolute;
+  } else {
+    return;
+  }
+  const q = arDeviceQuaternion(effectiveAlpha, beta, gamma, getScreenAngleDeg());
+  const fwd = AR._forward.set(0,0,-1).applyQuaternion(q);
+  let az = DEG*Math.atan2(fwd.x, -fwd.z);
+  if (settings.arMirrorHeading) az = -az;
+  az = ((az + settings.arHeadingOffset) % 360 + 360) % 360;
+  AR.heading = az;
+  AR.pitch = DEG*Math.asin(Math.max(-1, Math.min(1, fwd.y)));
+  AR.hasOrientation = true;
+}
+
+async function startArCamera(){
+  try{
+    AR.stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}, audio:false});
+    const video = document.getElementById('arVideo');
+    video.srcObject = AR.stream;
+    await video.play().catch(()=>{});
+    AR.hasCamera = true;
+    document.getElementById('arFallbackBg').classList.remove('on');
+  }catch(e){
+    AR.hasCamera = false;
+    document.getElementById('arFallbackBg').classList.add('on');
+  }
+}
+function stopArCamera(){
+  if (AR.stream){ AR.stream.getTracks().forEach(t=>t.stop()); AR.stream = null; }
+  const video = document.getElementById('arVideo');
+  if (video) video.srcObject = null;
+  AR.hasCamera = false;
+}
+
+function updateArFrame(){
+  const statusPill = document.getElementById('arStatusPill');
+  const marker = document.getElementById('arTargetMarker');
+  const edgeArrow = document.getElementById('arEdgeArrow');
+  const belowHorizon = document.getElementById('arBelowHorizon');
+
+  if (!settings.location || !state.satrec){
+    statusPill.textContent = !settings.location ? 'SET LOCATION IN SETTINGS' : 'WAITING FOR ORBIT DATA…';
+    statusPill.className = 'ar-status-pill dim';
+    marker.classList.remove('show'); edgeArrow.classList.remove('show'); belowHorizon.hidden = true;
+    return;
+  }
+
+  const observer = {lat:settings.location.lat, lon:settings.location.lon, alt:settings.location.alt||0};
+  const now = new Date();
+  const la = lookAnglesAt(now, observer);
+  if (!la) return;
+
+  document.getElementById('arTargetAz').textContent = la.azimuth.toFixed(1)+'°';
+  document.getElementById('arTargetEl').textContent = la.elevation.toFixed(1)+'°';
+  document.getElementById('arDeviceHeading').textContent = AR.hasOrientation ? AR.heading.toFixed(1)+'°' : '—';
+
+  if (la.elevation < 0){
+    belowHorizon.hidden = false;
+    marker.classList.remove('show'); edgeArrow.classList.remove('show');
+    statusPill.textContent = 'BELOW HORIZON'; statusPill.className = 'ar-status-pill dim';
+    const next = state.passes && state.passes[0];
+    document.getElementById('arNextPassText').textContent = next
+      ? 'Next pass in ' + fmtHMS((next.aosTime-now.getTime())/1000)
+      : 'No upcoming pass computed yet';
+    document.getElementById('arAngularSep').textContent = '—';
+    AR.locked = false;
+    return;
+  }
+  belowHorizon.hidden = true;
+
+  if (!AR.hasOrientation){
+    statusPill.textContent = 'CALIBRATING SENSORS…'; statusPill.className = 'ar-status-pill dim';
+    marker.classList.remove('show'); edgeArrow.classList.remove('show');
+    return;
+  }
+
+  const dAz = ((la.azimuth - AR.heading + 540) % 360) - 180;
+  const dEl = la.elevation - AR.pitch;
+  const sep = Math.sqrt(dAz*dAz + dEl*dEl);
+  document.getElementById('arAngularSep').textContent = sep.toFixed(1)+'°';
+
+  const locked = sep < AR.lockDeg;
+  if (locked && !AR.locked){
+    if (settings.sound) playTone();
+    if (settings.vibrate && navigator.vibrate) navigator.vibrate([90,40,90]);
+  }
+  AR.locked = locked;
+
+  const w = window.innerWidth, h = window.innerHeight;
+  const xFrac = dAz / AR.fovH, yFrac = -dEl / AR.fovV;
+  const within = Math.abs(xFrac) <= 1 && Math.abs(yFrac) <= 1;
+
+  if (within){
+    marker.style.left = (w/2 + xFrac*(w/2)) + 'px';
+    marker.style.top = (h/2 + yFrac*(h/2)) + 'px';
+    marker.classList.add('show');
+    marker.classList.toggle('locked', locked);
+    document.getElementById('arTargetLabel').textContent = locked ? 'LOCKED ON' : ('ISS · '+la.elevation.toFixed(0)+'°');
+    edgeArrow.classList.remove('show');
+    statusPill.textContent = locked ? 'LOCKED ON' : 'TRACKING';
+    statusPill.className = 'ar-status-pill ' + (locked ? 'locked' : 'tracking');
+  } else {
+    marker.classList.remove('show');
+    const rotDeg = DEG*Math.atan2(dAz, dEl);
+    const rad = rotDeg*RAD;
+    const R = Math.min(w,h)*0.36;
+    edgeArrow.style.left = (w/2 + Math.sin(rad)*R) + 'px';
+    edgeArrow.style.top = (h/2 - Math.cos(rad)*R) + 'px';
+    edgeArrow.querySelector('.ar-edge-svg').style.transform = `rotate(${rotDeg}deg)`;
+    edgeArrow.classList.add('show');
+    document.getElementById('arEdgeText').textContent =
+      `Turn ${dAz>=0?'right':'left'} ${Math.abs(dAz).toFixed(0)}° · look ${dEl>=0?'up':'down'} ${Math.abs(dEl).toFixed(0)}°`;
+    statusPill.textContent = 'TRACKING'; statusPill.className = 'ar-status-pill tracking';
+  }
+}
+
+function arLoop(){
+  if (!AR.active){ AR.rafId = null; return; }
+  AR.rafId = requestAnimationFrame(arLoop);
+  updateArFrame();
+}
+
+function refreshArCalibUI(){
+  document.getElementById('arOffsetVal').textContent = (settings.arHeadingOffset>0?'+':'')+settings.arHeadingOffset+'°';
+  document.getElementById('btnArMirror').classList.toggle('on', settings.arMirrorHeading);
+}
+
+async function openArView(){
+  closeIssPopup();
+  document.getElementById('arOverlay').classList.add('show');
+  AR.active = true;
+  if (!AR.started){
+    document.getElementById('arGate').hidden = false;
+    document.getElementById('arHud').hidden = true;
+    document.getElementById('arGateHint').textContent = window.isSecureContext ? '' :
+      'Note: this page isn’t loaded over https — the browser may block camera/motion access from a local file.';
+  } else {
+    document.getElementById('arGate').hidden = true;
+    document.getElementById('arHud').hidden = false;
+    await startArCamera();
+    if (!AR.rafId) arLoop();
+  }
+}
+
+function closeArView(){
+  document.getElementById('arOverlay').classList.remove('show');
+  document.getElementById('arCalib').hidden = true;
+  AR.active = false;
+  stopArCamera();
+  if (AR.rafId){ cancelAnimationFrame(AR.rafId); AR.rafId = null; }
+}
+
+function setupArView(){
+  document.getElementById('btnArEnable').onclick = async ()=>{
+    const hint = document.getElementById('arGateHint');
+    hint.textContent = 'Requesting permissions…';
+    try{
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+        const res = await DeviceOrientationEvent.requestPermission();
+        if (res !== 'granted'){
+          hint.textContent = 'Motion & orientation access was denied. Enable it for this site in your browser settings, then try again.';
+          return;
+        }
+      }
+    }catch(e){
+      hint.textContent = 'Could not request sensor access on this device/browser.';
+      return;
+    }
+    AR.started = true;
+    AR.orientationHandler = onArOrientation;
+    window.addEventListener('deviceorientationabsolute', AR.orientationHandler);
+    window.addEventListener('deviceorientation', AR.orientationHandler);
+    await startArCamera();
+    document.getElementById('arGate').hidden = true;
+    document.getElementById('arHud').hidden = false;
+    arLoop();
+  };
+  document.getElementById('btnArCancel').onclick = ()=> exitArToTab('dashboard');
+  document.getElementById('btnArExit').onclick = ()=> exitArToTab('dashboard');
+  document.getElementById('btnArCalibrate').onclick = ()=>{ document.getElementById('arCalib').hidden = false; refreshArCalibUI(); };
+  document.getElementById('btnArCalibClose').onclick = ()=>{ document.getElementById('arCalib').hidden = true; };
+  document.getElementById('btnArNudgeMinus').onclick = ()=>{ settings.arHeadingOffset = ((settings.arHeadingOffset-5+540)%360)-180; saveSettings(); refreshArCalibUI(); };
+  document.getElementById('btnArNudgePlus').onclick = ()=>{ settings.arHeadingOffset = ((settings.arHeadingOffset+5+540)%360)-180; saveSettings(); refreshArCalibUI(); };
+  document.getElementById('btnArSyncNorth').onclick = ()=>{
+    if (AR.heading == null){ toast('No compass reading yet'); return; }
+    const raw = ((AR.heading - settings.arHeadingOffset) + 360) % 360;
+    settings.arHeadingOffset = (((0 - raw) + 540) % 360) - 180;
+    saveSettings(); refreshArCalibUI();
+    toast('Synced — current facing direction is now North');
+  };
+  document.getElementById('btnArMirror').onclick = ()=>{
+    settings.arMirrorHeading = !settings.arMirrorHeading;
+    saveSettings(); refreshArCalibUI();
+    toast(settings.arMirrorHeading ? 'Turn direction reversed' : 'Turn direction normal');
+  };
+
+  AR.visHandler = ()=>{
+    if (!AR.active) return;
+    if (document.hidden) stopArCamera();
+    else if (AR.started) startArCamera();
+  };
+  document.addEventListener('visibilitychange', AR.visHandler);
+}
+
+function exitArToTab(viewName){
+  closeArView();
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.view===viewName));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+viewName));
+  moveTabIndicator(document.querySelector('.tab.active'));
+}
+
+/* =========================================================================
+   SATELLITE LAYERS (auxiliary CelesTrak catalogs, independent of the ISS)
+   Lightweight position-only dots: no pass predictions, no notifications,
+   no tap-for-details — that stays exclusive to the ISS above. Each layer
+   is fetched once per session (cached in localStorage like the ISS TLE)
+   and repositioned on a slow interval rather than every render frame,
+   since propagating hundreds/thousands of satrecs every frame would tank
+   framerate for no visible benefit at dot scale.
+   ========================================================================= */
+const SAT_LAYER_DEFS = {
+  starlink: { group:'starlink', color:0x3fd2ff, cap:700 },
+  gps:      { group:'gps-ops',  color:0xffd60a, cap:60  },
+  weather:  { group:'weather',  color:0x32d74b, cap:120 },
+  science:  { group:'science',  color:0xff9f0a, cap:150 },
+  geo:      { group:'geo',      color:0xbf5af2, cap:300 },
+  active:   { group:'active',   color:0xff453a, cap:900 }
+};
+const SAT_LAYER_CACHE_PREFIX = 'issTrackerLayerCache_';
+const SAT_LAYER_MAX_AGE_MS = 6*3600*1000;
+const SAT_LAYER_REFRESH_MS = 30000;
+
+const satLayers = {}; // key -> {enabled, loading, satrecs, points}
+
+function parseTLEGroup(text){
+  const lines = text.split('\n').map(l=>l.replace(/\r/g,'')).filter(l=>l.trim().length>0);
+  const recs = [];
+  for (let i=0;i+2<lines.length;i+=3){
+    const l1 = lines[i+1], l2 = lines[i+2];
+    if (!l1 || !l2 || l1[0]!=='1' || l2[0]!=='2') continue;
+    recs.push({l1, l2});
+  }
+  return recs;
+}
+
+async function fetchLayerTLEs(key){
+  const def = SAT_LAYER_DEFS[key];
+  const cacheKey = SAT_LAYER_CACHE_PREFIX+key;
+  try{
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+    if (cached && cached.text && (Date.now()-cached.t) < SAT_LAYER_MAX_AGE_MS){
+      return parseTLEGroup(cached.text);
+    }
+  }catch(e){}
+  const url = `https://celestrak.org/NORAD/elements/gp.php?GROUP=${def.group}&FORMAT=tle`;
+  const res = await fetchWithTimeout(url, 15000);
+  if (!res.ok) throw new Error('layer fetch http '+res.status);
+  const text = await res.text();
+  if (!text || text.length < 10) throw new Error('empty layer response');
+  try{ localStorage.setItem(cacheKey, JSON.stringify({t:Date.now(), text})); }catch(e){}
+  return parseTLEGroup(text);
+}
+
+// Down-sample before building satrecs (not after) — SGP4 init cost scales
+// with count, and a category like Starlink can carry several thousand TLEs.
+function buildLayerSatrecs(recs, cap){
+  let list = recs;
+  if (list.length > cap){
+    const step = list.length / cap;
+    const sampled = [];
+    for (let i=0;i<cap;i++) sampled.push(list[Math.floor(i*step)]);
+    list = sampled;
+  }
+  const satrecs = [];
+  for (const r of list){
+    try{ satrecs.push(satellite.twoline2satrec(r.l1, r.l2)); }catch(e){}
+  }
+  return satrecs;
+}
+
+function ensureLayerPoints(key){
+  const layer = satLayers[key];
+  if (layer.points) return layer.points;
+  const def = SAT_LAYER_DEFS[key];
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(def.cap*3), 3));
+  geo.setDrawRange(0, 0);
+  const mat = new THREE.PointsMaterial({color:def.color, size:0.03, sizeAttenuation:true, transparent:true, opacity:0.85, depthWrite:false});
+  const points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+  layer.points = points;
+  scene.add(points);
+  return points;
+}
+
+function updateLayerPositions(key, date){
+  const layer = satLayers[key];
+  if (!layer || !layer.enabled || !layer.satrecs || !layer.points) return;
+  const gmst = satellite.gstime(date);
+  const posAttr = layer.points.geometry.attributes.position;
+  let n = 0;
+  for (const satrec of layer.satrecs){
+    let pv;
+    try{ pv = satellite.propagate(satrec, date); }catch(e){ continue; }
+    if (!pv || !pv.position) continue;
+    let geoPos;
+    try{ geoPos = satellite.eciToGeodetic(pv.position, gmst); }catch(e){ continue; }
+    const lat = satellite.degreesLat(geoPos.latitude);
+    const lon = satellite.degreesLong(geoPos.longitude);
+    if (!isFinite(lat) || !isFinite(lon) || !isFinite(geoPos.height)) continue;
+    const v = latLonToVec3(lat, lon, issSceneRadius(geoPos.height));
+    posAttr.array[n*3] = v.x;
+    posAttr.array[n*3+1] = v.y;
+    posAttr.array[n*3+2] = v.z;
+    n++;
+  }
+  posAttr.needsUpdate = true;
+  layer.points.geometry.setDrawRange(0, n);
+}
+
+function updateSatLayersBadge(){
+  const badge = document.getElementById('satLayersBadge');
+  if (!badge) return;
+  let total = 0;
+  Object.keys(satLayers).forEach(k=>{
+    const l = satLayers[k];
+    if (l.enabled && l.points) total += l.points.geometry.drawRange.count;
+  });
+  badge.textContent = total > 0 ? total.toLocaleString()+' shown' : '0 shown';
+}
+
+async function enableSatLayer(key){
+  const chip = document.querySelector(`.chip[data-layer="${key}"]`);
+  const layer = satLayers[key] = satLayers[key] || {enabled:false, loading:false, satrecs:null, points:null};
+  layer.enabled = true;
+  if (layer.satrecs){
+    if (layer.points) layer.points.visible = true;
+    updateLayerPositions(key, new Date());
+    updateSatLayersBadge();
+    return;
+  }
+  if (layer.loading) return;
+  layer.loading = true;
+  if (chip) chip.classList.add('loading');
+  try{
+    const recs = await fetchLayerTLEs(key);
+    layer.satrecs = buildLayerSatrecs(recs, SAT_LAYER_DEFS[key].cap);
+    ensureLayerPoints(key);
+    updateLayerPositions(key, new Date());
+    persistActiveSatLayers();
+  }catch(e){
+    console.warn('satellite layer load failed:', key, e);
+    layer.enabled = false;
+    if (chip) chip.classList.remove('on');
+    toast('Could not load '+key+' satellite data');
+  }finally{
+    layer.loading = false;
+    if (chip) chip.classList.remove('loading');
+    updateSatLayersBadge();
+  }
+}
+
+function disableSatLayer(key){
+  const layer = satLayers[key];
+  if (!layer) return;
+  layer.enabled = false;
+  if (layer.points) layer.points.visible = false;
+  updateSatLayersBadge();
+  persistActiveSatLayers();
+}
+
+function persistActiveSatLayers(){
+  settings.activeSatLayers = Object.keys(satLayers).filter(k=>satLayers[k].enabled);
+  saveSettings();
+}
+
+let lastSatLayerRefresh = 0;
+function tickSatLayers(now){
+  if (now.getTime() - lastSatLayerRefresh < SAT_LAYER_REFRESH_MS) return;
+  lastSatLayerRefresh = now.getTime();
+  Object.keys(satLayers).forEach(key=>{
+    const layer = satLayers[key];
+    if (layer.enabled && layer.satrecs && layer.points) updateLayerPositions(key, now);
+  });
+}
+
+function setupSatLayerChips(){
+  document.querySelectorAll('#satLayerChips .chip[data-layer]').forEach(chip=>{
+    const key = chip.dataset.layer;
+    const def = SAT_LAYER_DEFS[key];
+    if (!def) return;
+    chip.style.setProperty('--layer-color', '#'+def.color.toString(16).padStart(6,'0'));
+    chip.addEventListener('click', ()=>{
+      const nowOn = !chip.classList.contains('on');
+      chip.classList.toggle('on', nowOn);
+      if (nowOn) enableSatLayer(key); else disableSatLayer(key);
+    });
+  });
+  // Restore whichever categories were on last session.
+  (settings.activeSatLayers||[]).forEach(key=>{
+    const chip = document.querySelector(`.chip[data-layer="${key}"]`);
+    if (!chip || !SAT_LAYER_DEFS[key]) return;
+    chip.classList.add('on');
+    enableSatLayer(key);
+  });
+}
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+async function init(){
+  document.getElementById('loadingText').textContent = 'LOADING EARTH IMAGERY…';
+  await initScene();
+  attachControls();
+  setupNav();
+  setupSheetCollapse();
+  setupSettingsHandlers();
+  refreshSettingsUI();
+  applyReduceMotionClass();
+  setupShareButton();
+  setupArView();
+  setupIssPopup();
+  setupSatLayerChips();
+
+  document.getElementById('loadingText').textContent = 'ACQUIRING ORBITAL DATA…';
+  setStatus('syncing', 'SYNCING');
+  await Promise.all([fetchTLE(), pollRealtimePosition()]);
+  buildOrbitPath();
+  updateLocationMarker();
+  setInterval(()=>{ buildOrbitPath(); updateLocationMarker(); }, 60000);
+  setInterval(pollRealtimePosition, 15000);
+  setInterval(fetchTLEFresh, 3*3600*1000);
+
+  if (settings.location) recomputePasses();
+
+  document.getElementById('loadingVeil').classList.add('hide');
+  restartCardAnimation(document.getElementById('view-dashboard'));
+  setTimeout(()=>document.getElementById('loadingVeil').remove(), 700);
+
+  animate();
+}
+
+if (document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+})();
+</script>
+</body>
+</html>
