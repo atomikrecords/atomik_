@@ -224,7 +224,7 @@ const IN = 12, H1 = 32, H2 = 24, GROUPN = 3, OUT = GROUPN*2;
 const LR = 0.012;
 const GAMMA = 0.98;
 const LAMBDA = 0.95;                 // GAE smoothing between 1-step TD and full Monte-Carlo
-const ENTROPY_COEF = 0.01;
+const ENTROPY_COEF = 0.015;
 const GRAD_CLIP_NORM = 6;
 const RETURN_SCALE = 60;             // compresses raw rewards into a ~unit range for the critic
 const CRITIC_COEF = 1.0;
@@ -720,6 +720,32 @@ function resetWorker(w){
   w.traj = { x:[], choice:[], pOld:[], v:[], r:[] };
 }
 
+// The task is left-right symmetric (nothing about the physics or reward
+// prefers one side), but the pad only ever sits to the right of the start
+// point, so the policy only ever sees "pad is to the right" data directly.
+// A network can get unlucky early and lock onto a confidently wrong
+// direction, and - because bigger nets + multi-epoch PPO updates converge
+// faster - it can lock in before enough corrective experience arrives to
+// fix it. Mirroring every collected episode left-right (flipping which
+// physical booster is "left" vs "right") gives the network an explicit,
+// exactly-balanced counter-example for free every single time, which
+// makes that kind of one-sided collapse essentially impossible. Reward
+// values are unaffected by the mirror (nothing in the reward function
+// depends on the sign of x or angle), so adv/ret carry over unchanged.
+function mirrorRecord(record){
+  const n = record.x.length;
+  const mx = new Array(n), mc = new Array(n), mp = new Array(n);
+  for(let t=0;t<n;t++){
+    const s = record.x[t];
+    mx[t] = Float64Array.from([-s[0], s[1], -s[2], s[3], -s[4], s[5], -s[6], s[7], s[8], s[9], s[11], s[10]]);
+    const ch = record.choice[t];
+    mc[t] = [ch[0], ch[1]===1?2:(ch[1]===2?1:0)];
+    const p = record.pOld[t];
+    mp[t] = Float64Array.from([p[0],p[1],p[2], p[3],p[5],p[4]]);
+  }
+  return { x:mx, choice:mc, pOld:mp, adv:record.adv, ret:record.ret };
+}
+
 function finishWorkerEpisode(w, stepResult, isHero){
   attempts++;
   if(stepResult.success) successes++;
@@ -730,7 +756,8 @@ function finishWorkerEpisode(w, stepResult, isHero){
   const {adv, ret} = computeGAE(w.traj);
   const record = { x:w.traj.x, choice:w.traj.choice, pOld:w.traj.pOld, adv, ret };
   pendingBatch.push(record);
-  pendingBatchSteps += w.traj.r.length;
+  pendingBatch.push(mirrorRecord(record));
+  pendingBatchSteps += w.traj.r.length*2;
   if(stepResult.success) pushSuccessBuffer(record);
 
   updateCurriculum(stepResult.success);
