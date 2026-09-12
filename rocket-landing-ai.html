@@ -116,6 +116,21 @@
   .valueBar i{display:block; height:100%; border-radius:5px; transition:width .1s linear, background .2s;}
 
   .settingsTitle{font-weight:700; font-size:13px; margin-bottom:8px;}
+  .settingsSub{font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--sub); margin:4px 0 6px;}
+  .camRow{display:flex; gap:6px; margin-bottom:10px;}
+  .camRow button{padding:8px 4px; min-height:34px; font-size:11.5px;}
+  .camRow button.active{background:linear-gradient(135deg,var(--accent2),var(--accent)); color:#03101c; border:none;}
+
+  .padEditBar{
+    position:absolute; left:10px; right:10px; bottom:calc(env(safe-area-inset-bottom,0px) + 10px);
+    background:var(--panel-solid); border:1px solid #7c5cff66; border-radius:14px;
+    padding:10px 12px; z-index:15; box-shadow:0 12px 30px #000a;
+  }
+  .padEditBar[hidden]{display:none;}
+  .peTitle{font-size:12.5px; font-weight:700; margin-bottom:2px;}
+  .peInfo{font-size:10.5px; color:var(--sub); font-variant-numeric:tabular-nums; margin-bottom:8px;}
+  .peRow{display:flex; gap:6px;}
+  .peRow button{min-height:38px; font-size:12px; padding:8px 4px;}
   .settingRow{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink); padding:6px 0;}
   .settingRow input{width:16px; height:16px;}
   #settingsPanel button{width:100%; min-height:36px;}
@@ -176,8 +191,27 @@
       </div>
     </div>
     <div class="banner" id="banner"></div>
+    <div id="padEditBar" class="padEditBar" hidden>
+      <div class="peTitle">Drag anywhere to place the landing pad</div>
+      <div class="peInfo" id="padInfo">auto (curriculum)</div>
+      <div class="peRow">
+        <button id="padNarrow">– width</button>
+        <button id="padWiden">+ width</button>
+        <button id="padAuto">Auto</button>
+        <button id="padDone" class="primary">Done</button>
+      </div>
+    </div>
+
     <div id="settingsPanel" class="settingsPanel" hidden>
       <div class="settingsTitle">Settings</div>
+      <div class="settingsSub">Camera</div>
+      <div class="camRow">
+        <button class="camBtn active" data-cam="follow">Follow</button>
+        <button class="camBtn" data-cam="wide">Wide</button>
+        <button class="camBtn" data-cam="free">Free</button>
+      </div>
+      <button id="btnEditPad" style="margin:2px 0 10px;">Move landing pad…</button>
+      <div class="settingsSub">Display</div>
       <label class="settingRow"><input type="checkbox" id="optBoosterPct" checked> Show booster power %</label>
       <label class="settingRow"><input type="checkbox" id="optTrail" checked> Show trajectory trail</label>
       <label class="settingRow"><input type="checkbox" id="optValueTrail" checked> Colour trail by AI confidence</label>
@@ -295,6 +329,9 @@ const START = { x: 300, y: 140 };
 // biggest lever for how fast visible improvement shows up.
 const PAD_OFFSET_MIN = 150, PAD_OFFSET_MAX = 520, PAD_WIDTH = 140;
 const PAD = { x1: 0, x2: 0, y: WORLD.groundY };
+// When you place the pad yourself the curriculum stops moving it (and stops
+// changing difficulty), so the pad stays exactly where you put it.
+let manualPad = false, manualPadCenter = 0, padWidth = PAD_WIDTH;
 
 const GRAVITY = 175;                 // px/s^2
 const MAIN_THRUST = 340;             // bottom booster accel
@@ -749,10 +786,11 @@ let curriculumWindow = [];
 // wins actually happen, and wins are the only thing the AI can learn a
 // successful landing FROM - shaping rewards alone can only get it close.
 function recomputeDifficulty(){
-  const offset = PAD_OFFSET_MIN + difficulty*(PAD_OFFSET_MAX-PAD_OFFSET_MIN);
-  const cx = START.x + offset;
-  PAD.x1 = cx - PAD_WIDTH/2;
-  PAD.x2 = cx + PAD_WIDTH/2;
+  const cx = manualPad
+    ? manualPadCenter
+    : START.x + PAD_OFFSET_MIN + difficulty*(PAD_OFFSET_MAX-PAD_OFFSET_MIN);
+  PAD.x1 = cx - padWidth/2;
+  PAD.x2 = cx + padWidth/2;
 
   LAND_TILT_OK   = TILT_EASY   + (TILT_HARD-TILT_EASY)*difficulty;
   LAND_SPEED_OK  = SPEED_EASY  + (SPEED_HARD-SPEED_EASY)*difficulty;
@@ -760,6 +798,7 @@ function recomputeDifficulty(){
 }
 
 function updateCurriculum(success){
+  if(manualPad) return;   // you're driving the pad now - leave difficulty alone
   curriculumWindow.push(success?1:0);
   if(curriculumWindow.length>40) curriculumWindow.shift();
   if(curriculumWindow.length>=20){
@@ -1049,6 +1088,7 @@ function resetLearning(){
   attempts=0; successes=0; best=-Infinity; rewardHistory=[];
   streak=0; bestStreak=0; metricHistory=[]; lastMetrics={ent:0,vl:0,clip:0};
   pastTrails=[]; particles=[]; shake=0; edgeCache=null;
+  manualPad=false; padWidth=PAD_WIDTH;
   difficulty=0; curriculumWindow=[]; recomputeDifficulty();
   adamM = zerosLikeNet(); adamV = zerosLikeNet(); adamT = 0; updateCount = 0;
   obsCount = 1e-4; obsSum.fill(0); obsSumSq.fill(0); refreshObsNorm();
@@ -1232,15 +1272,140 @@ window.addEventListener('resize', resize);
 const stars = [];
 for(let i=0;i<140;i++) stars.push({x:Math.random()*WORLD.w, y:Math.random()*WORLD.h*0.85, r:Math.random()*1.6+0.3, tw:Math.random()*Math.PI*2});
 
+/* -------------------------------------------------------------------------
+   CAMERA + DIRECT MANIPULATION
+   follow : locked to the rocket (original behaviour)
+   wide   : whole world in frame, so you can watch every rocket at once
+   free   : drag to pan, pinch to zoom, stays where you leave it
+   ------------------------------------------------------------------------- */
+let cameraMode = 'follow';
+let camX = 0, camY = 0, camZoom = 1;
+const freeCam = { x:0, y:0, zoom:1 };
+let padEditMode = false;
+
+function screenToWorld(sx, sy){
+  return { x: sx/camZoom + camX, y: sy/camZoom + camY };
+}
+
+function setCameraMode(mode){
+  if(mode==='free' && cameraMode!=='free'){
+    freeCam.x = camX; freeCam.y = camY; freeCam.zoom = camZoom || 1;
+  }
+  cameraMode = mode;
+  document.querySelectorAll('.camBtn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.cam===mode);
+  });
+  saveSettings();
+}
+
+function placePadAtScreen(sx, sy){
+  const wpt = screenToWorld(sx, sy);
+  manualPad = true;
+  manualPadCenter = clamp(wpt.x, padWidth/2 + 30, WORLD.w - padWidth/2 - 30);
+  recomputeDifficulty();
+  updatePadEditLabel();
+}
+
+function updatePadEditLabel(){
+  const el = document.getElementById('padInfo');
+  if(el) el.textContent = manualPad
+    ? ('pad at x=' + Math.round((PAD.x1+PAD.x2)/2) + '  ·  width ' + Math.round(padWidth))
+    : ('auto (curriculum) · width ' + Math.round(padWidth));
+}
+
+// ---- pointer handling: pan/zoom in free mode, place pad in edit mode ----
+let ptrs = new Map();
+let panLast = null, pinchLast = 0;
+
+function canvasPoint(e, t){
+  const rect = canvas.getBoundingClientRect();
+  return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+}
+
+function onPointerDown(e){
+  for(const t of (e.touches ? e.touches : [e])) ptrs.set(t.identifier===undefined?'m':t.identifier, canvasPoint(e,t));
+  const pts = [...ptrs.values()];
+  if(padEditMode && pts.length===1){
+    placePadAtScreen(pts[0].x, pts[0].y);
+  } else if(cameraMode==='free'){
+    if(pts.length===1) panLast = pts[0];
+    else if(pts.length>=2) pinchLast = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+  }
+}
+
+function onPointerMove(e){
+  if(ptrs.size===0) return;
+  e.preventDefault();
+  for(const t of (e.touches ? e.touches : [e])) ptrs.set(t.identifier===undefined?'m':t.identifier, canvasPoint(e,t));
+  const pts = [...ptrs.values()];
+
+  if(padEditMode && pts.length===1){
+    placePadAtScreen(pts[0].x, pts[0].y);
+    return;
+  }
+  if(cameraMode!=='free') return;
+
+  if(pts.length>=2){
+    const d = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+    if(pinchLast>0){
+      const midS = { x:(pts[0].x+pts[1].x)/2, y:(pts[0].y+pts[1].y)/2 };
+      const before = screenToWorld(midS.x, midS.y);
+      freeCam.zoom = clamp(freeCam.zoom * (d/pinchLast), 0.22, 2.4);
+      camZoom = freeCam.zoom;
+      // keep the point under the fingers pinned while zooming
+      freeCam.x = before.x - midS.x/camZoom;
+      freeCam.y = before.y - midS.y/camZoom;
+    }
+    pinchLast = d;
+    panLast = null;
+  } else if(pts.length===1 && panLast){
+    freeCam.x -= (pts[0].x - panLast.x)/camZoom;
+    freeCam.y -= (pts[0].y - panLast.y)/camZoom;
+    panLast = pts[0];
+  }
+}
+
+function onPointerUp(e){
+  if(e.touches){
+    ptrs.clear();
+    for(const t of e.touches) ptrs.set(t.identifier, canvasPoint(e,t));
+  } else ptrs.clear();
+  if(ptrs.size<2) pinchLast = 0;
+  if(ptrs.size===0) panLast = null;
+  else panLast = [...ptrs.values()][0];
+}
+
 function draw(){
   const hero = workers[0].rocket;
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  // camera (with a decaying impact shake)
-  let camX = clamp(hero.x - viewW/2, 0, Math.max(0,WORLD.w-viewW));
-  let camY = clamp(hero.y - viewH*0.42, 0, Math.max(0,WORLD.h-viewH));
+
+  // ---- camera ----
+  if(cameraMode==='wide'){
+    camZoom = Math.min(viewW/WORLD.w, viewH/WORLD.h);
+  } else if(cameraMode==='free'){
+    camZoom = freeCam.zoom;
+  } else {
+    camZoom = 1;
+  }
+  const visW = viewW/camZoom, visH = viewH/camZoom;
+  let targetX, targetY;
+  if(cameraMode==='wide'){
+    targetX = (WORLD.w-visW)/2; targetY = (WORLD.h-visH)/2;
+  } else if(cameraMode==='free'){
+    targetX = freeCam.x; targetY = freeCam.y;
+  } else {
+    targetX = hero.x - visW/2;
+    targetY = hero.y - visH*0.42;
+  }
+  camX = clamp(targetX, 0, Math.max(0, WORLD.w-visW));
+  camY = clamp(targetY, 0, Math.max(0, WORLD.h-visH));
+  if(cameraMode==='free'){ freeCam.x = camX; freeCam.y = camY; }
+
+  // decaying impact shake (kept constant in screen pixels regardless of zoom)
+  let shakeX=0, shakeY=0;
   if(shake>0.002){
-    camX += (Math.random()-0.5)*18*shake;
-    camY += (Math.random()-0.5)*18*shake;
+    shakeX = (Math.random()-0.5)*18*shake/camZoom;
+    shakeY = (Math.random()-0.5)*18*shake/camZoom;
     shake *= 0.88;
   } else shake = 0;
 
@@ -1250,7 +1415,8 @@ function draw(){
   ctx.fillStyle = grd; ctx.fillRect(0,0,viewW,viewH);
 
   ctx.save();
-  ctx.translate(-camX,-camY);
+  ctx.scale(camZoom, camZoom);
+  ctx.translate(-(camX+shakeX), -(camY+shakeY));
 
   // stars
   const t = performance.now()/600;
@@ -1291,6 +1457,22 @@ function draw(){
   ctx.font="bold 13px -apple-system,Helvetica,Arial,sans-serif";
   ctx.textAlign="center";
   ctx.fillText("LANDING PAD", (PAD.x1+PAD.x2)/2, PAD.y-16);
+
+  // while repositioning, make the pad unmistakable
+  if(padEditMode){
+    const pulse = 0.5+0.5*Math.sin(performance.now()/220);
+    ctx.strokeStyle = `rgba(124,92,255,${0.55+0.45*pulse})`;
+    ctx.lineWidth = 3/camZoom;
+    ctx.setLineDash([9/camZoom, 6/camZoom]);
+    ctx.strokeRect(PAD.x1-10, PAD.y-70, (PAD.x2-PAD.x1)+20, 78);
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo((PAD.x1+PAD.x2)/2, PAD.y-70);
+    ctx.lineTo((PAD.x1+PAD.x2)/2, 0);
+    ctx.strokeStyle = `rgba(124,92,255,${0.18+0.2*pulse})`;
+    ctx.lineWidth = 1.5/camZoom;
+    ctx.stroke();
+  }
 
   // paths of recent finished attempts, fading out - watch the shape of the
   // flight visibly clean up as it learns
@@ -1848,13 +2030,23 @@ document.querySelectorAll('.speedgrp button').forEach(b=>{
 /* --- settings panel --- */
 const SETTINGS_KEY = "rocketLandingAI_settings_v1";
 function saveSettings(){
-  try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }catch(e){}
+  try{
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(
+      Object.assign({}, settings, { cameraMode, manualPad, manualPadCenter, padWidth })
+    ));
+  }catch(e){}
 }
 function loadSettings(){
   try{
     const raw = localStorage.getItem(SETTINGS_KEY);
     if(!raw) return;
-    Object.assign(settings, JSON.parse(raw));
+    const s = JSON.parse(raw);
+    Object.assign(settings, s);
+    if(s.cameraMode==='follow'||s.cameraMode==='wide'||s.cameraMode==='free') cameraMode = s.cameraMode;
+    if(typeof s.padWidth==='number') padWidth = clamp(s.padWidth, 70, 320);
+    if(s.manualPad && typeof s.manualPadCenter==='number'){
+      manualPad = true; manualPadCenter = s.manualPadCenter;
+    }
   }catch(e){}
 }
 function applySettingsToUI(){
@@ -1868,6 +2060,9 @@ function applySettingsToUI(){
   document.getElementById('optInfiniteFuel').checked = settings.infiniteFuel;
   document.getElementById('boosterHud').hidden = !settings.showBoosterPct;
   document.getElementById('fuelChip').hidden = !settings.showFuel;
+  document.querySelectorAll('.camBtn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.cam===cameraMode);
+  });
 }
 
 function bindToggle(id, key, after){
@@ -1905,6 +2100,69 @@ document.getElementById('optFuel').addEventListener('change', e=>{
   document.getElementById('fuelChip').hidden = !settings.showFuel;
   saveSettings();
 });
+
+/* --- camera + pad editing --- */
+document.querySelectorAll('.camBtn').forEach(b=>{
+  b.addEventListener('click', ()=> setCameraMode(b.dataset.cam));
+});
+
+const padEditBar = document.getElementById('padEditBar');
+let runningBeforeEdit = false;
+
+function openPadEdit(){
+  padEditMode = true;
+  runningBeforeEdit = running;
+  running = false;                       // pause while you reposition it
+  btnRun.textContent = "Start";
+  learnPill.classList.add('paused');
+  learnLabel.textContent = "Paused";
+  settingsPanel.hidden = true;
+  padEditBar.hidden = false;
+  if(cameraMode==='follow') setCameraMode('wide');   // so you can see the whole ground
+  updatePadEditLabel();
+}
+function closePadEdit(){
+  padEditMode = false;
+  padEditBar.hidden = true;
+  // a moved pad invalidates the in-flight episodes, so start everyone fresh
+  workers.forEach(resetWorker);
+  trail = []; pastTrails = [];
+  if(runningBeforeEdit){
+    running = true;
+    btnRun.textContent = "Pause";
+    learnPill.classList.remove('paused');
+    learnLabel.textContent = "Learning…";
+  }
+  saveAll(true);
+  refreshHUD();
+}
+
+document.getElementById('btnEditPad').addEventListener('click', openPadEdit);
+document.getElementById('padDone').addEventListener('click', closePadEdit);
+document.getElementById('padAuto').addEventListener('click', ()=>{
+  manualPad = false;
+  padWidth = PAD_WIDTH;
+  recomputeDifficulty();
+  updatePadEditLabel();
+});
+document.getElementById('padNarrow').addEventListener('click', ()=>{
+  padWidth = clamp(padWidth-20, 70, 320);
+  if(!manualPad){ manualPad = true; manualPadCenter = (PAD.x1+PAD.x2)/2; }
+  recomputeDifficulty(); updatePadEditLabel();
+});
+document.getElementById('padWiden').addEventListener('click', ()=>{
+  padWidth = clamp(padWidth+20, 70, 320);
+  if(!manualPad){ manualPad = true; manualPadCenter = (PAD.x1+PAD.x2)/2; }
+  recomputeDifficulty(); updatePadEditLabel();
+});
+
+canvas.addEventListener('touchstart', onPointerDown, {passive:false});
+canvas.addEventListener('touchmove', onPointerMove, {passive:false});
+canvas.addEventListener('touchend', onPointerUp);
+canvas.addEventListener('touchcancel', onPointerUp);
+canvas.addEventListener('mousedown', onPointerDown);
+canvas.addEventListener('mousemove', e=>{ if(ptrs.size) onPointerMove(e); });
+window.addEventListener('mouseup', onPointerUp);
 
 /* --- brain panel --- */
 const brainPanel = document.getElementById('brainPanel');
