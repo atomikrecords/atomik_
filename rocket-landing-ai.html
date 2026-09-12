@@ -147,6 +147,7 @@
       <label class="settingRow"><input type="checkbox" id="optBoosterPct" checked> Show booster power %</label>
       <label class="settingRow"><input type="checkbox" id="optTrail" checked> Show trajectory trail</label>
       <label class="settingRow"><input type="checkbox" id="optFuel" checked> Show fuel gauge</label>
+      <label class="settingRow"><input type="checkbox" id="optInfiniteFuel"> Infinite fuel</label>
       <button id="btnCloseSettings" style="margin-top:6px;">Close</button>
     </div>
   </div>
@@ -594,7 +595,7 @@ function physicsStep(r, booster){
   r.angVel += angAccel*DT; r.angVel *= ANG_DAMP;
   r.angle += r.angVel*DT;
 
-  r.fuel = Math.max(0, r.fuel - activeCount*FUEL_RATE*DT);
+  if(!settings.infiniteFuel) r.fuel = Math.max(0, r.fuel - activeCount*FUEL_RATE*DT);
   r.lastAction = booster;
 
   // invisible side walls: clamp rather than end the episode, so a wide swing
@@ -699,7 +700,7 @@ let attempts=0, successes=0, best=-Infinity, rewardHistory=[];
 let running=false, speed=1;
 let heroLastP = new Float64Array(OUT); // most recent policy output for worker 0, for the booster-power HUD
 let trail = []; // worker 0's trajectory trail only
-const settings = { showBoosterPct:true, showTrail:true, showFuel:true };
+const settings = { showBoosterPct:true, showTrail:true, showFuel:true, infiniteFuel:false };
 
 function resetLearning(){
   net = freshNet();
@@ -1133,6 +1134,7 @@ function applySettingsToUI(){
   document.getElementById('optBoosterPct').checked = settings.showBoosterPct;
   document.getElementById('optTrail').checked = settings.showTrail;
   document.getElementById('optFuel').checked = settings.showFuel;
+  document.getElementById('optInfiniteFuel').checked = settings.infiniteFuel;
   document.getElementById('boosterHud').hidden = !settings.showBoosterPct;
   document.getElementById('fuelChip').hidden = !settings.showFuel;
 }
@@ -1160,6 +1162,10 @@ document.getElementById('optTrail').addEventListener('change', e=>{
 document.getElementById('optFuel').addEventListener('change', e=>{
   settings.showFuel = e.target.checked;
   document.getElementById('fuelChip').hidden = !settings.showFuel;
+  saveSettings();
+});
+document.getElementById('optInfiniteFuel').addEventListener('change', e=>{
+  settings.infiniteFuel = e.target.checked;
   saveSettings();
 });
 
