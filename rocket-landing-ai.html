@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Rocket Landing AI</title>
+<style>
+  :root{
+    --bg1:#050611; --bg2:#0c1024; --panel:#12142280; --panel-solid:#141726;
+    --ink:#eef0fb; --sub:#8d92b8; --line:#2a2e48; --accent:#4fd1ff; --accent2:#7c5cff;
+    --good:#3ee08b; --bad:#ff5c7a; --warn:#ffb347;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#000;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  body{color:var(--ink); touch-action:none; overscroll-behavior:none; user-select:none;
+    height:100dvh; width:100vw;}
+  #wrap{position:relative; width:100%; height:100dvh; display:flex; flex-direction:column;}
+  #canvasHolder{position:relative; flex:1 1 auto; min-height:0; background:#000;}
+  canvas{display:block; width:100%; height:100%;}
+
+  .hud{
+    position:absolute; top:0; left:0; right:0;
+    padding: calc(env(safe-area-inset-top,0px) + 8px) calc(env(safe-area-inset-right,0px) + 10px) 6px calc(env(safe-area-inset-left,0px) + 10px);
+    display:flex; flex-wrap:wrap; gap:6px; justify-content:space-between; align-items:flex-start;
+    pointer-events:none;
+  }
+  .chip{
+    background:var(--panel); backdrop-filter: blur(8px);
+    border:1px solid var(--line); border-radius:10px; padding:5px 9px;
+    font-size:11.5px; line-height:1.25; color:var(--sub); min-width:70px;
+  }
+  .chip b{display:block; font-size:15px; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .chip.accent b{color:var(--accent);}
+  .chip.good b{color:var(--good);}
+  .chip.bad b{color:var(--bad);}
+  .learning-pill{
+    display:flex; align-items:center; gap:6px; background:linear-gradient(135deg,#4fd1ff22,#7c5cff22);
+    border:1px solid #7c5cff55; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:600;
+    color:var(--accent); pointer-events:none;
+  }
+  .learning-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--good);
+    box-shadow:0 0 8px var(--good); animation:pulse 1.1s ease-in-out infinite;}
+  .learning-pill.paused .dot{background:var(--warn); box-shadow:0 0 8px var(--warn); animation:none;}
+  @keyframes pulse{0%,100%{opacity:1; transform:scale(1);} 50%{opacity:.4; transform:scale(.75);}}
+
+  .banner{
+    position:absolute; left:50%; top:14%; transform:translate(-50%,-10px);
+    padding:10px 22px; border-radius:14px; font-size:16px; font-weight:800; letter-spacing:.02em;
+    opacity:0; transition:opacity .18s ease, transform .18s ease; pointer-events:none; text-align:center;
+    box-shadow:0 8px 30px #0008;
+  }
+  .banner.show{opacity:1; transform:translate(-50%,0);}
+  .banner.success{background:linear-gradient(135deg,#1c3,#3ee08b); color:#03150a;}
+  .banner.crash{background:linear-gradient(135deg,#a11,#ff5c7a); color:#2a0006;}
+
+  #bottom{
+    flex:0 0 auto; background:var(--panel-solid); border-top:1px solid var(--line);
+    padding: 8px calc(env(safe-area-inset-right,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 8px) calc(env(safe-area-inset-left,0px) + 10px);
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .row{display:flex; gap:8px; align-items:stretch;}
+  button{
+    font-family:inherit; font-size:13px; font-weight:700; color:var(--ink);
+    background:#1b1e33; border:1px solid var(--line); border-radius:10px;
+    padding:10px 8px; flex:1 1 0; min-height:42px; letter-spacing:.01em;
+  }
+  button:active{background:#262a48;}
+  button.primary{background:linear-gradient(135deg,var(--accent2),var(--accent)); color:#03101c; border:none;}
+  button.danger{background:#3a1420; border-color:#5c2436; color:var(--bad);}
+  .speedgrp{display:flex; gap:6px; flex:1.4 1 0;}
+  .speedgrp button{flex:1; padding:10px 4px;}
+  .speedgrp button.active{background:linear-gradient(135deg,var(--accent2),var(--accent)); color:#03101c; border:none;}
+
+  #progress{
+    display:flex; align-items:center; gap:10px; font-size:11px; color:var(--sub); flex-wrap:wrap;
+  }
+  #progress .title{font-weight:700; color:var(--ink); font-size:12px; white-space:nowrap;}
+  #sparkWrap{flex:1 1 160px; min-width:120px; height:30px; position:relative;}
+  #sparkWrap canvas{width:100%; height:100%; display:block;}
+  #progress .stat{white-space:nowrap;}
+  #progress .stat b{color:var(--ink);}
+
+  .toggleProgress{position:absolute; right:calc(env(safe-area-inset-right,0px) + 8px); top:calc(env(safe-area-inset-top,0px) + 8px);}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="canvasHolder">
+    <canvas id="c"></canvas>
+    <div class="hud">
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <div class="chip"><span>Attempt</span><b id="statAttempt">0</b></div>
+        <div class="chip good"><span>Landings</span><b id="statSuccess">0</b></div>
+        <div class="chip accent"><span>Success rate</span><b id="statRate">0%</b></div>
+        <div class="chip"><span>Reward</span><b id="statReward">0</b></div>
+      </div>
+      <div class="learning-pill" id="learnPill"><span class="dot"></span><span id="learnLabel">Learning…</span></div>
+    </div>
+    <div class="banner" id="banner"></div>
+  </div>
+  <div id="bottom">
+    <div id="progress">
+      <span class="title">AI Learning Progress</span>
+      <div id="sparkWrap"><canvas id="spark"></canvas></div>
+      <span class="stat">best <b id="statBest">0</b></span>
+      <span class="stat">avg(20) <b id="statAvg">0</b></span>
+      <span class="stat">gen <b id="statGen">0</b></span>
+    </div>
+    <div class="row">
+      <button class="primary" id="btnRun">Start</button>
+      <button class="danger" id="btnReset">Reset Learning</button>
+    </div>
+    <div class="row">
+      <span style="align-self:center; font-size:11px; color:var(--sub); flex:0 0 auto;">Speed</span>
+      <div class="speedgrp">
+        <button data-spd="1" class="active">1x</button>
+        <button data-spd="5">5x</button>
+        <button data-spd="25">25x</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================================
+   CONFIG / CONSTANTS
+   ========================================================================= */
+const WORLD = { w: 1500, h: 1100, groundY: 980 };
+const PAD = { x1: 480, x2: 620, y: 980 };             // pad off to the side
+const START = { x: 300, y: 140 };
+
+const GRAVITY = 175;                 // px/s^2
+const MAIN_THRUST = 340;             // bottom booster accel
+const TOP_THRUST = 220;              // top booster accel
+const SIDE_THRUST = 200;             // left/right lateral accel
+const SIDE_TORQUE = 3.4;             // left/right angular accel (rad/s^2)
+const ANG_DAMP = 0.992;
+const FUEL_MAX = 100;
+const FUEL_RATE = 7;                 // per booster active, per second
+const ROCKET_W = 26, ROCKET_H = 62;
+const MAX_TILT = Math.PI * 0.62;     // ~112 deg -> flip crash
+const LAND_TILT_OK = 0.4;            // ~23 deg
+const LAND_SPEED_OK = 130;           // px/s
+const LAND_ANGVEL_OK = 1.3;
+const MAX_STEPS = 900;               // episode cap (~15s at 60 physics-steps/s)
+const DT = 1/60;
+
+/* =========================================================================
+   NEURAL NET (tiny MLP) + REINFORCE POLICY GRADIENT
+   ========================================================================= */
+// Two independent categorical booster groups keep the action space small and
+// low-variance while still letting every booster be driven on its own:
+//   axial group   -> {none, bottom, top}   (fights gravity / brakes)
+//   lateral group -> {none, left, right}   (steers toward the pad)
+// Both groups fire together each physics step, so all 4 boosters remain
+// independently reachable (e.g. bottom+left, top+right, ...) except the
+// physically pointless "bottom+top" / "left+right" opposite-pair combos.
+const IN = 8, HID = 16, GROUPN = 3, OUT = GROUPN*2;
+const LR = 0.02;
+const GAMMA = 0.98;
+const ENTROPY_COEF = 0.01;
+const GRAD_CLIP_NORM = 6;
+const RETURN_SCALE = 60;   // compresses raw episode returns into a ~[-1,3] range for the value head
+const CRITIC_COEF = 1.0;   // weight of the value (critic) gradient relative to the policy gradient
+
+function randn(){ // Box-Muller
+  let u=0,v=0; while(u===0)u=Math.random(); while(v===0)v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+function makeMat(r,c,scale){ const m=new Array(r); for(let i=0;i<r;i++){ m[i]=new Float64Array(c); for(let j=0;j<c;j++) m[i][j]=randn()*scale; } return m; }
+function makeVec(n){ return new Float64Array(n); }
+
+function freshNet(){
+  return {
+    W1: makeMat(IN, HID, 1/Math.sqrt(IN)),
+    b1: makeVec(HID),
+    W2: makeMat(HID, OUT, 1/Math.sqrt(HID)),
+    b2: makeVec(OUT),
+    Wv: makeVec(HID),   // value (critic) head, shares the hidden layer with the policy
+    bv: 0
+  };
+}
+
+let net = freshNet();
+let gen = 0; // generation counter (network resets)
+
+function tanh(x){ return Math.tanh(x); }
+
+function softmax3(z, off){
+  const m = Math.max(z[off],z[off+1],z[off+2]);
+  const e0=Math.exp(z[off]-m), e1=Math.exp(z[off+1]-m), e2=Math.exp(z[off+2]-m);
+  const s=e0+e1+e2;
+  return [e0/s, e1/s, e2/s];
+}
+
+// forward pass; returns {h (post-tanh hidden), p (6 probs: 3 axial + 3 lateral), v (scalar state value)}
+function forward(x){
+  const h = new Float64Array(HID);
+  for(let j=0;j<HID;j++){
+    let s = net.b1[j];
+    for(let i=0;i<IN;i++) s += x[i]*net.W1[i][j];
+    h[j] = tanh(s);
+  }
+  const z2 = new Float64Array(OUT);
+  for(let k=0;k<OUT;k++){
+    let s = net.b2[k];
+    for(let j=0;j<HID;j++) s += h[j]*net.W2[j][k];
+    z2[k]=s;
+  }
+  const pAxial = softmax3(z2,0);
+  const pLateral = softmax3(z2,GROUPN);
+  const p = Float64Array.from([...pAxial, ...pLateral]);
+  let v = net.bv;
+  for(let j=0;j<HID;j++) v += net.Wv[j]*h[j];
+  return {h,p,v};
+}
+
+function sampleCategorical(p3){
+  const r = Math.random();
+  if(r < p3[0]) return 0;
+  if(r < p3[0]+p3[1]) return 1;
+  return 2;
+}
+
+// returns {choice:[axialIdx,lateralIdx], booster:[bottom,top,left,right]}
+function sampleActions(p){
+  const axial = sampleCategorical([p[0],p[1],p[2]]);
+  const lateral = sampleCategorical([p[3],p[4],p[5]]);
+  const booster = new Uint8Array(4); // bottom, top, left, right
+  if(axial===1) booster[0]=1; else if(axial===2) booster[1]=1;
+  if(lateral===1) booster[2]=1; else if(lateral===2) booster[3]=1;
+  return { choice:[axial,lateral], booster };
+}
+
+// Episode trajectory buffers
+let traj = { x:[], h:[], p:[], v:[], a:[], r:[] };
+function resetTraj(){ traj = { x:[], h:[], p:[], v:[], a:[], r:[] }; }
+
+function recordStep(x,h,p,v,a,r){
+  traj.x.push(x); traj.h.push(h); traj.p.push(p); traj.v.push(v); traj.a.push(a); traj.r.push(r);
+}
+
+// Gradients are accumulated over a small batch of episodes before being
+// applied - this averages out a lot of the single-episode noise inherent to
+// policy gradients and makes the learning curve considerably more stable.
+const BATCH_EPISODES = 1;
+let batchCount = 0;
+let batchGW1 = makeMat(IN,HID,0), batchGb1 = makeVec(HID);
+let batchGW2 = makeMat(HID,OUT,0), batchGb2 = makeVec(OUT);
+let batchGWv = makeVec(HID), batchGbv = 0;
+
+// perform an advantage-actor-critic policy-gradient update at episode end
+function learnFromEpisode(){
+  const T = traj.r.length;
+  if(T===0) return;
+  // discounted reward-to-go, compressed to roughly unit scale for the critic
+  const G = new Float64Array(T);
+  let running = 0;
+  for(let t=T-1;t>=0;t--){ running = traj.r[t] + GAMMA*running; G[t]=running; }
+  const Gs = new Float64Array(T);
+  for(let t=0;t<T;t++) Gs[t] = G[t]/RETURN_SCALE;
+
+  // raw advantage = actual return - the critic's predicted value (baseline)
+  const rawAdv = new Float64Array(T);
+  for(let t=0;t<T;t++) rawAdv[t] = Gs[t] - traj.v[t];
+  // light normalization keeps the actor's effective step size stable across episodes
+  let mean=0; for(let t=0;t<T;t++) mean+=rawAdv[t]; mean/=T;
+  let varr=0; for(let t=0;t<T;t++) varr += (rawAdv[t]-mean)*(rawAdv[t]-mean); varr/=T;
+  const std = Math.sqrt(varr)+1e-6;
+  const adv = new Float64Array(T);
+  for(let t=0;t<T;t++) adv[t] = (rawAdv[t]-mean)/std;
+
+  // gradient accumulators
+  const gW1 = makeMat(IN,HID,0), gb1 = makeVec(HID);
+  const gW2 = makeMat(HID,OUT,0), gb2 = makeVec(OUT);
+  const gWv = makeVec(HID); let gbv = 0;
+
+  for(let t=0;t<T;t++){
+    const x = traj.x[t], h = traj.h[t], p = traj.p[t], choice = traj.a[t].choice, A = adv[t];
+    // dLoss/dz2 = (p - onehot(a))*A per softmax group - entropy term encourages a uniform-ish policy
+    const dz2 = new Float64Array(OUT);
+    for(let k=0;k<GROUPN;k++){
+      const onehot = (k===choice[0])?1:0;
+      dz2[k] = (p[k]-onehot)*A - ENTROPY_COEF*(1/GROUPN - p[k]);
+    }
+    for(let k=0;k<GROUPN;k++){
+      const onehot = (k===choice[1])?1:0;
+      dz2[GROUPN+k] = (p[GROUPN+k]-onehot)*A - ENTROPY_COEF*(1/GROUPN - p[GROUPN+k]);
+    }
+    for(let j=0;j<HID;j++){
+      for(let k=0;k<OUT;k++) gW2[j][k]+= h[j]*dz2[k];
+    }
+    for(let k=0;k<OUT;k++) gb2[k]+=dz2[k];
+
+    // critic: simple MSE regression of v(s) toward the compressed return
+    const dv = (traj.v[t]-Gs[t]) * CRITIC_COEF;
+    for(let j=0;j<HID;j++) gWv[j] += h[j]*dv;
+    gbv += dv;
+
+    const dh = new Float64Array(HID);
+    for(let j=0;j<HID;j++){
+      let s=0;
+      for(let k=0;k<OUT;k++) s+= net.W2[j][k]*dz2[k];
+      s += net.Wv[j]*dv;
+      dh[j] = s*(1-h[j]*h[j]);
+    }
+    for(let i=0;i<IN;i++){
+      for(let j=0;j<HID;j++) gW1[i][j]+= x[i]*dh[j];
+    }
+    for(let j=0;j<HID;j++) gb1[j]+=dh[j];
+  }
+
+  // fold this episode's gradient into the running batch
+  for(let i=0;i<IN;i++) for(let j=0;j<HID;j++) batchGW1[i][j] += gW1[i][j];
+  for(let j=0;j<HID;j++) batchGb1[j] += gb1[j];
+  for(let j=0;j<HID;j++) for(let k=0;k<OUT;k++) batchGW2[j][k] += gW2[j][k];
+  for(let k=0;k<OUT;k++) batchGb2[k] += gb2[k];
+  for(let j=0;j<HID;j++) batchGWv[j] += gWv[j];
+  batchGbv += gbv;
+  batchCount++;
+
+  if(batchCount>=BATCH_EPISODES){
+    // global-norm gradient clipping (keeps updates stable regardless of batch/episode length)
+    let gnorm2 = 0;
+    for(let i=0;i<IN;i++) for(let j=0;j<HID;j++) gnorm2 += batchGW1[i][j]*batchGW1[i][j];
+    for(let j=0;j<HID;j++) gnorm2 += batchGb1[j]*batchGb1[j];
+    for(let j=0;j<HID;j++) for(let k=0;k<OUT;k++) gnorm2 += batchGW2[j][k]*batchGW2[j][k];
+    for(let k=0;k<OUT;k++) gnorm2 += batchGb2[k]*batchGb2[k];
+    for(let j=0;j<HID;j++) gnorm2 += batchGWv[j]*batchGWv[j];
+    gnorm2 += batchGbv*batchGbv;
+    const gnorm = Math.sqrt(gnorm2);
+    const clipScale = gnorm > GRAD_CLIP_NORM ? GRAD_CLIP_NORM/gnorm : 1;
+    const scale = (LR*clipScale)/BATCH_EPISODES;
+
+    for(let i=0;i<IN;i++) for(let j=0;j<HID;j++) net.W1[i][j]-= scale*batchGW1[i][j];
+    for(let j=0;j<HID;j++) net.b1[j]-= scale*batchGb1[j];
+    for(let j=0;j<HID;j++) for(let k=0;k<OUT;k++) net.W2[j][k]-= scale*batchGW2[j][k];
+    for(let k=0;k<OUT;k++) net.b2[k]-= scale*batchGb2[k];
+    for(let j=0;j<HID;j++) net.Wv[j]-= scale*batchGWv[j];
+    net.bv -= scale*batchGbv;
+
+    batchCount = 0;
+    batchGW1 = makeMat(IN,HID,0); batchGb1 = makeVec(HID);
+    batchGW2 = makeMat(HID,OUT,0); batchGb2 = makeVec(OUT);
+    batchGWv = makeVec(HID); batchGbv = 0;
+  }
+}
+
+/* =========================================================================
+   PERSISTENCE
+   ========================================================================= */
+const LS_KEY = "rocketLandingAI_v1";
+
+function matToArr(m){ return m.map(row=>Array.from(row)); }
+function arrToMat(a){ return a.map(row=>Float64Array.from(row)); }
+
+let lastSaveAt = 0;
+function saveAll(force){
+  const now = Date.now();
+  if(!force && now-lastSaveAt < 2000) return; // throttle - avoid hammering localStorage at high sim speeds
+  lastSaveAt = now;
+  try{
+    const payload = {
+      net: { W1: matToArr(net.W1), b1: Array.from(net.b1), W2: matToArr(net.W2), b2: Array.from(net.b2), Wv: Array.from(net.Wv), bv: net.bv },
+      gen, attempts, successes, rewardHistory: rewardHistory.slice(-300), best, speed
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(payload));
+  }catch(e){ /* storage full or unavailable - ignore */ }
+}
+function loadAll(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return false;
+    const p = JSON.parse(raw);
+    net = { W1: arrToMat(p.net.W1), b1: Float64Array.from(p.net.b1), W2: arrToMat(p.net.W2), b2: Float64Array.from(p.net.b2),
+      Wv: Float64Array.from(p.net.Wv||makeVec(HID)), bv: p.net.bv||0 };
+    gen = p.gen||0;
+    attempts = p.attempts||0;
+    successes = p.successes||0;
+    rewardHistory = p.rewardHistory||[];
+    best = p.best||-Infinity;
+    if(p.speed===1||p.speed===5||p.speed===25) speed = p.speed;
+    return true;
+  }catch(e){ return false; }
+}
+
+/* =========================================================================
+   ENVIRONMENT / PHYSICS
+   ========================================================================= */
+function newRocket(){
+  return {
+    x: START.x, y: START.y,
+    vx: (Math.random()-0.5)*20, vy: 0,
+    angle: (Math.random()-0.5)*0.2,
+    angVel: 0,
+    fuel: FUEL_MAX,
+    boosters: {bottom:0, top:0, left:0, right:0},
+    alive: true
+  };
+}
+
+let rocket = newRocket();
+let stepCount = 0;
+let episodeReward = 0;
+let prevHDist = null, prevVDist = null;
+let trail = [];
+
+function padCenter(){ return { x:(PAD.x1+PAD.x2)/2, y:PAD.y }; }
+
+function getState(r){
+  const pc = padCenter();
+  const dx = (pc.x - r.x)/900;
+  const dy = (pc.y - r.y)/900;
+  const vx = r.vx/400;
+  const vy = r.vy/400;
+  const s = Math.sin(r.angle), c = Math.cos(r.angle);
+  const av = r.angVel/6;
+  const fuel = (r.fuel/FUEL_MAX)*2-1;
+  return Float64Array.from([dx,dy,vx,vy,s,c,av,fuel]);
+}
+
+function rocketCorners(r){
+  const hw=ROCKET_W/2, hh=ROCKET_H/2;
+  const c=Math.cos(r.angle), s=Math.sin(r.angle);
+  const pts=[[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]];
+  return pts.map(([lx,ly])=>({
+    x: r.x + lx*c - ly*s,
+    y: r.y + lx*s + ly*c
+  }));
+}
+
+// returns {done, success, reason}
+function physicsStep(r, booster){
+  r.boosters.bottom = booster[0]; r.boosters.top = booster[1];
+  r.boosters.left = booster[2]; r.boosters.right = booster[3];
+
+  const activeCount = booster[0]+booster[1]+booster[2]+booster[3];
+  const fuelAvail = r.fuel>0?1:0;
+  const bOn = booster[0]*fuelAvail, tOn=booster[1]*fuelAvail, lOn=booster[2]*fuelAvail, rOn=booster[3]*fuelAvail;
+
+  const Fx = Math.sin(r.angle), Fy = -Math.cos(r.angle);   // local "up"/nose direction
+  const Rx = Math.cos(r.angle), Ry = Math.sin(r.angle);    // local "right"
+
+  const axial = bOn*MAIN_THRUST - tOn*TOP_THRUST;
+  const lateral = lOn*SIDE_THRUST - rOn*SIDE_THRUST;
+
+  const ax = Fx*axial + Rx*lateral;
+  const ay = Fy*axial + Ry*lateral + GRAVITY;
+
+  const angAccel = (rOn - lOn)*SIDE_TORQUE;
+
+  r.vx += ax*DT; r.vy += ay*DT;
+  r.x += r.vx*DT; r.y += r.vy*DT;
+  r.angVel += angAccel*DT; r.angVel *= ANG_DAMP;
+  r.angle += r.angVel*DT;
+
+  r.fuel = Math.max(0, r.fuel - activeCount*FUEL_RATE*DT);
+
+  // invisible side walls: clamp rather than end the episode, so a wide swing
+  // doesn't waste the whole attempt before it ever reaches the ground
+  if(r.x < 20){ r.x = 20; if(r.vx<0) r.vx = 0; }
+  else if(r.x > WORLD.w-20){ r.x = WORLD.w-20; if(r.vx>0) r.vx = 0; }
+
+  // flip crash
+  if(Math.abs(r.angle) > MAX_TILT){
+    return {done:true, success:false, reason:"tumbled"};
+  }
+
+  const corners = rocketCorners(r);
+  const lowestY = Math.max(...corners.map(p=>p.y));
+  const cxs = corners.map(p=>p.x);
+  const minX = Math.min(...cxs), maxX = Math.max(...cxs);
+
+  if(lowestY >= WORLD.groundY){
+    const onPad = (minX >= PAD.x1-4 && maxX <= PAD.x2+4);
+    const speed = Math.hypot(r.vx, r.vy);
+    const upright = Math.abs(r.angle) <= LAND_TILT_OK;
+    const slow = speed <= LAND_SPEED_OK;
+    const stable = Math.abs(r.angVel) <= LAND_ANGVEL_OK;
+    if(onPad && upright && slow && stable){
+      return {done:true, success:true, reason:"landed"};
+    }
+    return {done:true, success:false, reason: onPad?"hard landing":"missed pad"};
+  }
+  return {done:false};
+}
+
+function computeReward(r, stepResult){
+  const pc = padCenter();
+  // horizontal distance to the pad's own footprint (0 once directly above it)
+  const hdist = r.x < PAD.x1 ? (PAD.x1-r.x) : (r.x > PAD.x2 ? (r.x-PAD.x2) : 0);
+  const vdist = Math.max(0, PAD.y - r.y);
+  let reward = 0;
+  if(prevHDist!==null) reward += (prevHDist-hdist)*0.06;   // progress toward pad, horizontally
+  if(prevVDist!==null) reward += (prevVDist-vdist)*0.01;
+  prevHDist = hdist; prevVDist = vdist;
+  reward += Math.cos(r.angle)*0.05;                  // upright bonus
+  reward -= (r.boosters.bottom+r.boosters.top+r.boosters.left+r.boosters.right)*0.004; // fuel-use penalty
+  reward -= 0.01;                                     // time penalty
+  // strongly discourage tipping way over onto its side to "drift" toward the
+  // pad using the main engine as sideways thrust - that is not a real landing
+  if(Math.abs(r.angle) > 0.6){
+    reward -= (Math.abs(r.angle)-0.6)*0.2;
+  }
+
+  // the closer to the ground, the more it should be slowing its descent
+  if(vdist < 260 && r.vy > 40){
+    reward -= (r.vy-40)*0.0025*(1 - vdist/260);
+  }
+
+  // dense "final approach" shaping: reward hovering over the pad, upright and
+  // slow, while still airborne - pulls the policy toward the success funnel
+  // instead of relying only on the rare terminal landing bonus to bootstrap.
+  if(vdist < 220 && hdist < 40){
+    const speed = Math.hypot(r.vx,r.vy);
+    const uprightness = Math.max(0, 1 - Math.abs(r.angle)/LAND_TILT_OK);
+    const slowness = Math.max(0, 1 - speed/LAND_SPEED_OK);
+    reward += 0.12 * uprightness * slowness * (1 - vdist/220);
+  }
+
+  if(stepResult.done){
+    if(stepResult.success){
+      const speed = Math.hypot(r.vx,r.vy);
+      reward += 140 + (1 - speed/LAND_SPEED_OK)*30 + (r.fuel/FUEL_MAX)*15;
+    } else if(stepResult.reason==="tumbled"){
+      reward -= 45;
+    } else if(stepResult.reason==="out of bounds"){
+      reward -= 45;
+    } else if(stepResult.reason==="missed pad"){
+      reward -= 40;
+    } else { // hard landing (on pad but too fast/tilted) - penalty scales with how bad the impact was
+      const speed = Math.hypot(r.vx,r.vy);
+      const overSpeed = Math.max(0, speed/LAND_SPEED_OK - 1);
+      const overTilt = Math.max(0, Math.abs(r.angle)/LAND_TILT_OK - 1);
+      reward -= 15 + Math.min(40, (overSpeed+overTilt)*20);
+    }
+  }
+  return reward;
+}
+
+/* =========================================================================
+   STATS / STATE
+   ========================================================================= */
+let attempts=0, successes=0, best=-Infinity, rewardHistory=[];
+let running=false, speed=1;
+
+function resetLearning(){
+  net = freshNet();
+  gen++;
+  attempts=0; successes=0; best=-Infinity; rewardHistory=[];
+  resetEpisode();
+  saveAll(true);
+  refreshHUD();
+}
+
+function resetEpisode(){
+  rocket = newRocket();
+  stepCount=0; episodeReward=0; prevHDist=null; prevVDist=null; trail=[];
+  resetTraj();
+}
+
+function endEpisode(stepResult){
+  attempts++;
+  if(stepResult.success) successes++;
+  if(episodeReward>best) best = episodeReward;
+  rewardHistory.push({r:episodeReward, s:stepResult.success});
+  if(rewardHistory.length>300) rewardHistory.shift();
+
+  learnFromEpisode();
+  saveAll();
+  showBanner(stepResult.success, stepResult.reason);
+  refreshHUD();
+  resetEpisode();
+}
+
+/* =========================================================================
+   SIMULATION TICK (one physics step, called `speed` times per frame)
+   ========================================================================= */
+function tick(){
+  if(!rocket.alive) return;
+  const x = getState(rocket);
+  const {h,p,v} = forward(x);
+  const a = sampleActions(p);
+  const res = physicsStep(rocket, a.booster);
+  const r = computeReward(rocket, res);
+  episodeReward += r;
+  recordStep(x,h,p,v,a,r);
+
+  trail.push({x:rocket.x,y:rocket.y});
+  if(trail.length>220) trail.shift();
+
+  stepCount++;
+  if(res.done){
+    rocket.alive=false;
+    endEpisode(res);
+    return;
+  }
+  if(stepCount>=MAX_STEPS){
+    rocket.alive=false;
+    endEpisode({done:true, success:false, reason:"timed out"});
+  }
+}
+
+/* =========================================================================
+   RENDERING
+   ========================================================================= */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let DPR = Math.min(window.devicePixelRatio||1, 2.5);
+let viewW=0, viewH=0;
+
+function resize(){
+  const holder = document.getElementById('canvasHolder');
+  viewW = holder.clientWidth; viewH = holder.clientHeight;
+  canvas.width = viewW*DPR; canvas.height = viewH*DPR;
+  canvas.style.width = viewW+"px"; canvas.style.height = viewH+"px";
+  resizeSpark();
+}
+window.addEventListener('resize', resize);
+
+const stars = [];
+for(let i=0;i<140;i++) stars.push({x:Math.random()*WORLD.w, y:Math.random()*WORLD.h*0.85, r:Math.random()*1.6+0.3, tw:Math.random()*Math.PI*2});
+
+function draw(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  // camera
+  const camX = clamp(rocket.x - viewW/2, 0, Math.max(0,WORLD.w-viewW));
+  const camY = clamp(rocket.y - viewH*0.42, 0, Math.max(0,WORLD.h-viewH));
+
+  // sky
+  const grd = ctx.createLinearGradient(0,0,0,viewH);
+  grd.addColorStop(0,"#050614"); grd.addColorStop(0.6,"#0a0e24"); grd.addColorStop(1,"#141a33");
+  ctx.fillStyle = grd; ctx.fillRect(0,0,viewW,viewH);
+
+  ctx.save();
+  ctx.translate(-camX,-camY);
+
+  // stars
+  const t = performance.now()/600;
+  for(const st of stars){
+    const tw = 0.5+0.5*Math.sin(t+st.tw);
+    ctx.globalAlpha = 0.25+0.55*tw;
+    ctx.fillStyle="#cfe4ff";
+    ctx.beginPath(); ctx.arc(st.x,st.y,st.r,0,7); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+
+  // ground
+  ctx.fillStyle="#171c33";
+  ctx.fillRect(0, WORLD.groundY, WORLD.w, WORLD.h-WORLD.groundY);
+  ctx.fillStyle="#232a4d";
+  ctx.fillRect(0, WORLD.groundY, WORLD.w, 6);
+  for(let gx=0; gx<WORLD.w; gx+=46){
+    ctx.strokeStyle="#2c3358"; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(gx,WORLD.groundY+6); ctx.lineTo(gx-14,WORLD.h); ctx.stroke();
+  }
+
+  // pad
+  const padGlow = 0.5+0.5*Math.sin(performance.now()/450);
+  ctx.fillStyle="#0e2233";
+  ctx.fillRect(PAD.x1-6, PAD.y-10, (PAD.x2-PAD.x1)+12, 16);
+  ctx.fillStyle="#152a3d";
+  ctx.fillRect(PAD.x1, PAD.y-8, PAD.x2-PAD.x1, 10);
+  ctx.strokeStyle=`rgba(79,209,255,${0.5+0.4*padGlow})`;
+  ctx.lineWidth=2.5;
+  ctx.strokeRect(PAD.x1, PAD.y-8, PAD.x2-PAD.x1, 10);
+  ctx.fillStyle="#4fd1ff";
+  for(let lx=PAD.x1+10; lx<PAD.x2-5; lx+=22){
+    ctx.globalAlpha = 0.35+0.5*Math.abs(Math.sin(performance.now()/300+lx));
+    ctx.beginPath(); ctx.arc(lx, PAD.y-3, 2.2, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  ctx.fillStyle="#7fe3ff";
+  ctx.font="bold 13px -apple-system,Helvetica,Arial,sans-serif";
+  ctx.textAlign="center";
+  ctx.fillText("LANDING PAD", (PAD.x1+PAD.x2)/2, PAD.y-16);
+
+  // trail
+  if(trail.length>1){
+    ctx.beginPath();
+    for(let i=0;i<trail.length;i++){
+      const pt = trail[i];
+      if(i===0) ctx.moveTo(pt.x,pt.y); else ctx.lineTo(pt.x,pt.y);
+    }
+    ctx.strokeStyle="rgba(124,92,255,0.55)";
+    ctx.lineWidth=2;
+    ctx.stroke();
+  }
+
+  drawRocket(rocket);
+
+  ctx.restore();
+}
+
+function drawRocket(r){
+  ctx.save();
+  ctx.translate(r.x, r.y);
+  ctx.rotate(r.angle);
+
+  const hw=ROCKET_W/2, hh=ROCKET_H/2;
+
+  // flames (draw behind body, per booster)
+  drawFlame(0, hh, r.boosters.bottom, 0);            // bottom -> flame pointing down
+  drawFlame(0, -hh, r.boosters.top, Math.PI);         // top -> flame pointing up
+  drawFlame(-hw, -hh*0.5, r.boosters.left, -Math.PI/2); // left -> flame pointing left
+  drawFlame(hw, -hh*0.5, r.boosters.right, Math.PI/2);  // right -> flame pointing right
+
+  // body
+  const bodyGrad = ctx.createLinearGradient(-hw,0,hw,0);
+  bodyGrad.addColorStop(0,"#c7ccdb"); bodyGrad.addColorStop(0.5,"#f4f6fb"); bodyGrad.addColorStop(1,"#9ba1b8");
+  ctx.fillStyle = bodyGrad;
+  roundRectPath(-hw,-hh,ROCKET_W,ROCKET_H,8);
+  ctx.fill();
+  ctx.strokeStyle="#3d4260"; ctx.lineWidth=1.4; ctx.stroke();
+
+  // nose cone
+  ctx.beginPath();
+  ctx.moveTo(-hw, -hh);
+  ctx.lineTo(0, -hh-16);
+  ctx.lineTo(hw, -hh);
+  ctx.closePath();
+  ctx.fillStyle="#ff5c7a"; ctx.fill();
+  ctx.stroke();
+
+  // fins
+  ctx.fillStyle="#4fd1ff";
+  ctx.beginPath(); ctx.moveTo(-hw,hh-4); ctx.lineTo(-hw-11,hh+16); ctx.lineTo(-hw,hh-16); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(hw,hh-4); ctx.lineTo(hw+11,hh+16); ctx.lineTo(hw,hh-16); ctx.closePath(); ctx.fill();
+
+  // window
+  ctx.beginPath(); ctx.arc(0,-hh*0.15,6.5,0,7);
+  ctx.fillStyle="#1a2740"; ctx.fill(); ctx.strokeStyle="#7fe3ff"; ctx.lineWidth=1.6; ctx.stroke();
+
+  // stripe
+  ctx.fillStyle="#7c5cff";
+  ctx.fillRect(-hw, hh*0.35, ROCKET_W, 6);
+
+  // booster pods
+  ctx.fillStyle="#2a2f4a";
+  ctx.fillRect(-hw-5, hh-14, 5, 14);
+  ctx.fillRect(hw, hh-14, 5, 14);
+  ctx.fillRect(-4, -hh-6, 8, 6);
+  ctx.fillRect(-4, hh, 8, 6);
+
+  ctx.restore();
+}
+
+function drawFlame(px,py,active,dirAngle){
+  if(!active) return;
+  const flick = 0.7+0.3*Math.sin(performance.now()/35+px+py);
+  const len = (16+10*Math.random())*flick;
+  ctx.save();
+  ctx.translate(px,py);
+  ctx.rotate(dirAngle);
+  const grad = ctx.createLinearGradient(0,0,0,len);
+  grad.addColorStop(0,"rgba(255,255,255,0.95)");
+  grad.addColorStop(0.35,"rgba(255,184,71,0.9)");
+  grad.addColorStop(1,"rgba(255,92,122,0)");
+  ctx.fillStyle=grad;
+  ctx.beginPath();
+  ctx.moveTo(-5,0); ctx.lineTo(5,0); ctx.lineTo(0,len); ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function roundRectPath(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+
+/* banner */
+let bannerTimer=null;
+function showBanner(success, reason){
+  const el = document.getElementById('banner');
+  el.textContent = success ? "LANDED! ✅" : "CRASHED — " + reason;
+  el.className = "banner show " + (success?"success":"crash");
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(()=>{ el.classList.remove('show'); }, success?1200:900);
+}
+
+/* =========================================================================
+   SPARKLINE (learning progress)
+   ========================================================================= */
+const sparkCanvas = document.getElementById('spark');
+const sctx = sparkCanvas.getContext('2d');
+let sparkDPR = Math.min(window.devicePixelRatio||1,2.5);
+function resizeSpark(){
+  const w = sparkCanvas.clientWidth || sparkCanvas.parentElement.clientWidth;
+  const h = sparkCanvas.clientHeight || 30;
+  sparkCanvas.width = w*sparkDPR; sparkCanvas.height = h*sparkDPR;
+}
+function drawSpark(){
+  const w = sparkCanvas.width/sparkDPR, h = sparkCanvas.height/sparkDPR;
+  sctx.setTransform(sparkDPR,0,0,sparkDPR,0,0);
+  sctx.clearRect(0,0,w,h);
+  if(rewardHistory.length<2) return;
+  const data = rewardHistory.slice(-120);
+  const rs = data.map(d=>d.r);
+  const mn = Math.min(...rs), mx = Math.max(...rs);
+  const span = (mx-mn)||1;
+  sctx.beginPath();
+  data.forEach((d,i)=>{
+    const px = i/(data.length-1)*w;
+    const py = h - ((d.r-mn)/span)*(h-6) - 3;
+    if(i===0) sctx.moveTo(px,py); else sctx.lineTo(px,py);
+  });
+  sctx.strokeStyle="#4fd1ff"; sctx.lineWidth=1.6; sctx.stroke();
+  // success markers
+  data.forEach((d,i)=>{
+    if(d.s){
+      const px = i/(data.length-1)*w;
+      sctx.beginPath(); sctx.arc(px,4,2.1,0,7);
+      sctx.fillStyle="#3ee08b"; sctx.fill();
+    }
+  });
+}
+
+/* =========================================================================
+   HUD
+   ========================================================================= */
+function refreshHUD(){
+  document.getElementById('statAttempt').textContent = attempts;
+  document.getElementById('statSuccess').textContent = successes;
+  document.getElementById('statRate').textContent = attempts? Math.round(successes/attempts*100)+"%" : "0%";
+  document.getElementById('statReward').textContent = episodeReward.toFixed(1);
+  document.getElementById('statBest').textContent = (best===-Infinity?0:best.toFixed(0));
+  const last20 = rewardHistory.slice(-20);
+  const avg = last20.length? (last20.reduce((s,d)=>s+d.r,0)/last20.length) : 0;
+  document.getElementById('statAvg').textContent = avg.toFixed(1);
+  document.getElementById('statGen').textContent = gen;
+  drawSpark();
+}
+
+/* =========================================================================
+   MAIN LOOP
+   ========================================================================= */
+function frame(){
+  if(running){
+    for(let i=0;i<speed;i++){ tick(); }
+  }
+  draw();
+  document.getElementById('statReward').textContent = episodeReward.toFixed(1);
+  requestAnimationFrame(frame);
+}
+
+/* =========================================================================
+   UI WIRING
+   ========================================================================= */
+const btnRun = document.getElementById('btnRun');
+const btnReset = document.getElementById('btnReset');
+const learnPill = document.getElementById('learnPill');
+const learnLabel = document.getElementById('learnLabel');
+
+btnRun.addEventListener('click', ()=>{
+  running = !running;
+  btnRun.textContent = running? "Pause" : "Start";
+  learnPill.classList.toggle('paused', !running);
+  learnLabel.textContent = running? "Learning…" : "Paused";
+});
+
+btnReset.addEventListener('click', ()=>{
+  if(confirm("Reset all learning progress? This clears the AI's trained network and stats.")){
+    resetLearning();
+  }
+});
+
+document.querySelectorAll('.speedgrp button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.speedgrp button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    speed = parseInt(b.dataset.spd,10);
+  });
+});
+
+/* =========================================================================
+   BOOT
+   ========================================================================= */
+const hadSave = loadAll();
+resetEpisode();
+resize();
+refreshHUD();
+document.querySelectorAll('.speedgrp button').forEach(b=>{
+  b.classList.toggle('active', parseInt(b.dataset.spd,10)===speed);
+});
+learnPill.classList.add('paused');
+learnLabel.textContent = "Paused";
+requestAnimationFrame(frame);
+
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) saveAll(true); });
+window.addEventListener('pagehide', ()=> saveAll(true));
+
+})();
+</script>
+</body>
+</html>
