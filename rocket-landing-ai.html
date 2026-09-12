@@ -19,33 +19,57 @@
   #canvasHolder{position:relative; flex:1 1 auto; min-height:0; background:#000;}
   canvas{display:block; width:100%; height:100%;}
 
-  .hud{
+  /* Everything overlaid on the canvas stacks in normal document flow inside
+     this single column, so nothing can ever overlap regardless of how the
+     chip row wraps on a narrow phone. */
+  .topOverlay{
     position:absolute; top:0; left:0; right:0;
-    padding: calc(env(safe-area-inset-top,0px) + 8px) calc(env(safe-area-inset-right,0px) + 10px) 6px calc(env(safe-area-inset-left,0px) + 10px);
-    display:flex; flex-wrap:wrap; gap:6px; justify-content:space-between; align-items:flex-start;
-    pointer-events:none;
+    padding: calc(env(safe-area-inset-top,0px) + 8px) calc(env(safe-area-inset-right,0px) + 10px) 0 calc(env(safe-area-inset-left,0px) + 10px);
+    display:flex; flex-direction:column; gap:6px; pointer-events:none;
   }
+  .hudRow{display:flex; flex-wrap:wrap; gap:6px; justify-content:space-between; align-items:flex-start;}
+  .chipRow{display:flex; gap:6px; flex-wrap:wrap;}
   .chip{
     background:var(--panel); backdrop-filter: blur(8px);
     border:1px solid var(--line); border-radius:10px; padding:5px 9px;
     font-size:11.5px; line-height:1.25; color:var(--sub); min-width:70px;
   }
+  .chip[hidden]{display:none;}
   .chip b{display:block; font-size:15px; color:var(--ink); font-variant-numeric:tabular-nums;}
   .chip.accent b{color:var(--accent);}
   .chip.good b{color:var(--good);}
   .chip.bad b{color:var(--bad);}
+  .controls{display:flex; gap:6px; align-items:center; pointer-events:auto; flex:0 0 auto;}
   .learning-pill{
     display:flex; align-items:center; gap:6px; background:linear-gradient(135deg,#4fd1ff22,#7c5cff22);
     border:1px solid #7c5cff55; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:600;
-    color:var(--accent); pointer-events:none;
+    color:var(--accent); white-space:nowrap;
   }
   .learning-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--good);
     box-shadow:0 0 8px var(--good); animation:pulse 1.1s ease-in-out infinite;}
   .learning-pill.paused .dot{background:var(--warn); box-shadow:0 0 8px var(--warn); animation:none;}
   @keyframes pulse{0%,100%{opacity:1; transform:scale(1);} 50%{opacity:.4; transform:scale(.75);}}
 
+  .gearBtn{
+    flex:0 0 auto; min-height:0; padding:6px 10px; font-size:15px; border-radius:999px;
+    background:var(--panel); backdrop-filter: blur(8px); border:1px solid var(--line); color:var(--ink);
+  }
+  .boosterHud{
+    align-self:flex-start; display:flex; flex-direction:column; gap:4px; pointer-events:none;
+    background:var(--panel); backdrop-filter: blur(8px); border:1px solid var(--line);
+    border-radius:10px; padding:7px 9px;
+  }
+  .boosterHud[hidden]{display:none;}
+  .bmeter{display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--sub);}
+  .bmeter span{width:26px; font-weight:700; letter-spacing:.03em;}
+  .bmeter b{width:30px; text-align:right; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .bbar{width:56px; height:6px; border-radius:4px; background:#252a45; overflow:hidden;}
+  .bbar i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent2),var(--accent)); border-radius:4px; transition:width .08s linear;}
+  .bmeter.firing .bbar i{background:linear-gradient(90deg,#ffb347,#ff5c7a);}
+  .bmeter.firing b{color:var(--warn);}
+
   .banner{
-    position:absolute; left:50%; top:14%; transform:translate(-50%,-10px);
+    position:absolute; left:50%; top:26%; transform:translate(-50%,-10px);
     padding:10px 22px; border-radius:14px; font-size:16px; font-weight:800; letter-spacing:.02em;
     opacity:0; transition:opacity .18s ease, transform .18s ease; pointer-events:none; text-align:center;
     box-shadow:0 8px 30px #0008;
@@ -53,6 +77,16 @@
   .banner.show{opacity:1; transform:translate(-50%,0);}
   .banner.success{background:linear-gradient(135deg,#1c3,#3ee08b); color:#03150a;}
   .banner.crash{background:linear-gradient(135deg,#a11,#ff5c7a); color:#2a0006;}
+
+  .settingsPanel{
+    position:absolute; right:calc(env(safe-area-inset-right,0px) + 10px);
+    background:var(--panel-solid); border:1px solid var(--line); border-radius:12px; padding:12px;
+    width:210px; box-shadow:0 12px 30px #000a; z-index:5;
+  }
+  .settingsTitle{font-weight:700; font-size:13px; margin-bottom:8px;}
+  .settingRow{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink); padding:6px 0;}
+  .settingRow input{width:16px; height:16px;}
+  #settingsPanel button{width:100%; min-height:36px;}
 
   #bottom{
     flex:0 0 auto; background:var(--panel-solid); border-top:1px solid var(--line);
@@ -80,60 +114,32 @@
   #sparkWrap canvas{width:100%; height:100%; display:block;}
   #progress .stat{white-space:nowrap;}
   #progress .stat b{color:var(--ink);}
-
-  .toggleProgress{position:absolute; right:calc(env(safe-area-inset-right,0px) + 8px); top:calc(env(safe-area-inset-top,0px) + 8px);}
-
-  .gearBtn{
-    flex:0 0 auto; min-height:0; padding:6px 10px; font-size:15px; border-radius:999px;
-    background:var(--panel); backdrop-filter: blur(8px); border:1px solid var(--line); color:var(--ink);
-  }
-  .boosterHud{
-    position:absolute; top:calc(env(safe-area-inset-top,0px) + 52px); left:calc(env(safe-area-inset-left,0px) + 10px);
-    display:flex; flex-direction:column; gap:4px; pointer-events:none; background:var(--panel);
-    backdrop-filter: blur(8px); border:1px solid var(--line); border-radius:10px; padding:7px 9px;
-  }
-  .boosterHud[hidden]{display:none;}
-  .bmeter{display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--sub);}
-  .bmeter span{width:26px; font-weight:700; letter-spacing:.03em;}
-  .bmeter b{width:30px; text-align:right; color:var(--ink); font-variant-numeric:tabular-nums;}
-  .bbar{width:56px; height:6px; border-radius:4px; background:#252a45; overflow:hidden;}
-  .bbar i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent2),var(--accent)); border-radius:4px; transition:width .08s linear;}
-  .bmeter.firing .bbar i{background:linear-gradient(90deg,#ffb347,#ff5c7a);}
-  .bmeter.firing b{color:var(--warn);}
-
-  .settingsPanel{
-    position:absolute; top:calc(env(safe-area-inset-top,0px) + 52px); right:calc(env(safe-area-inset-right,0px) + 10px);
-    background:var(--panel-solid); border:1px solid var(--line); border-radius:12px; padding:12px;
-    width:210px; box-shadow:0 12px 30px #000a; z-index:5;
-  }
-  .settingsTitle{font-weight:700; font-size:13px; margin-bottom:8px;}
-  .settingRow{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink); padding:6px 0;}
-  .settingRow input{width:16px; height:16px;}
-  #settingsPanel button{width:100%; min-height:36px;}
 </style>
 </head>
 <body>
 <div id="wrap">
   <div id="canvasHolder">
     <canvas id="c"></canvas>
-    <div class="hud">
-      <div style="display:flex; gap:6px; flex-wrap:wrap;">
-        <div class="chip"><span>Attempt</span><b id="statAttempt">0</b></div>
-        <div class="chip good"><span>Landings</span><b id="statSuccess">0</b></div>
-        <div class="chip accent"><span>Success rate</span><b id="statRate">0%</b></div>
-        <div class="chip"><span>Reward</span><b id="statReward">0</b></div>
-        <div class="chip" id="fuelChip"><span>Fuel</span><b id="statFuel">100%</b></div>
+    <div class="topOverlay" id="topOverlay">
+      <div class="hudRow">
+        <div class="chipRow">
+          <div class="chip"><span>Attempt</span><b id="statAttempt">0</b></div>
+          <div class="chip good"><span>Landings</span><b id="statSuccess">0</b></div>
+          <div class="chip accent"><span>Success rate</span><b id="statRate">0%</b></div>
+          <div class="chip"><span>Reward</span><b id="statReward">0</b></div>
+          <div class="chip" id="fuelChip"><span>Fuel</span><b id="statFuel">100%</b></div>
+        </div>
+        <div class="controls">
+          <div class="learning-pill" id="learnPill"><span class="dot"></span><span id="learnLabel">Learning…</span></div>
+          <button id="btnSettings" class="gearBtn">⚙</button>
+        </div>
       </div>
-      <div style="display:flex; gap:6px; align-items:center; pointer-events:auto;">
-        <div class="learning-pill" id="learnPill"><span class="dot"></span><span id="learnLabel">Learning…</span></div>
-        <button id="btnSettings" class="gearBtn">⚙</button>
+      <div id="boosterHud" class="boosterHud">
+        <div class="bmeter" data-b="bottom"><span>BTM</span><div class="bbar"><i></i></div><b>0%</b></div>
+        <div class="bmeter" data-b="top"><span>TOP</span><div class="bbar"><i></i></div><b>0%</b></div>
+        <div class="bmeter" data-b="left"><span>LFT</span><div class="bbar"><i></i></div><b>0%</b></div>
+        <div class="bmeter" data-b="right"><span>RGT</span><div class="bbar"><i></i></div><b>0%</b></div>
       </div>
-    </div>
-    <div id="boosterHud" class="boosterHud">
-      <div class="bmeter" data-b="bottom"><span>BTM</span><div class="bbar"><i></i></div><b>0%</b></div>
-      <div class="bmeter" data-b="top"><span>TOP</span><div class="bbar"><i></i></div><b>0%</b></div>
-      <div class="bmeter" data-b="left"><span>LFT</span><div class="bbar"><i></i></div><b>0%</b></div>
-      <div class="bmeter" data-b="right"><span>RGT</span><div class="bbar"><i></i></div><b>0%</b></div>
     </div>
     <div class="banner" id="banner"></div>
     <div id="settingsPanel" class="settingsPanel" hidden>
@@ -150,6 +156,7 @@
       <div id="sparkWrap"><canvas id="spark"></canvas></div>
       <span class="stat">best <b id="statBest">0</b></span>
       <span class="stat">avg(20) <b id="statAvg">0</b></span>
+      <span class="stat">difficulty <b id="statDiff">0%</b></span>
       <span class="stat">gen <b id="statGen">0</b></span>
     </div>
     <div class="row">
@@ -174,9 +181,16 @@
 /* =========================================================================
    CONFIG / CONSTANTS
    ========================================================================= */
-const WORLD = { w: 1500, h: 1100, groundY: 980 };
-const PAD = { x1: 480, x2: 620, y: 980 };             // pad off to the side
+const WORLD = { w: 1400, h: 1100, groundY: 980 };
 const START = { x: 300, y: 140 };
+
+// Curriculum: the pad starts close to the rocket (easy) and is pushed
+// farther away as the AI's rolling success rate improves, then pulled back
+// in if it starts failing too much. This turns "stumble into a rare accidental
+// win" into "win often early, then get gradually challenged" - the single
+// biggest lever for how fast visible improvement shows up.
+const PAD_OFFSET_MIN = 150, PAD_OFFSET_MAX = 520, PAD_WIDTH = 140;
+const PAD = { x1: 0, x2: 0, y: WORLD.groundY };
 
 const GRAVITY = 175;                 // px/s^2
 const MAIN_THRUST = 340;             // bottom booster accel
@@ -195,45 +209,49 @@ const MAX_STEPS = 900;               // episode cap (~15s at 60 physics-steps/s)
 const DT = 1/60;
 
 /* =========================================================================
-   NEURAL NET (tiny MLP) + REINFORCE POLICY GRADIENT
+   NEURAL NET: a small 2-hidden-layer actor-critic, trained with a
+   simplified PPO (clipped policy gradient + GAE advantages), fed by many
+   simultaneous simulated rockets and periodically replaying rare wins.
    ========================================================================= */
 // Two independent categorical booster groups keep the action space small and
 // low-variance while still letting every booster be driven on its own:
 //   axial group   -> {none, bottom, top}   (fights gravity / brakes)
 //   lateral group -> {none, left, right}   (steers toward the pad)
-// Both groups fire together each physics step, so all 4 boosters remain
-// independently reachable (e.g. bottom+left, top+right, ...) except the
-// physically pointless "bottom+top" / "left+right" opposite-pair combos.
-const IN = 8, HID = 16, GROUPN = 3, OUT = GROUPN*2;
-const LR = 0.02;
+// State also includes the last action taken (short-term memory), which
+// helps the policy reason about momentum/lag rather than react blindly.
+const IN = 12, H1 = 32, H2 = 24, GROUPN = 3, OUT = GROUPN*2;
+const LR = 0.012;
 const GAMMA = 0.98;
+const LAMBDA = 0.95;                 // GAE smoothing between 1-step TD and full Monte-Carlo
 const ENTROPY_COEF = 0.01;
 const GRAD_CLIP_NORM = 6;
-const RETURN_SCALE = 60;   // compresses raw episode returns into a ~[-1,3] range for the value head
-const CRITIC_COEF = 1.0;   // weight of the value (critic) gradient relative to the policy gradient
+const RETURN_SCALE = 60;             // compresses raw rewards into a ~unit range for the critic
+const CRITIC_COEF = 1.0;
+const CLIP_EPS = 0.2;                // PPO trust-region: block updates once a policy has drifted too far
+const PPO_EPOCHS = 2;                // re-use each batch of experience this many times
+const BATCH_MIN_STEPS = 1500;        // collect roughly this many steps before each PPO update
+const SUCCESS_BUFFER_SIZE = 12;      // replay memory of rare successful landings
+const REPLAY_PER_BATCH = 2;          // how many stored successes get replayed into each update
+const NUM_WORKERS = 4;               // simultaneous simulated rockets (only worker 0 is drawn)
 
 function randn(){ // Box-Muller
   let u=0,v=0; while(u===0)u=Math.random(); while(v===0)v=Math.random();
   return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
 }
-function makeMat(r,c,scale){ const m=new Array(r); for(let i=0;i<r;i++){ m[i]=new Float64Array(c); for(let j=0;j<c;j++) m[i][j]=randn()*scale; } return m; }
+function makeMat(r,c,scale){ const m=new Array(r); for(let i=0;i<r;i++){ m[i]=new Float64Array(c); for(let j=0;j<c;j++) m[i][j]=scale?randn()*scale:0; } return m; }
 function makeVec(n){ return new Float64Array(n); }
 
 function freshNet(){
   return {
-    W1: makeMat(IN, HID, 1/Math.sqrt(IN)),
-    b1: makeVec(HID),
-    W2: makeMat(HID, OUT, 1/Math.sqrt(HID)),
-    b2: makeVec(OUT),
-    Wv: makeVec(HID),   // value (critic) head, shares the hidden layer with the policy
-    bv: 0
+    W1: makeMat(IN, H1, 1/Math.sqrt(IN)), b1: makeVec(H1),
+    W2: makeMat(H1, H2, 1/Math.sqrt(H1)), b2: makeVec(H2),
+    W3: makeMat(H2, OUT, 1/Math.sqrt(H2)), b3: makeVec(OUT),
+    Wv: makeVec(H2), bv: 0
   };
 }
 
 let net = freshNet();
 let gen = 0; // generation counter (network resets)
-
-function tanh(x){ return Math.tanh(x); }
 
 function softmax3(z, off){
   const m = Math.max(z[off],z[off+1],z[off+2]);
@@ -242,26 +260,32 @@ function softmax3(z, off){
   return [e0/s, e1/s, e2/s];
 }
 
-// forward pass; returns {h (post-tanh hidden), p (6 probs: 3 axial + 3 lateral), v (scalar state value)}
+// forward pass; returns {h1,h2 (post-tanh activations), p (6 probs), v (state value)}
 function forward(x){
-  const h = new Float64Array(HID);
-  for(let j=0;j<HID;j++){
+  const h1 = new Float64Array(H1);
+  for(let j=0;j<H1;j++){
     let s = net.b1[j];
     for(let i=0;i<IN;i++) s += x[i]*net.W1[i][j];
-    h[j] = tanh(s);
+    h1[j] = Math.tanh(s);
   }
-  const z2 = new Float64Array(OUT);
+  const h2 = new Float64Array(H2);
+  for(let j=0;j<H2;j++){
+    let s = net.b2[j];
+    for(let i=0;i<H1;i++) s += h1[i]*net.W2[i][j];
+    h2[j] = Math.tanh(s);
+  }
+  const z = new Float64Array(OUT);
   for(let k=0;k<OUT;k++){
-    let s = net.b2[k];
-    for(let j=0;j<HID;j++) s += h[j]*net.W2[j][k];
-    z2[k]=s;
+    let s = net.b3[k];
+    for(let j=0;j<H2;j++) s += h2[j]*net.W3[j][k];
+    z[k]=s;
   }
-  const pAxial = softmax3(z2,0);
-  const pLateral = softmax3(z2,GROUPN);
+  const pAxial = softmax3(z,0);
+  const pLateral = softmax3(z,GROUPN);
   const p = Float64Array.from([...pAxial, ...pLateral]);
   let v = net.bv;
-  for(let j=0;j<HID;j++) v += net.Wv[j]*h[j];
-  return {h,p,v};
+  for(let j=0;j<H2;j++) v += net.Wv[j]*h2[j];
+  return {h1,h2,p,v};
 }
 
 function sampleCategorical(p3){
@@ -281,124 +305,185 @@ function sampleActions(p){
   return { choice:[axial,lateral], booster };
 }
 
-// Episode trajectory buffers
-let traj = { x:[], h:[], p:[], v:[], a:[], r:[] };
-function resetTraj(){ traj = { x:[], h:[], p:[], v:[], a:[], r:[] }; }
-
-function recordStep(x,h,p,v,a,r){
-  traj.x.push(x); traj.h.push(h); traj.p.push(p); traj.v.push(v); traj.a.push(a); traj.r.push(r);
+function zeroGrads(){
+  return {
+    W1: makeMat(IN,H1,0), b1: makeVec(H1),
+    W2: makeMat(H1,H2,0), b2: makeVec(H2),
+    W3: makeMat(H2,OUT,0), b3: makeVec(OUT),
+    Wv: makeVec(H2), bv: 0
+  };
 }
 
-// Gradients are accumulated over a small batch of episodes before being
-// applied - this averages out a lot of the single-episode noise inherent to
-// policy gradients and makes the learning curve considerably more stable.
-const BATCH_EPISODES = 1;
-let batchCount = 0;
-let batchGW1 = makeMat(IN,HID,0), batchGb1 = makeVec(HID);
-let batchGW2 = makeMat(HID,OUT,0), batchGb2 = makeVec(OUT);
-let batchGWv = makeVec(HID), batchGbv = 0;
+// backprop a single sample's policy+value gradient (dz: dLoss/dPolicyLogits,
+// dv: dLoss/dValueOutput) into the shared gradient accumulator
+function accumGrad(g, x, h1, h2, dz, dv){
+  for(let j=0;j<H2;j++) for(let k=0;k<OUT;k++) g.W3[j][k] += h2[j]*dz[k];
+  for(let k=0;k<OUT;k++) g.b3[k] += dz[k];
+  for(let j=0;j<H2;j++) g.Wv[j] += h2[j]*dv;
+  g.bv += dv;
 
-// perform an advantage-actor-critic policy-gradient update at episode end
-function learnFromEpisode(){
+  const dh2 = new Float64Array(H2);
+  for(let j=0;j<H2;j++){
+    let s=0;
+    for(let k=0;k<OUT;k++) s += net.W3[j][k]*dz[k];
+    s += net.Wv[j]*dv;
+    dh2[j] = s*(1-h2[j]*h2[j]);
+  }
+  for(let i=0;i<H1;i++) for(let j=0;j<H2;j++) g.W2[i][j] += h1[i]*dh2[j];
+  for(let j=0;j<H2;j++) g.b2[j] += dh2[j];
+
+  const dh1 = new Float64Array(H1);
+  for(let i=0;i<H1;i++){
+    let s=0;
+    for(let j=0;j<H2;j++) s += net.W2[i][j]*dh2[j];
+    dh1[i] = s*(1-h1[i]*h1[i]);
+  }
+  for(let i=0;i<IN;i++) for(let j=0;j<H1;j++) g.W1[i][j] += x[i]*dh1[j];
+  for(let j=0;j<H1;j++) g.b1[j] += dh1[j];
+}
+
+function applyGrads(g){
+  let gnorm2 = 0;
+  for(let i=0;i<IN;i++) for(let j=0;j<H1;j++) gnorm2 += g.W1[i][j]*g.W1[i][j];
+  for(let j=0;j<H1;j++) gnorm2 += g.b1[j]*g.b1[j];
+  for(let i=0;i<H1;i++) for(let j=0;j<H2;j++) gnorm2 += g.W2[i][j]*g.W2[i][j];
+  for(let j=0;j<H2;j++) gnorm2 += g.b2[j]*g.b2[j];
+  for(let j=0;j<H2;j++) for(let k=0;k<OUT;k++) gnorm2 += g.W3[j][k]*g.W3[j][k];
+  for(let k=0;k<OUT;k++) gnorm2 += g.b3[k]*g.b3[k];
+  for(let j=0;j<H2;j++) gnorm2 += g.Wv[j]*g.Wv[j];
+  gnorm2 += g.bv*g.bv;
+  const gnorm = Math.sqrt(gnorm2);
+  const scale = LR * (gnorm > GRAD_CLIP_NORM ? GRAD_CLIP_NORM/gnorm : 1);
+
+  for(let i=0;i<IN;i++) for(let j=0;j<H1;j++) net.W1[i][j] -= scale*g.W1[i][j];
+  for(let j=0;j<H1;j++) net.b1[j] -= scale*g.b1[j];
+  for(let i=0;i<H1;i++) for(let j=0;j<H2;j++) net.W2[i][j] -= scale*g.W2[i][j];
+  for(let j=0;j<H2;j++) net.b2[j] -= scale*g.b2[j];
+  for(let j=0;j<H2;j++) for(let k=0;k<OUT;k++) net.W3[j][k] -= scale*g.W3[j][k];
+  for(let k=0;k<OUT;k++) net.b3[k] -= scale*g.b3[k];
+  for(let j=0;j<H2;j++) net.Wv[j] -= scale*g.Wv[j];
+  net.bv -= scale*g.bv;
+}
+
+// Generalized Advantage Estimation for one completed episode's trajectory.
+// Blends short-horizon TD error with full-episode Monte-Carlo return for a
+// much less noisy credit-assignment signal than raw discounted returns.
+function computeGAE(traj){
   const T = traj.r.length;
-  if(T===0) return;
-  // discounted reward-to-go, compressed to roughly unit scale for the critic
-  const G = new Float64Array(T);
-  let running = 0;
-  for(let t=T-1;t>=0;t--){ running = traj.r[t] + GAMMA*running; G[t]=running; }
-  const Gs = new Float64Array(T);
-  for(let t=0;t<T;t++) Gs[t] = G[t]/RETURN_SCALE;
-
-  // raw advantage = actual return - the critic's predicted value (baseline)
-  const rawAdv = new Float64Array(T);
-  for(let t=0;t<T;t++) rawAdv[t] = Gs[t] - traj.v[t];
-  // light normalization keeps the actor's effective step size stable across episodes
-  let mean=0; for(let t=0;t<T;t++) mean+=rawAdv[t]; mean/=T;
-  let varr=0; for(let t=0;t<T;t++) varr += (rawAdv[t]-mean)*(rawAdv[t]-mean); varr/=T;
-  const std = Math.sqrt(varr)+1e-6;
   const adv = new Float64Array(T);
-  for(let t=0;t<T;t++) adv[t] = (rawAdv[t]-mean)/std;
+  let lastGae = 0;
+  for(let t=T-1;t>=0;t--){
+    const vNext = (t+1<T) ? traj.v[t+1] : 0; // episode always truly terminates - no bootstrap needed
+    const rScaled = traj.r[t]/RETURN_SCALE;
+    const delta = rScaled + GAMMA*vNext - traj.v[t];
+    lastGae = delta + GAMMA*LAMBDA*lastGae;
+    adv[t] = lastGae;
+  }
+  const ret = new Float64Array(T);
+  for(let t=0;t<T;t++) ret[t] = adv[t] + traj.v[t];
+  return {adv, ret};
+}
 
-  // gradient accumulators
-  const gW1 = makeMat(IN,HID,0), gb1 = makeVec(HID);
-  const gW2 = makeMat(HID,OUT,0), gb2 = makeVec(OUT);
-  const gWv = makeVec(HID); let gbv = 0;
+// Pending batch of completed episodes (collected across all parallel workers)
+// plus a small replay memory of rare successful landings.
+let pendingBatch = [];
+let pendingBatchSteps = 0;
+let successBuffer = [];
 
-  for(let t=0;t<T;t++){
-    const x = traj.x[t], h = traj.h[t], p = traj.p[t], choice = traj.a[t].choice, A = adv[t];
-    // dLoss/dz2 = (p - onehot(a))*A per softmax group - entropy term encourages a uniform-ish policy
-    const dz2 = new Float64Array(OUT);
-    for(let k=0;k<GROUPN;k++){
-      const onehot = (k===choice[0])?1:0;
-      dz2[k] = (p[k]-onehot)*A - ENTROPY_COEF*(1/GROUPN - p[k]);
-    }
-    for(let k=0;k<GROUPN;k++){
-      const onehot = (k===choice[1])?1:0;
-      dz2[GROUPN+k] = (p[GROUPN+k]-onehot)*A - ENTROPY_COEF*(1/GROUPN - p[GROUPN+k]);
-    }
-    for(let j=0;j<HID;j++){
-      for(let k=0;k<OUT;k++) gW2[j][k]+= h[j]*dz2[k];
-    }
-    for(let k=0;k<OUT;k++) gb2[k]+=dz2[k];
+function pushSuccessBuffer(record){
+  successBuffer.push(record);
+  if(successBuffer.length > SUCCESS_BUFFER_SIZE) successBuffer.shift();
+}
 
-    // critic: simple MSE regression of v(s) toward the compressed return
-    const dv = (traj.v[t]-Gs[t]) * CRITIC_COEF;
-    for(let j=0;j<HID;j++) gWv[j] += h[j]*dv;
-    gbv += dv;
-
-    const dh = new Float64Array(HID);
-    for(let j=0;j<HID;j++){
-      let s=0;
-      for(let k=0;k<OUT;k++) s+= net.W2[j][k]*dz2[k];
-      s += net.Wv[j]*dv;
-      dh[j] = s*(1-h[j]*h[j]);
-    }
-    for(let i=0;i<IN;i++){
-      for(let j=0;j<HID;j++) gW1[i][j]+= x[i]*dh[j];
-    }
-    for(let j=0;j<HID;j++) gb1[j]+=dh[j];
+// Simplified PPO update: clipped surrogate policy objective + value
+// regression + entropy bonus, run for a few epochs over the same batch
+// (each pass reuses the collected experience instead of throwing it away
+// after a single gradient step, which is a big sample-efficiency win),
+// with a couple of replayed past successes folded in each time so rare
+// wins get reinforced more than once.
+function runPpoUpdate(){
+  const episodes = pendingBatch.slice();
+  for(let i=0;i<REPLAY_PER_BATCH && successBuffer.length>0;i++){
+    episodes.push(successBuffer[Math.floor(Math.random()*successBuffer.length)]);
   }
 
-  // fold this episode's gradient into the running batch
-  for(let i=0;i<IN;i++) for(let j=0;j<HID;j++) batchGW1[i][j] += gW1[i][j];
-  for(let j=0;j<HID;j++) batchGb1[j] += gb1[j];
-  for(let j=0;j<HID;j++) for(let k=0;k<OUT;k++) batchGW2[j][k] += gW2[j][k];
-  for(let k=0;k<OUT;k++) batchGb2[k] += gb2[k];
-  for(let j=0;j<HID;j++) batchGWv[j] += gWv[j];
-  batchGbv += gbv;
-  batchCount++;
+  let allAdv = [];
+  episodes.forEach(e=>{ for(let t=0;t<e.adv.length;t++) allAdv.push(e.adv[t]); });
+  let mean=0; allAdv.forEach(v=>mean+=v); mean/=allAdv.length;
+  let varr=0; allAdv.forEach(v=>varr+=(v-mean)*(v-mean)); varr/=allAdv.length;
+  const std = Math.sqrt(varr)+1e-6;
+  episodes.forEach(e=>{ e.advNorm = e.adv.map(v=>(v-mean)/std); });
 
-  if(batchCount>=BATCH_EPISODES){
-    // global-norm gradient clipping (keeps updates stable regardless of batch/episode length)
-    let gnorm2 = 0;
-    for(let i=0;i<IN;i++) for(let j=0;j<HID;j++) gnorm2 += batchGW1[i][j]*batchGW1[i][j];
-    for(let j=0;j<HID;j++) gnorm2 += batchGb1[j]*batchGb1[j];
-    for(let j=0;j<HID;j++) for(let k=0;k<OUT;k++) gnorm2 += batchGW2[j][k]*batchGW2[j][k];
-    for(let k=0;k<OUT;k++) gnorm2 += batchGb2[k]*batchGb2[k];
-    for(let j=0;j<HID;j++) gnorm2 += batchGWv[j]*batchGWv[j];
-    gnorm2 += batchGbv*batchGbv;
-    const gnorm = Math.sqrt(gnorm2);
-    const clipScale = gnorm > GRAD_CLIP_NORM ? GRAD_CLIP_NORM/gnorm : 1;
-    const scale = (LR*clipScale)/BATCH_EPISODES;
+  for(let epoch=0; epoch<PPO_EPOCHS; epoch++){
+    const g = zeroGrads();
+    for(const e of episodes){
+      for(let t=0;t<e.x.length;t++){
+        const x=e.x[t], choice=e.choice[t], pOld=e.pOld[t], A=e.advNorm[t], ret=e.ret[t];
+        const {h1,h2,p:pNew,v:vNew} = forward(x);
 
-    for(let i=0;i<IN;i++) for(let j=0;j<HID;j++) net.W1[i][j]-= scale*batchGW1[i][j];
-    for(let j=0;j<HID;j++) net.b1[j]-= scale*batchGb1[j];
-    for(let j=0;j<HID;j++) for(let k=0;k<OUT;k++) net.W2[j][k]-= scale*batchGW2[j][k];
-    for(let k=0;k<OUT;k++) net.b2[k]-= scale*batchGb2[k];
-    for(let j=0;j<HID;j++) net.Wv[j]-= scale*batchGWv[j];
-    net.bv -= scale*batchGbv;
+        const oldLogP = Math.log(pOld[choice[0]]+1e-8) + Math.log(pOld[GROUPN+choice[1]]+1e-8);
+        const newLogP = Math.log(pNew[choice[0]]+1e-8) + Math.log(pNew[GROUPN+choice[1]]+1e-8);
+        const ratio = Math.exp(newLogP-oldLogP);
 
-    batchCount = 0;
-    batchGW1 = makeMat(IN,HID,0); batchGb1 = makeVec(HID);
-    batchGW2 = makeMat(HID,OUT,0); batchGb2 = makeVec(OUT);
-    batchGWv = makeVec(HID); batchGbv = 0;
+        // PPO clip: once the policy has moved far enough that the ratio
+        // leaves the trust region in the direction the advantage favors,
+        // the gradient is cut to zero - this is what stops one lucky/unlucky
+        // batch from destructively overwriting everything learned so far.
+        let scale;
+        if(A>=0) scale = (ratio > 1+CLIP_EPS) ? 0 : A*ratio;
+        else scale = (ratio < 1-CLIP_EPS) ? 0 : A*ratio;
+
+        const dz = new Float64Array(OUT);
+        for(let k=0;k<GROUPN;k++){
+          const oh = (k===choice[0])?1:0;
+          dz[k] = scale*(pNew[k]-oh) - ENTROPY_COEF*(1/GROUPN - pNew[k]);
+        }
+        for(let k=0;k<GROUPN;k++){
+          const oh = (k===choice[1])?1:0;
+          dz[GROUPN+k] = scale*(pNew[GROUPN+k]-oh) - ENTROPY_COEF*(1/GROUPN - pNew[GROUPN+k]);
+        }
+        const dv = (vNew-ret)*CRITIC_COEF;
+        accumGrad(g, x, h1, h2, dz, dv);
+      }
+    }
+    applyGrads(g);
+  }
+}
+
+/* =========================================================================
+   CURRICULUM
+   ========================================================================= */
+let difficulty = 0;
+let curriculumWindow = [];
+
+function recomputePad(){
+  const offset = PAD_OFFSET_MIN + difficulty*(PAD_OFFSET_MAX-PAD_OFFSET_MIN);
+  const cx = START.x + offset;
+  PAD.x1 = cx - PAD_WIDTH/2;
+  PAD.x2 = cx + PAD_WIDTH/2;
+}
+
+function updateCurriculum(success){
+  curriculumWindow.push(success?1:0);
+  if(curriculumWindow.length>40) curriculumWindow.shift();
+  if(curriculumWindow.length>=20){
+    const rate = curriculumWindow.reduce((a,b)=>a+b,0)/curriculumWindow.length;
+    if(rate>=0.35 && difficulty<1){
+      difficulty = Math.min(1, difficulty+0.05);
+      curriculumWindow = [];
+      recomputePad();
+    } else if(rate<0.04 && difficulty>0){
+      difficulty = Math.max(0, difficulty-0.02);
+      curriculumWindow = [];
+      recomputePad();
+    }
   }
 }
 
 /* =========================================================================
    PERSISTENCE
    ========================================================================= */
-const LS_KEY = "rocketLandingAI_v1";
+const LS_KEY = "rocketLandingAI_v2"; // v2: bigger net + curriculum - incompatible with v1 saves
 
 function matToArr(m){ return m.map(row=>Array.from(row)); }
 function arrToMat(a){ return a.map(row=>Float64Array.from(row)); }
@@ -410,8 +495,13 @@ function saveAll(force){
   lastSaveAt = now;
   try{
     const payload = {
-      net: { W1: matToArr(net.W1), b1: Array.from(net.b1), W2: matToArr(net.W2), b2: Array.from(net.b2), Wv: Array.from(net.Wv), bv: net.bv },
-      gen, attempts, successes, rewardHistory: rewardHistory.slice(-300), best, speed
+      net: {
+        W1: matToArr(net.W1), b1: Array.from(net.b1),
+        W2: matToArr(net.W2), b2: Array.from(net.b2),
+        W3: matToArr(net.W3), b3: Array.from(net.b3),
+        Wv: Array.from(net.Wv), bv: net.bv
+      },
+      gen, attempts, successes, rewardHistory: rewardHistory.slice(-300), best, speed, difficulty
     };
     localStorage.setItem(LS_KEY, JSON.stringify(payload));
   }catch(e){ /* storage full or unavailable - ignore */ }
@@ -421,13 +511,18 @@ function loadAll(){
     const raw = localStorage.getItem(LS_KEY);
     if(!raw) return false;
     const p = JSON.parse(raw);
-    net = { W1: arrToMat(p.net.W1), b1: Float64Array.from(p.net.b1), W2: arrToMat(p.net.W2), b2: Float64Array.from(p.net.b2),
-      Wv: Float64Array.from(p.net.Wv||makeVec(HID)), bv: p.net.bv||0 };
+    net = {
+      W1: arrToMat(p.net.W1), b1: Float64Array.from(p.net.b1),
+      W2: arrToMat(p.net.W2), b2: Float64Array.from(p.net.b2),
+      W3: arrToMat(p.net.W3), b3: Float64Array.from(p.net.b3),
+      Wv: Float64Array.from(p.net.Wv), bv: p.net.bv||0
+    };
     gen = p.gen||0;
     attempts = p.attempts||0;
     successes = p.successes||0;
     rewardHistory = p.rewardHistory||[];
     best = p.best||-Infinity;
+    difficulty = p.difficulty||0;
     if(p.speed===1||p.speed===5||p.speed===25) speed = p.speed;
     return true;
   }catch(e){ return false; }
@@ -444,15 +539,10 @@ function newRocket(){
     angVel: 0,
     fuel: FUEL_MAX,
     boosters: {bottom:0, top:0, left:0, right:0},
+    lastAction: [0,0,0,0],
     alive: true
   };
 }
-
-let rocket = newRocket();
-let stepCount = 0;
-let episodeReward = 0;
-let prevHDist = null, prevVDist = null;
-let trail = [];
 
 function padCenter(){ return { x:(PAD.x1+PAD.x2)/2, y:PAD.y }; }
 
@@ -465,7 +555,8 @@ function getState(r){
   const s = Math.sin(r.angle), c = Math.cos(r.angle);
   const av = r.angVel/6;
   const fuel = (r.fuel/FUEL_MAX)*2-1;
-  return Float64Array.from([dx,dy,vx,vy,s,c,av,fuel]);
+  const la = r.lastAction;
+  return Float64Array.from([dx,dy,vx,vy,s,c,av,fuel, la[0]?1:-1, la[1]?1:-1, la[2]?1:-1, la[3]?1:-1]);
 }
 
 function rocketCorners(r){
@@ -504,6 +595,7 @@ function physicsStep(r, booster){
   r.angle += r.angVel*DT;
 
   r.fuel = Math.max(0, r.fuel - activeCount*FUEL_RATE*DT);
+  r.lastAction = booster;
 
   // invisible side walls: clamp rather than end the episode, so a wide swing
   // doesn't waste the whole attempt before it ever reaches the ground
@@ -534,15 +626,15 @@ function physicsStep(r, booster){
   return {done:false};
 }
 
-function computeReward(r, stepResult){
-  const pc = padCenter();
+function computeReward(w, stepResult){
+  const r = w.rocket;
   // horizontal distance to the pad's own footprint (0 once directly above it)
   const hdist = r.x < PAD.x1 ? (PAD.x1-r.x) : (r.x > PAD.x2 ? (r.x-PAD.x2) : 0);
   const vdist = Math.max(0, PAD.y - r.y);
   let reward = 0;
-  if(prevHDist!==null) reward += (prevHDist-hdist)*0.06;   // progress toward pad, horizontally
-  if(prevVDist!==null) reward += (prevVDist-vdist)*0.01;
-  prevHDist = hdist; prevVDist = vdist;
+  if(w.prevHDist!==null) reward += (w.prevHDist-hdist)*0.06;   // progress toward pad, horizontally
+  if(w.prevVDist!==null) reward += (w.prevVDist-vdist)*0.01;
+  w.prevHDist = hdist; w.prevVDist = vdist;
   reward += Math.cos(r.angle)*0.05;                  // upright bonus
   reward -= (r.boosters.bottom+r.boosters.top+r.boosters.left+r.boosters.right)*0.004; // fuel-use penalty
   reward -= 0.01;                                     // time penalty
@@ -573,8 +665,6 @@ function computeReward(r, stepResult){
       reward += 140 + (1 - speed/LAND_SPEED_OK)*30 + (r.fuel/FUEL_MAX)*15;
     } else if(stepResult.reason==="tumbled"){
       reward -= 45;
-    } else if(stepResult.reason==="out of bounds"){
-      reward -= 45;
     } else if(stepResult.reason==="missed pad"){
       reward -= 40;
     } else { // hard landing (on pad but too fast/tilted) - penalty scales with how bad the impact was
@@ -588,69 +678,106 @@ function computeReward(r, stepResult){
 }
 
 /* =========================================================================
-   STATS / STATE
+   PARALLEL WORKERS - many rockets train simultaneously each tick (this is
+   what "many attempts at once" looks like); only worker 0 is ever drawn, so
+   the screen still shows a single clean rocket while learning happens N-up.
    ========================================================================= */
+function newWorker(){
+  return {
+    rocket: newRocket(),
+    stepCount: 0,
+    episodeReward: 0,
+    prevHDist: null,
+    prevVDist: null,
+    traj: { x:[], choice:[], pOld:[], v:[], r:[] }
+  };
+}
+let workers = [];
+for(let i=0;i<NUM_WORKERS;i++) workers.push(newWorker());
+
 let attempts=0, successes=0, best=-Infinity, rewardHistory=[];
 let running=false, speed=1;
-let lastP = new Float64Array(OUT); // most recent policy output, for the booster-power HUD
+let heroLastP = new Float64Array(OUT); // most recent policy output for worker 0, for the booster-power HUD
+let trail = []; // worker 0's trajectory trail only
 const settings = { showBoosterPct:true, showTrail:true, showFuel:true };
 
 function resetLearning(){
   net = freshNet();
   gen++;
   attempts=0; successes=0; best=-Infinity; rewardHistory=[];
-  resetEpisode();
+  difficulty=0; curriculumWindow=[]; recomputePad();
+  pendingBatch=[]; pendingBatchSteps=0; successBuffer=[];
+  workers = []; for(let i=0;i<NUM_WORKERS;i++) workers.push(newWorker());
+  trail = [];
   saveAll(true);
   refreshHUD();
 }
 
-function resetEpisode(){
-  rocket = newRocket();
-  stepCount=0; episodeReward=0; prevHDist=null; prevVDist=null; trail=[];
-  resetTraj();
+function resetWorker(w){
+  w.rocket = newRocket();
+  w.stepCount=0; w.episodeReward=0; w.prevHDist=null; w.prevVDist=null;
+  w.traj = { x:[], choice:[], pOld:[], v:[], r:[] };
 }
 
-function endEpisode(stepResult){
+function finishWorkerEpisode(w, stepResult, isHero){
   attempts++;
   if(stepResult.success) successes++;
-  if(episodeReward>best) best = episodeReward;
-  rewardHistory.push({r:episodeReward, s:stepResult.success});
+  if(w.episodeReward>best) best = w.episodeReward;
+  rewardHistory.push({r:w.episodeReward, s:stepResult.success});
   if(rewardHistory.length>300) rewardHistory.shift();
 
-  learnFromEpisode();
-  saveAll();
-  showBanner(stepResult.success, stepResult.reason);
+  const {adv, ret} = computeGAE(w.traj);
+  const record = { x:w.traj.x, choice:w.traj.choice, pOld:w.traj.pOld, adv, ret };
+  pendingBatch.push(record);
+  pendingBatchSteps += w.traj.r.length;
+  if(stepResult.success) pushSuccessBuffer(record);
+
+  updateCurriculum(stepResult.success);
+
+  if(pendingBatchSteps >= BATCH_MIN_STEPS){
+    runPpoUpdate();
+    pendingBatch = []; pendingBatchSteps = 0;
+    saveAll();
+  }
+
+  if(isHero){ showBanner(stepResult.success, stepResult.reason); trail = []; }
   refreshHUD();
-  resetEpisode();
+  resetWorker(w);
 }
 
 /* =========================================================================
-   SIMULATION TICK (one physics step, called `speed` times per frame)
+   SIMULATION TICK (one physics step per worker, called `speed` times/frame)
    ========================================================================= */
-function tick(){
-  if(!rocket.alive) return;
-  const x = getState(rocket);
-  const {h,p,v} = forward(x);
+function tickWorker(w, isHero){
+  if(!w.rocket.alive) return;
+  const x = getState(w.rocket);
+  const {p, v} = forward(x);
   const a = sampleActions(p);
-  const res = physicsStep(rocket, a.booster);
-  const r = computeReward(rocket, res);
-  episodeReward += r;
-  recordStep(x,h,p,v,a,r);
-  lastP = p;
+  const res = physicsStep(w.rocket, a.booster);
+  const r = computeReward(w, res);
+  w.episodeReward += r;
+  w.traj.x.push(x); w.traj.choice.push(a.choice); w.traj.pOld.push(p); w.traj.v.push(v); w.traj.r.push(r);
 
-  trail.push({x:rocket.x,y:rocket.y});
-  if(trail.length>220) trail.shift();
+  if(isHero){
+    heroLastP = p;
+    trail.push({x:w.rocket.x, y:w.rocket.y});
+    if(trail.length>220) trail.shift();
+  }
 
-  stepCount++;
+  w.stepCount++;
   if(res.done){
-    rocket.alive=false;
-    endEpisode(res);
+    w.rocket.alive = false;
+    finishWorkerEpisode(w, res, isHero);
     return;
   }
-  if(stepCount>=MAX_STEPS){
-    rocket.alive=false;
-    endEpisode({done:true, success:false, reason:"timed out"});
+  if(w.stepCount>=MAX_STEPS){
+    w.rocket.alive = false;
+    finishWorkerEpisode(w, {done:true, success:false, reason:"timed out"}, isHero);
   }
+}
+
+function tickAll(){
+  for(let i=0;i<workers.length;i++) tickWorker(workers[i], i===0);
 }
 
 /* =========================================================================
@@ -674,10 +801,11 @@ const stars = [];
 for(let i=0;i<140;i++) stars.push({x:Math.random()*WORLD.w, y:Math.random()*WORLD.h*0.85, r:Math.random()*1.6+0.3, tw:Math.random()*Math.PI*2});
 
 function draw(){
+  const hero = workers[0].rocket;
   ctx.setTransform(DPR,0,0,DPR,0,0);
   // camera
-  const camX = clamp(rocket.x - viewW/2, 0, Math.max(0,WORLD.w-viewW));
-  const camY = clamp(rocket.y - viewH*0.42, 0, Math.max(0,WORLD.h-viewH));
+  const camX = clamp(hero.x - viewW/2, 0, Math.max(0,WORLD.w-viewW));
+  const camY = clamp(hero.y - viewH*0.42, 0, Math.max(0,WORLD.h-viewH));
 
   // sky
   const grd = ctx.createLinearGradient(0,0,0,viewH);
@@ -739,7 +867,7 @@ function draw(){
     ctx.stroke();
   }
 
-  drawRocket(rocket);
+  drawRocket(hero);
 
   ctx.restore();
 }
@@ -813,7 +941,6 @@ function drawNozzle(mount, dirAngle, active){
   ctx.save();
   ctx.translate(mount.x, mount.y);
   ctx.rotate(dirAngle);
-  // trapezoid nozzle body
   ctx.beginPath();
   ctx.moveTo(-6,0); ctx.lineTo(6,0); ctx.lineTo(4,9); ctx.lineTo(-4,9); ctx.closePath();
   ctx.fillStyle = active ? "#ffd580" : "#3a3f5c";
@@ -917,18 +1044,15 @@ function refreshHUD(){
   document.getElementById('statAttempt').textContent = attempts;
   document.getElementById('statSuccess').textContent = successes;
   document.getElementById('statRate').textContent = attempts? Math.round(successes/attempts*100)+"%" : "0%";
-  document.getElementById('statReward').textContent = episodeReward.toFixed(1);
   document.getElementById('statBest').textContent = (best===-Infinity?0:best.toFixed(0));
   const last20 = rewardHistory.slice(-20);
   const avg = last20.length? (last20.reduce((s,d)=>s+d.r,0)/last20.length) : 0;
   document.getElementById('statAvg').textContent = avg.toFixed(1);
+  document.getElementById('statDiff').textContent = Math.round(difficulty*100)+"%";
   document.getElementById('statGen').textContent = gen;
   drawSpark();
 }
 
-/* =========================================================================
-   MAIN LOOP
-   ========================================================================= */
 const boosterMeters = {
   bottom: document.querySelector('.bmeter[data-b="bottom"]'),
   top: document.querySelector('.bmeter[data-b="top"]'),
@@ -940,22 +1064,26 @@ const boosterPIndex = { bottom:1, top:2, left:GROUPN+1, right:GROUPN+2 };
 
 function updateBoosterHud(){
   if(!settings.showBoosterPct) return;
+  const heroBoosters = workers[0].rocket.boosters;
   for(const name in boosterMeters){
     const el = boosterMeters[name];
-    const pct = Math.round((lastP[boosterPIndex[name]]||0)*100);
+    const pct = Math.round((heroLastP[boosterPIndex[name]]||0)*100);
     el.querySelector('i').style.width = pct+"%";
     el.querySelector('b').textContent = pct+"%";
-    el.classList.toggle('firing', !!rocket.boosters[name]);
+    el.classList.toggle('firing', !!heroBoosters[name]);
   }
 }
 
+/* =========================================================================
+   MAIN LOOP
+   ========================================================================= */
 function frame(){
   if(running){
-    for(let i=0;i<speed;i++){ tick(); }
+    for(let i=0;i<speed;i++){ tickAll(); }
   }
   draw();
-  document.getElementById('statReward').textContent = episodeReward.toFixed(1);
-  if(settings.showFuel) document.getElementById('statFuel').textContent = Math.round(rocket.fuel/FUEL_MAX*100)+"%";
+  document.getElementById('statReward').textContent = workers[0].episodeReward.toFixed(1);
+  if(settings.showFuel) document.getElementById('statFuel').textContent = Math.round(workers[0].rocket.fuel/FUEL_MAX*100)+"%";
   updateBoosterHud();
   requestAnimationFrame(frame);
 }
@@ -1011,7 +1139,14 @@ function applySettingsToUI(){
 
 const btnSettings = document.getElementById('btnSettings');
 const settingsPanel = document.getElementById('settingsPanel');
-btnSettings.addEventListener('click', ()=>{ settingsPanel.hidden = !settingsPanel.hidden; });
+const topOverlay = document.getElementById('topOverlay');
+function positionSettingsPanel(){
+  settingsPanel.style.top = (topOverlay.offsetHeight + 6) + "px";
+}
+btnSettings.addEventListener('click', ()=>{
+  positionSettingsPanel();
+  settingsPanel.hidden = !settingsPanel.hidden;
+});
 document.getElementById('btnCloseSettings').addEventListener('click', ()=>{ settingsPanel.hidden = true; });
 document.getElementById('optBoosterPct').addEventListener('change', e=>{
   settings.showBoosterPct = e.target.checked;
@@ -1034,7 +1169,7 @@ document.getElementById('optFuel').addEventListener('change', e=>{
 const hadSave = loadAll();
 loadSettings();
 applySettingsToUI();
-resetEpisode();
+recomputePad();
 resize();
 refreshHUD();
 document.querySelectorAll('.speedgrp button').forEach(b=>{
