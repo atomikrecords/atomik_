@@ -505,7 +505,12 @@ body.reduce-motion .iss-popup.show{transform:translate(-50%,-50%) scale(1);}
 
 .ar-target-marker{
   position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); opacity:0;
-  transition:left .18s linear, top .18s linear, opacity .3s ease;
+  /* Heading/pitch are already low-pass filtered at the source (see
+     smoothAngleTowards in JS) — a slow CSS transition on top of that
+     double-smooths and makes the marker visibly lag behind the green
+     path line, which isn't CSS-transitioned. Keep this just fast enough
+     to take the edge off sub-frame layout jumps. */
+  transition:left .05s linear, top .05s linear, opacity .3s ease;
   display:flex; flex-direction:column; align-items:center; pointer-events:none; z-index:2;
 }
 .ar-target-marker.show{opacity:1;}
@@ -2944,10 +2949,32 @@ const AR = {
   _quat:new THREE.Quaternion(), _euler:new THREE.Euler(), _zee:new THREE.Vector3(0,0,1),
   _q1:new THREE.Quaternion(-Math.sqrt(0.5),0,0,Math.sqrt(0.5)),
   _q2:new THREE.Quaternion(), _forward:new THREE.Vector3(),
-  // Approximate rear-camera half-FOV in portrait — used only to decide
-  // on-screen vs off-screen placement, not claimed to be lens-accurate.
-  fovH:34, fovV:44, lockDeg:3.5
+  // Internal smoothing state — kept separate from the public
+  // heading/pitch so the EMA math below never mixes pre- and
+  // post-declination values.
+  _headingRaw:null, _headingOffset:null, _pitchRaw:null,
+  // Approximate rear-camera half-FOV in portrait, refined once the real
+  // camera stream starts (see refineArFov) from its actual aspect ratio.
+  // Typical smartphone main rear lens covers roughly 60-75° horizontal x
+  // 45-55° vertical in landscape (native sensor orientation); in the
+  // portrait AR view those axes swap, which is what these starting
+  // numbers reflect. Never claimed to be lens-accurate to the exact
+  // device — there's no web API that exposes true camera FOV — but this
+  // is far closer than an arbitrary guess.
+  fovH:25, fovV:34, lockDeg:3.5
 };
+
+// Low-pass filters the raw per-frame sensor angle towards `next`, handling
+// the 0/360 wraparound correctly. This is the actual fix for the on-screen
+// target "moving too fast" / not holding position: device orientation
+// events arrive at ~60Hz carrying real sensor noise, and earlier this was
+// drawn straight from that raw value every frame — now it's smoothed like
+// any real-world AR/compass implementation does.
+function smoothAngleTowards(prev, next, factor){
+  if (prev == null || !isFinite(prev)) return next;
+  const d = ((next - prev + 540) % 360) - 180;
+  return ((prev + d*factor) % 360 + 360) % 360;
+}
 
 /* ---- magnetic declination — the reason other sky-AR apps don't need a
    manual "face north and sync" step. A phone compass measures MAGNETIC
@@ -3007,26 +3034,81 @@ function arDeviceQuaternion(alpha, beta, gamma, screenAngleDeg){
 }
 
 function onArOrientation(event){
-  const beta = event.beta || 0, gamma = event.gamma || 0;
-  let effectiveAlpha;
-  if (typeof event.webkitCompassHeading === 'number' && !isNaN(event.webkitCompassHeading)){
-    effectiveAlpha = event.webkitCompassHeading; // iOS: tilt-compensated true/magnetic heading
-    AR.headingAbsolute = true;
-  } else if (typeof event.alpha === 'number'){
-    effectiveAlpha = event.alpha; // world-referenced only when event.absolute is true
-    AR.headingAbsolute = !!event.absolute;
-  } else {
-    return;
-  }
-  const q = arDeviceQuaternion(effectiveAlpha, beta, gamma, getScreenAngleDeg());
+  if (typeof event.beta !== 'number' || typeof event.gamma !== 'number') return;
+  const beta = event.beta, gamma = event.gamma;
+  const rawAlpha = typeof event.alpha === 'number' ? event.alpha : 0;
+
+  // Reconstruct the FULL 3D orientation as one quaternion from the
+  // device's own alpha/beta/gamma, then read heading and pitch back out
+  // of the resulting forward vector together. This is what actually
+  // keeps heading stable while the phone tilts back to point at the
+  // sky: feeding a *different* heading source (like iOS's
+  // webkitCompassHeading) into this reconstruction in place of alpha —
+  // which is a different angle convention entirely — used to corrupt the
+  // whole quaternion and made tracking spin/jump exactly when aimed
+  // upward. webkitCompassHeading is still used below, but only as an
+  // absolute-truth correction on top of this self-consistent result,
+  // never as an input to it.
+  const q = arDeviceQuaternion(rawAlpha, beta, gamma, getScreenAngleDeg());
   const fwd = AR._forward.set(0,0,-1).applyQuaternion(q);
-  let az = DEG*Math.atan2(fwd.x, -fwd.z);
-  if (settings.arMirrorHeading) az = -az;
-  // Magnetic -> true north, then whatever the user has manually nudged on top.
-  az = ((az + magDeclinationDeg + settings.arHeadingOffset) % 360 + 360) % 360;
-  AR.heading = az;
-  AR.pitch = DEG*Math.asin(Math.max(-1, Math.min(1, fwd.y)));
+  let quatHeading = ((DEG*Math.atan2(fwd.x, -fwd.z)) % 360 + 360) % 360;
+  if (settings.arMirrorHeading) quatHeading = (360 - quatHeading) % 360;
+  const pitchRaw = DEG*Math.asin(Math.max(-1, Math.min(1, fwd.y)));
+
+  // Absolute compass truth, when the platform provides one: iOS's
+  // webkitCompassHeading is a hardware tilt-compensated magnetic
+  // heading; Android's deviceorientationabsolute alpha is likewise
+  // already fused/absolute. Rather than snapping straight to this value
+  // every frame (which would reintroduce jitter from *its* own noise),
+  // slowly steer a calibration offset towards it — self-correcting, but
+  // smooth.
+  let headingAbs = null;
+  if (typeof event.webkitCompassHeading === 'number' && !isNaN(event.webkitCompassHeading)){
+    headingAbs = event.webkitCompassHeading;
+    AR.headingAbsolute = true;
+  } else if (event.absolute === true && typeof event.alpha === 'number'){
+    headingAbs = quatHeading;
+    AR.headingAbsolute = true;
+  } else {
+    AR.headingAbsolute = false;
+  }
+  if (headingAbs != null){
+    const diff = ((headingAbs - quatHeading + 540) % 360) - 180;
+    AR._headingOffset = AR._headingOffset == null ? diff
+      : AR._headingOffset + (((diff - AR._headingOffset + 540) % 360) - 180) * 0.08;
+  }
+  const targetHeading = ((quatHeading + (AR._headingOffset||0)) % 360 + 360) % 360;
+
+  // Final smoothing pass on the values actually used for tracking.
+  AR._headingRaw = smoothAngleTowards(AR._headingRaw, targetHeading, 0.18);
+  AR._pitchRaw = AR._pitchRaw == null ? pitchRaw : AR._pitchRaw + (pitchRaw - AR._pitchRaw)*0.18;
+
+  // True north + whatever the user has manually nudged on top (normally
+  // left at 0 — auto declination correction covers it already).
+  AR.heading = ((AR._headingRaw + magDeclinationDeg + settings.arHeadingOffset) % 360 + 360) % 360;
+  AR.pitch = AR._pitchRaw;
   AR.hasOrientation = true;
+}
+
+// Refines the guessed half-FOV values using the real camera stream's own
+// aspect ratio (exact per-device, unlike the aspect ratio implied by the
+// hardcoded starting numbers) combined with an assumed ~68° diagonal FOV
+// — the middle of the ~60-75° range typical of smartphone main rear
+// lenses. There's no web API that reports true lens FOV, so this is
+// still an estimate, just a better-grounded one than a flat guess.
+function refineArFov(video){
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (!vw || !vh) return;
+  const aspect = vw/vh; // >1 in landscape frames even though displayed rotated to portrait
+  const shortOverLong = Math.min(aspect, 1/aspect);
+  const diagHalf = 34*RAD; // ~68° diagonal / 2
+  const hyLong = Math.tan(diagHalf) / Math.sqrt(1 + shortOverLong*shortOverLong);
+  const hxShort = shortOverLong * hyLong;
+  // In the portrait AR view, the on-screen vertical axis maps to the
+  // camera sensor's long dimension (wider angular extent) and the
+  // on-screen horizontal axis maps to its short dimension.
+  AR.fovV = DEG*Math.atan(hyLong);
+  AR.fovH = DEG*Math.atan(hxShort);
 }
 
 async function startArCamera(){
@@ -3037,6 +3119,8 @@ async function startArCamera(){
     await video.play().catch(()=>{});
     AR.hasCamera = true;
     document.getElementById('arFallbackBg').classList.remove('on');
+    if (video.videoWidth) refineArFov(video);
+    else video.addEventListener('loadedmetadata', ()=>refineArFov(video), {once:true});
   }catch(e){
     AR.hasCamera = false;
     document.getElementById('arFallbackBg').classList.add('on');
