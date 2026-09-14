@@ -128,7 +128,7 @@ final class ScanController: ObservableObject {
 
                 let photogrammetry = try PhotogrammetrySession(input: images,
                                                                configuration: configuration)
-                try photogrammetry.process(requests: [.modelFile(url: output, detail: .medium)])
+                try photogrammetry.process(requests: [.modelFile(url: output)])
 
                 for try await outputMessage in photogrammetry.outputs {
                     if Task.isCancelled { return }
