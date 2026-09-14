@@ -1,0 +1,52 @@
+name: Build Object Scanner IPA
+
+# Builds the iOS app on GitHub's Mac runners and uploads an UNSIGNED .ipa.
+# Download it from the run's Artifacts section, then install it on an iPhone
+# from Windows with Sideloadly (it signs with your own Apple ID).
+
+on:
+  push:
+    branches: [claude/iphone-3d-object-scanner-7jry7f]
+    paths:
+      - 'ObjectScanner/**'
+      - '.github/workflows/build-object-scanner.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project ObjectScanner/ObjectScanner.xcodeproj \
+            -scheme ObjectScanner \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            build
+
+      - name: Package into .ipa
+        run: |
+          APP="build/Build/Products/Release-iphoneos/ObjectScanner.app"
+          test -d "$APP" || { echo "App bundle not found at $APP"; exit 1; }
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry ObjectScanner-unsigned.ipa Payload
+          ls -lh ObjectScanner-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ObjectScanner-unsigned-ipa
+          path: ObjectScanner-unsigned.ipa
+          if-no-files-found: error
