@@ -39,3 +39,12 @@ It installs `pyserial`, `hidapi`, `pyusb` and opens the app.
 - `ct6339/probe.py` — enumeration (PowerShell/PnP), serial/HID/libusb probing, verdict
 - `ct6339/control.py` — frame templates and the 20 Hz transmitter
 - `ct6339/app.py` — Tkinter UI
+
+## Terminal use
+
+```
+python -m ct6339.scan            # list devices + verdict
+python -m ct6339.scan --probe    # also probe every serial/HID channel
+python -m ct6339.scan --json     # write ct6339_usb_report.json
+python -m ct6339.app             # open the GUI
+```

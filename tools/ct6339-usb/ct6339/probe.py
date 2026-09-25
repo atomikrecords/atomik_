@@ -266,8 +266,13 @@ def summarize(scan):
     responsive = [h for h in scan.get("serial_probes", []) if h.get("hits")]
     hid_alive = [h for h in scan.get("hid_probes", []) if h.get("inputs") or h.get("features")]
 
+    errors = [scan.get(k) for k in ("device_error", "serial_error", "hid_error") if scan.get(k)]
     if not new and not serial_ports and not hid_devs:
-        lines.append("No USB data device enumerated. Cable/port is charge-only, or D+/D- are not wired.")
+        if errors:
+            lines.append("Detection incomplete: %s" % "; ".join(errors))
+            lines.append("Fix the above before trusting this result.")
+        else:
+            lines.append("No USB data device enumerated. Cable/port is charge-only, or D+/D- are not wired.")
     else:
         if new:
             lines.append("%d device node(s) appeared on plug-in." % len(new))
