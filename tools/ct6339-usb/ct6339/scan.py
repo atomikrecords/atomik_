@@ -9,6 +9,10 @@ from . import probe
 def main(argv=None):
     argv = argv or sys.argv[1:]
     do_probe = "--probe" in argv
+    only = None
+    for arg in argv:
+        if arg.startswith("--only="):
+            only = arg.split("=", 1)[1].upper()
 
     scan = {}
     scan["devices"], scan["device_error"] = probe.list_pnp_devices()
@@ -42,7 +46,13 @@ def main(argv=None):
         print("-- probing --")
         for p in scan["serial"]:
             scan["serial_probes"].append(probe.probe_serial(p["port"], on_log=lambda m: print("  " + m)))
-        for h in scan["hid"]:
+        targets = [h for h in scan["hid"] if only in ("%s:%s" % (h["vid"], h["pid"]),)] if only else []
+        if only and not targets:
+            print("  no HID device matches %s" % only)
+        if not only and scan["hid"]:
+            print("  skipping %d HID devices (they are your own keyboard/mouse/etc)." % len(scan["hid"]))
+            print("  to probe one: --only=VID:PID")
+        for h in targets:
             scan["hid_probes"].append(probe.probe_hid(h["path"], on_log=lambda m: print("  " + m)))
 
     print("-- verdict --")

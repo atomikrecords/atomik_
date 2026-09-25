@@ -196,7 +196,12 @@ def probe_hid(path, listen=1.5, on_log=None):
         dev.set_nonblocking(True)
         end = time.time() + listen
         while time.time() < end:
-            data = dev.read(64)
+            try:
+                data = dev.read(64)
+            except (OSError, ValueError) as exc:
+                result["error"] = str(exc)
+                log("HID read error: %s" % exc)
+                break
             if data:
                 frame = bytes(data).hex()
                 if frame not in result["inputs"]:
@@ -257,6 +262,17 @@ CLASS_NAMES = {
 }
 
 
+def failed_nodes(devices):
+    """Nodes Windows could not enumerate — descriptor request failed, driver error."""
+    out = []
+    for d in devices:
+        bad_name = "unknown usb device" in d["name"].lower()
+        bad_status = d["status"] not in ("OK", "")
+        if bad_name or bad_status:
+            out.append(d)
+    return out
+
+
 def summarize(scan):
     """Plain verdict about what the PC can actually talk to."""
     lines = []
@@ -289,6 +305,17 @@ def summarize(scan):
     elif hid_devs:
         lines.append("HID present but returned no data.")
 
+    bad = failed_nodes(scan.get("devices", []))
+    if bad:
+        lines.append("")
+        lines.append("Failed to enumerate (%d):" % len(bad))
+        for d in bad:
+            lines.append("  %s [%s] %s" % (d["name"], d["status"] or "?", d["id"]))
+        lines.append("A descriptor request failure means the device never completed the USB")
+        lines.append("handshake: no interfaces, no endpoints, nothing to talk to. Usually a")
+        lines.append("power-only port with floating data lines, or a bad cable.")
+
+    lines.append("")
     lines.append("Control panel is unlocked only when a channel actually answers.")
     return "\n".join(lines)
 
