@@ -295,14 +295,15 @@ def summarize(scan):
         if serial_ports:
             lines.append("Serial (COM) interface: %s" % ", ".join(p["port"] for p in serial_ports))
         if hid_devs:
-            lines.append("HID interface: %d endpoint(s) visible." % len(hid_devs))
+            note = "" if new else " (system-wide; take a baseline to tell which is the drone)"
+            lines.append("HID interfaces visible: %d%s" % (len(hid_devs), note))
     if responsive:
         lines.append("ANSWERS on serial: %s" % ", ".join(sorted({r["port"] for r in responsive})))
     elif serial_ports:
         lines.append("Serial port exists but nothing answered any probe.")
     if hid_alive:
         lines.append("HID reports readable: %d device(s)." % len(hid_alive))
-    elif hid_devs:
+    elif hid_devs and new:
         lines.append("HID present but returned no data.")
 
     bad = failed_nodes(scan.get("devices", []))
