@@ -15,29 +15,32 @@ def watch():
     prev = {d["id"]: d for d in prev_dev}
     prev_ports = {p["port"] for p in prev_com}
     print("baseline: %d device nodes, %d COM ports" % (len(prev), len(prev_ports)))
+    ticks = 0
     try:
         while True:
             time.sleep(1.5)
+            ticks += 1
+            print("\r  watching... %ds  " % int(ticks * 1.5), end="", flush=True)
             devs, err = probe.list_pnp_devices()
             if err:
                 continue
             now = {d["id"]: d for d in devs}
             for did in now.keys() - prev.keys():
                 d = now[did]
-                print("+ %-4s %-45s %s:%s %s [%s]" % (d["bus"], d["name"][:45],
+                print("\r+ %-4s %-45s %s:%s %s [%s]" % (d["bus"], d["name"][:45],
                                                       d["vid"] or "----", d["pid"] or "----",
                                                       d["com"], d["status"]))
                 print("    %s" % did)
             for did in prev.keys() - now.keys():
-                print("- %s" % prev[did]["name"][:60])
+                print("\r- %s" % prev[did]["name"][:60])
             prev = now
 
             coms, _ = probe.list_serial_ports()
             ports = {p["port"] for p in coms}
             for port in ports - prev_ports:
-                print("+ COM %s" % port)
+                print("\r+ COM %s" % port)
             for port in prev_ports - ports:
-                print("- COM %s" % port)
+                print("\r- COM %s" % port)
             prev_ports = ports
     except KeyboardInterrupt:
         print("\nstopped")
