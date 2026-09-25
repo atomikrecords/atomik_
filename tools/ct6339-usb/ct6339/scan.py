@@ -1,13 +1,54 @@
-"""Terminal diagnostics: python -m ct6339.scan [--probe]"""
+"""Terminal diagnostics: python -m ct6339.scan [--probe] [--watch]"""
 
 import json
 import sys
+import time
 
 from . import probe
 
 
+def watch():
+    """Print USB/COM changes live. Plug the drone in and see what appears."""
+    print("Watching. Plug/unplug the drone. Ctrl+C to stop.\n")
+    prev_dev, _ = probe.list_pnp_devices()
+    prev_com, _ = probe.list_serial_ports()
+    prev = {d["id"]: d for d in prev_dev}
+    prev_ports = {p["port"] for p in prev_com}
+    print("baseline: %d device nodes, %d COM ports" % (len(prev), len(prev_ports)))
+    try:
+        while True:
+            time.sleep(1.5)
+            devs, err = probe.list_pnp_devices()
+            if err:
+                continue
+            now = {d["id"]: d for d in devs}
+            for did in now.keys() - prev.keys():
+                d = now[did]
+                print("+ %-4s %-45s %s:%s %s [%s]" % (d["bus"], d["name"][:45],
+                                                      d["vid"] or "----", d["pid"] or "----",
+                                                      d["com"], d["status"]))
+                print("    %s" % did)
+            for did in prev.keys() - now.keys():
+                print("- %s" % prev[did]["name"][:60])
+            prev = now
+
+            coms, _ = probe.list_serial_ports()
+            ports = {p["port"] for p in coms}
+            for port in ports - prev_ports:
+                print("+ COM %s" % port)
+            for port in prev_ports - ports:
+                print("- COM %s" % port)
+            prev_ports = ports
+    except KeyboardInterrupt:
+        print("\nstopped")
+
+
 def main(argv=None):
     argv = argv or sys.argv[1:]
+    if "--watch" in argv:
+        watch()
+        return 0
+
     do_probe = "--probe" in argv
     only = None
     for arg in argv:

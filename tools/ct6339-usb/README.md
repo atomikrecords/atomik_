@@ -48,3 +48,7 @@ python -m ct6339.scan --probe    # also probe every serial/HID channel
 python -m ct6339.scan --json     # write ct6339_usb_report.json
 python -m ct6339.app             # open the GUI
 ```
+
+`python -m ct6339.scan --watch` prints device nodes and COM ports as they
+appear and disappear — plug the drone in while it runs to see exactly what
+(if anything) it adds.
